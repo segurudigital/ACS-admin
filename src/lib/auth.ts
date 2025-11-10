@@ -1,0 +1,191 @@
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:2222';
+
+interface LoginCredentials {
+  email: string;
+  password: string;
+}
+
+interface AuthResponse {
+  success: boolean;
+  message: string;
+  data?: {
+    user: {
+      id: string;
+      name: string;
+      email: string;
+      verified: boolean;
+      avatar?: string;
+      organizations?: any[];
+      primaryOrganization?: string;
+    };
+    token: string;
+    permissions?: string[];
+    role?: {
+      id: string;
+      name: string;
+      displayName: string;
+      level: string;
+    };
+  };
+  err?: string;
+}
+
+export class AuthService {
+  private static getAuthHeaders(token?: string) {
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+    };
+    
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+    
+    return headers;
+  }
+
+  static async login(credentials: LoginCredentials): Promise<AuthResponse> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/auth/signin`, {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify(credentials),
+        credentials: 'include',
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.err || 'Login failed');
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Login error:', error);
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Login failed',
+        err: error instanceof Error ? error.message : 'Login failed',
+      };
+    }
+  }
+
+  static async verifyAuth(token: string): Promise<AuthResponse> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/auth/is-auth`, {
+        method: 'GET',
+        headers: this.getAuthHeaders(token),
+        credentials: 'include',
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.err || 'Authentication verification failed');
+      }
+
+      return {
+        success: true,
+        message: 'Authentication verified',
+        data: {
+          user: data,
+          token,
+        },
+      };
+    } catch (error) {
+      console.error('Auth verification error:', error);
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Authentication verification failed',
+        err: error instanceof Error ? error.message : 'Authentication verification failed',
+      };
+    }
+  }
+
+  static setToken(token: string): void {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('token', token);
+      // Keep auth_token for backward compatibility
+      localStorage.setItem('auth_token', token);
+    }
+  }
+
+  static getToken(): string | null {
+    if (typeof window !== 'undefined') {
+      // Try new key first, fallback to old key
+      return localStorage.getItem('token') || localStorage.getItem('auth_token');
+    }
+    return null;
+  }
+
+  static removeToken(): void {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('token');
+      localStorage.removeItem('auth_token');
+      // Also clear organization context
+      localStorage.removeItem('currentOrganizationId');
+    }
+  }
+
+  static async logout(): Promise<void> {
+    this.removeToken();
+    // You could also call a logout endpoint here if needed
+  }
+
+  // RBAC-related methods
+  static setOrganizationContext(organizationId: string): void {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('currentOrganizationId', organizationId);
+    }
+  }
+
+  static getOrganizationContext(): string | null {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('currentOrganizationId');
+    }
+    return null;
+  }
+
+  static hasPermission(permission: string, userPermissions?: string[]): boolean {
+    if (!userPermissions) {
+      // Try to get from stored permissions
+      const storedPermissions = this.getStoredPermissions();
+      if (!storedPermissions) return false;
+      userPermissions = storedPermissions;
+    }
+
+    // Check for wildcard permissions
+    if (userPermissions.includes('*') || userPermissions.includes('all')) return true;
+
+    // Check exact match
+    if (userPermissions.includes(permission)) return true;
+
+    // Check resource wildcard (e.g., 'users.*' matches 'users.create')
+    const [resource, action] = permission.split('.');
+    if (userPermissions.includes(`${resource}.*`)) return true;
+
+    // Check for scoped permissions (e.g., 'organizations.create:subordinate' matches 'organizations.create')
+    const matchesScoped = userPermissions.some(userPerm => {
+      const [userResource, userActionWithScope] = userPerm.split('.');
+      if (!userActionWithScope || !userActionWithScope.includes(':')) return false;
+      
+      const [userAction] = userActionWithScope.split(':');
+      return userResource === resource && userAction === action;
+    });
+
+    return matchesScoped;
+  }
+
+  static setStoredPermissions(permissions: string[]): void {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('userPermissions', JSON.stringify(permissions));
+    }
+  }
+
+  static getStoredPermissions(): string[] | null {
+    if (typeof window !== 'undefined') {
+      const permissions = localStorage.getItem('userPermissions');
+      return permissions ? JSON.parse(permissions) : null;
+    }
+    return null;
+  }
+}
