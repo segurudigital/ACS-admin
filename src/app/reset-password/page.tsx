@@ -1,28 +1,39 @@
 'use client';
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import Button from "../components/Button";
-import { AuthService } from "../lib/auth";
+import Button from "../../components/Button";
 
-export default function LoginPage() {
-  const router = useRouter();
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+
+export default function ResetPasswordPage() {
+  const searchParams = useSearchParams();
   const [formData, setFormData] = useState({
-    email: '',
-    password: ''
+    password: '',
+    confirmPassword: ''
   });
+  const [token, setToken] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+
+  useEffect(() => {
+    const tokenParam = searchParams.get('token');
+    if (tokenParam) {
+      setToken(tokenParam);
+    } else {
+      setError('Invalid or missing reset token');
+    }
+  }, [searchParams]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData(prev => ({
       ...prev,
       [e.target.name]: e.target.value
     }));
-    // Clear error when user starts typing
     if (error) setError('');
   };
 
@@ -30,21 +41,41 @@ export default function LoginPage() {
     e.preventDefault();
     setIsLoading(true);
     setError('');
+    setMessage('');
+
+    if (formData.password !== formData.confirmPassword) {
+      setError('Passwords do not match');
+      setIsLoading(false);
+      return;
+    }
+
+    if (formData.password.length < 6) {
+      setError('Password must be at least 6 characters');
+      setIsLoading(false);
+      return;
+    }
 
     try {
-      const response = await AuthService.login(formData);
-      
-      if (response.success && response.data) {
-        // Store the token
-        AuthService.setToken(response.data.token);
-        
-        // Redirect to dashboard or main admin page
-        router.push('/dashboard');
+      const response = await fetch(`${API_BASE_URL}/api/auth/reset-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          token,
+          password: formData.password
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setMessage(data.message);
       } else {
-        setError(response.err || 'Login failed. Please check your credentials.');
+        setError(data.message || 'Failed to reset password');
       }
     } catch (error) {
-      console.error('Login error:', error);
+      console.error('Reset password error:', error);
       setError('An unexpected error occurred. Please try again.');
     } finally {
       setIsLoading(false);
@@ -66,10 +97,10 @@ export default function LoginPage() {
               />
             </div>
             <h1 className="text-2xl font-semibold text-navy-deep mb-2">
-              Admin Area
+              Reset Password
             </h1>
             <p className="text-neutral-gray text-sm">
-              Adventist Community Services
+              Enter your new password below.
             </p>
           </div>
 
@@ -79,27 +110,24 @@ export default function LoginPage() {
                 {error}
               </div>
             )}
+
+            {message && (
+              <div className="bg-green-50 border border-green-200 text-green-600 px-4 py-3 rounded-lg text-sm">
+                {message}
+                <div className="mt-2">
+                  <Link 
+                    href="/"
+                    className="text-green-700 hover:text-green-800 font-medium underline"
+                  >
+                    Go to Login
+                  </Link>
+                </div>
+              </div>
+            )}
             
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-navy-deep mb-2">
-                Email Address
-              </label>
-              <input
-                type="email"
-                id="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                required
-                disabled={isLoading}
-                className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-navy-medium focus:border-transparent transition-colors outline-none text-navy-deep placeholder-neutral-gray disabled:opacity-50 disabled:cursor-not-allowed"
-                placeholder="Enter your email"
-              />
-            </div>
-
-            <div>
               <label htmlFor="password" className="block text-sm font-medium text-navy-deep mb-2">
-                Password
+                New Password
               </label>
               <div className="relative">
                 <input
@@ -109,15 +137,15 @@ export default function LoginPage() {
                   value={formData.password}
                   onChange={handleChange}
                   required
-                  disabled={isLoading}
+                  disabled={isLoading || !!message}
                   className="w-full px-4 py-3 pr-12 border border-gray-200 rounded-lg focus:ring-2 focus:ring-navy-medium focus:border-transparent transition-colors outline-none text-navy-deep placeholder-neutral-gray disabled:opacity-50 disabled:cursor-not-allowed"
-                  placeholder="Enter your password"
+                  placeholder="Enter new password"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 transition-colors"
-                  disabled={isLoading}
+                  disabled={isLoading || !!message}
                 >
                   {showPassword ? (
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -133,32 +161,47 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <div className="flex items-center justify-between text-sm">
-              <label className="flex items-center">
-                <input
-                  type="checkbox"
-                  className="w-4 h-4 text-navy-medium border-gray-300 rounded focus:ring-navy-medium focus:ring-2"
-                />
-                <span className="ml-2 text-neutral-gray">Remember me</span>
+            <div>
+              <label htmlFor="confirmPassword" className="block text-sm font-medium text-navy-deep mb-2">
+                Confirm New Password
               </label>
-              <Link href="/forgot-password" className="text-navy-medium hover:text-navy-deep transition-colors">
-                Forgot password?
-              </Link>
+              <input
+                type={showPassword ? "text" : "password"}
+                id="confirmPassword"
+                name="confirmPassword"
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                required
+                disabled={isLoading || !!message}
+                className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-navy-medium focus:border-transparent transition-colors outline-none text-navy-deep placeholder-neutral-gray disabled:opacity-50 disabled:cursor-not-allowed"
+                placeholder="Confirm new password"
+              />
             </div>
 
-            <Button
-              type="submit"
-              variant="primary"
-              size="md"
-              fullWidth
-              disabled={isLoading}
-            >
-              {isLoading ? 'Signing In...' : 'Sign In'}
-            </Button>
+            {!message && (
+              <Button
+                type="submit"
+                variant="primary"
+                size="md"
+                fullWidth
+                disabled={isLoading || !token}
+              >
+                {isLoading ? 'Resetting...' : 'Reset Password'}
+              </Button>
+            )}
           </form>
 
           <div className="mt-6 pt-6 border-t border-gray-100">
-            <p className="text-center text-sm text-neutral-gray">
+            <div className="text-center">
+              <Link 
+                href="/"
+                className="text-navy-medium hover:text-navy-deep transition-colors text-sm"
+              >
+                ← Back to Login
+              </Link>
+            </div>
+            
+            <p className="text-center text-sm text-neutral-gray mt-4">
               Need help?{' '}
               <a href="#" className="text-navy-medium hover:text-navy-deep transition-colors">
                 Contact Support

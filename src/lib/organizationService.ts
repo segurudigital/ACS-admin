@@ -1,6 +1,6 @@
 import { AuthService } from './auth';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:2222';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
 
 interface Organization {
   _id: string;
@@ -125,7 +125,44 @@ export class OrganizationService {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || `HTTP error! status: ${response.status}`);
+        // Debug: Log the full response for troubleshooting
+        console.log('Create Organization API Error Response:', {
+          status: response.status,
+          statusText: response.statusText,
+          data: data,
+          headers: Object.fromEntries(response.headers.entries())
+        });
+        
+        // Try to extract error message from various possible locations
+        let errorMessage = 'Unknown error occurred';
+        
+        // Check common error message locations in API responses
+        if (data.message) {
+          errorMessage = data.message;
+        } else if (data.error) {
+          errorMessage = data.error;
+        } else if (data.errors && Array.isArray(data.errors) && data.errors.length > 0) {
+          // Handle validation errors array
+          errorMessage = data.errors.map((err: any) => {
+            if (typeof err === 'string') return err;
+            if (err.message) return err.message;
+            if (err.msg) return err.msg;
+            return JSON.stringify(err);
+          }).join(', ');
+        } else if (data.details) {
+          errorMessage = data.details;
+        } else if (typeof data === 'string') {
+          errorMessage = data;
+        } else {
+          errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+        }
+        
+        return {
+          success: false,
+          message: errorMessage,
+          error: errorMessage,
+          data: data.data || undefined
+        };
       }
 
       return data;
@@ -151,7 +188,44 @@ export class OrganizationService {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || `HTTP error! status: ${response.status}`);
+        // Debug: Log the full response for troubleshooting
+        console.log('Update Organization API Error Response:', {
+          status: response.status,
+          statusText: response.statusText,
+          data: data,
+          headers: Object.fromEntries(response.headers.entries())
+        });
+        
+        // Try to extract error message from various possible locations
+        let errorMessage = 'Unknown error occurred';
+        
+        // Check common error message locations in API responses
+        if (data.message) {
+          errorMessage = data.message;
+        } else if (data.error) {
+          errorMessage = data.error;
+        } else if (data.errors && Array.isArray(data.errors) && data.errors.length > 0) {
+          // Handle validation errors array
+          errorMessage = data.errors.map((err: any) => {
+            if (typeof err === 'string') return err;
+            if (err.message) return err.message;
+            if (err.msg) return err.msg;
+            return JSON.stringify(err);
+          }).join(', ');
+        } else if (data.details) {
+          errorMessage = data.details;
+        } else if (typeof data === 'string') {
+          errorMessage = data;
+        } else {
+          errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+        }
+        
+        return {
+          success: false,
+          message: errorMessage,
+          error: errorMessage,
+          data: data.data || undefined
+        };
       }
 
       return data;

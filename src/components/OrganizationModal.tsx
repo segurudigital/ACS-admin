@@ -42,7 +42,7 @@ export default function OrganizationModal({
 }: OrganizationModalProps) {
   const [formData, setFormData] = useState({
     name: organization?.name || '',
-    type: organization?.type || 'church',
+    type: organization?.type || '',
     parentOrganization: typeof organization?.parentOrganization === 'object' 
       ? organization.parentOrganization._id 
       : organization?.parentOrganization || '',
@@ -56,6 +56,43 @@ export default function OrganizationModal({
   const [loading, setLoading] = useState(false);
   const [territoryInput, setTerritoryInput] = useState('');
   const toast = useToast();
+
+  // Helper function to provide user-friendly error messages
+  const getUserFriendlyErrorMessage = (errorMessage: string, orgType: string) => {
+    const lowerMessage = errorMessage.toLowerCase();
+    
+    // Common validation error patterns
+    if (lowerMessage.includes('parent') && lowerMessage.includes('required')) {
+      if (orgType === 'church') {
+        return 'Churches must have a parent organization. Please select a Conference as the parent organization.';
+      } else if (orgType === 'conference') {
+        return 'Conferences must have a parent organization. Please select a Union as the parent organization.';
+      }
+    }
+    
+    if (lowerMessage.includes('name') && lowerMessage.includes('required')) {
+      return 'Organization name is required. Please enter a name for the organization.';
+    }
+    
+    if (lowerMessage.includes('name') && lowerMessage.includes('exist')) {
+      return 'An organization with this name already exists. Please choose a different name.';
+    }
+    
+    if (lowerMessage.includes('invalid') && lowerMessage.includes('type')) {
+      return 'Invalid organization type selected. Please choose Union, Conference, or Church.';
+    }
+    
+    if (lowerMessage.includes('email') && lowerMessage.includes('invalid')) {
+      return 'Please enter a valid email address.';
+    }
+    
+    if (lowerMessage.includes('permission') || lowerMessage.includes('authorized')) {
+      return 'You do not have permission to perform this action. Please contact your administrator.';
+    }
+    
+    // Return the original message if no pattern matches, but clean it up
+    return errorMessage || 'An unexpected error occurred. Please try again.';
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -82,16 +119,37 @@ export default function OrganizationModal({
       if (response.success && response.data) {
         onSave(response.data, !!organization);
       } else {
+        // Debug: Log the full response from service
+        console.log('OrganizationModal received error response:', response);
+        
+        // Provide user-friendly error messages
+        const errorMessage = response.message || response.error || 'An unknown error occurred';
+        const userFriendlyMessage = getUserFriendlyErrorMessage(errorMessage, formData.type);
+        
+        console.log('Error message extracted:', errorMessage);
+        console.log('User-friendly message:', userFriendlyMessage);
+        
         toast.error(
           organization ? 'Failed to update organization' : 'Failed to create organization',
-          response.message
+          userFriendlyMessage
         );
       }
     } catch (error) {
       console.error('Error saving organization:', error);
+      
+      // Try to extract a meaningful error message
+      let errorMessage = 'An unexpected error occurred';
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      }
+      
+      const userFriendlyMessage = getUserFriendlyErrorMessage(errorMessage, formData.type);
+      
       toast.error(
         organization ? 'Failed to update organization' : 'Failed to create organization',
-        'An unexpected error occurred'
+        userFriendlyMessage
       );
     } finally {
       setLoading(false);
@@ -103,7 +161,7 @@ export default function OrganizationModal({
     if (isOpen) {
       setFormData({
         name: organization?.name || '',
-        type: organization?.type || 'church',
+        type: organization?.type || '',
         parentOrganization: typeof organization?.parentOrganization === 'object' 
           ? organization.parentOrganization._id 
           : organization?.parentOrganization || '',
@@ -167,6 +225,7 @@ export default function OrganizationModal({
               type="text"
               value={formData.name}
               onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+              placeholder="Enter organization name"
               required
               className="mt-1 block w-full px-4 py-3 text-base rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
             />
@@ -187,6 +246,7 @@ export default function OrganizationModal({
                 disabled={!!organization}
                 className="mt-1 block w-full px-4 py-3 text-base rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-gray-100"
               >
+                <option value="">Choose Type</option>
                 <option value="union">Union</option>
                 <option value="conference">Conference</option>
                 <option value="church">Church</option>
@@ -227,6 +287,7 @@ export default function OrganizationModal({
                   ...prev, 
                   metadata: { ...prev.metadata, email: e.target.value }
                 }))}
+                placeholder="organization@example.com"
                 className="mt-1 block w-full px-4 py-3 text-base rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
               />
             </div>
@@ -242,6 +303,7 @@ export default function OrganizationModal({
                   ...prev, 
                   metadata: { ...prev.metadata, phone: e.target.value }
                 }))}
+                placeholder="(123) 456-7890"
                 className="mt-1 block w-full px-4 py-3 text-base rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
               />
             </div>
@@ -256,6 +318,7 @@ export default function OrganizationModal({
                   ...prev, 
                   metadata: { ...prev.metadata, address: e.target.value }
                 }))}
+                placeholder="Street address, city, state, zip code"
                 rows={3}
                 className="mt-1 block w-full px-4 py-3 text-base rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
               />
