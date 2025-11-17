@@ -32,8 +32,45 @@ export interface Service {
     alt: string;
   };
   tags?: string[];
+  contactInfo: {
+    email?: string;
+    phone?: string;
+    website?: string;
+  };
   createdAt: string;
   updatedAt: string;
+}
+
+export interface ServiceCreateRequest {
+  name: string;
+  type: string;
+  organization: string; // Organization ID as string
+  descriptionShort: string;
+  descriptionLong: string;
+  status: 'active' | 'paused' | 'archived';
+  locations: Array<{
+    label: string;
+    address: {
+      street?: string;
+      suburb?: string;
+      state?: string;
+      postcode?: string;
+    };
+    coordinates?: {
+      lat: number;
+      lng: number;
+    };
+  }>;
+  primaryImage?: {
+    url: string;
+    alt: string;
+  };
+  tags?: string[];
+  contactInfo: {
+    email?: string;
+    phone?: string;
+    website?: string;
+  };
 }
 
 export interface ServiceEvent {
@@ -137,7 +174,7 @@ class ServiceManagementService {
   }
 
   // Create a new service
-  async createService(serviceData: Partial<Service>) {
+  async createService(serviceData: ServiceCreateRequest) {
     // Convert organization to organizationId for backend compatibility
     const { organization, ...restData } = serviceData;
     const payload = {
@@ -152,10 +189,17 @@ class ServiceManagementService {
   }
 
   // Update a service
-  async updateService(serviceId: string, updates: Partial<Service>) {
+  async updateService(serviceId: string, updates: ServiceCreateRequest) {
+    // Convert organization to organizationId for backend compatibility
+    const { organization, ...restData } = updates;
+    const payload = {
+      ...restData,
+      organizationId: organization
+    };
+    
     return this.fetchWithAuth(`/services/${serviceId}`, {
       method: 'PUT',
-      body: JSON.stringify(updates),
+      body: JSON.stringify(payload),
     });
   }
 
@@ -225,14 +269,14 @@ class ServiceManagementService {
     return this.fetchWithAuth(`/admin/services/stories?${queryParams}`);
   }
 
-  async createStory(storyData: any) {
+  async createStory(storyData: {title: string; content: string; serviceId: string; author?: string}) {
     return this.fetchWithAuth('/services/stories', {
       method: 'POST',
       body: JSON.stringify(storyData),
     });
   }
 
-  async updateStory(storyId: string, updates: any) {
+  async updateStory(storyId: string, updates: {title?: string; content?: string; serviceId?: string; author?: string}) {
     return this.fetchWithAuth(`/services/stories/${storyId}`, {
       method: 'PUT',
       body: JSON.stringify(updates),

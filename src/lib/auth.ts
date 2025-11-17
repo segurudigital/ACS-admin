@@ -15,7 +15,7 @@ interface AuthResponse {
       email: string;
       verified: boolean;
       avatar?: string;
-      organizations?: any[];
+      organizations?: Array<{_id: string; name: string; type: string}>;
       primaryOrganization?: string;
     };
     token: string;

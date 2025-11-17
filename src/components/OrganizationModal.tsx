@@ -240,7 +240,7 @@ export default function OrganizationModal({
                 value={formData.type}
                 onChange={(e) => setFormData(prev => ({ 
                   ...prev, 
-                  type: e.target.value as any,
+                  type: e.target.value as 'union' | 'conference' | 'church',
                   parentOrganization: '' // Reset parent when type changes
                 }))}
                 disabled={!!organization}

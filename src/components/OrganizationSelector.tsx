@@ -2,26 +2,31 @@
 
 import React, { useState } from 'react';
 import { usePermissions } from '@/contexts/PermissionContext';
-import { Organization } from '@/types/rbac';
+// Simple organization interface for this component
+interface SimpleOrganization {
+  _id: string;
+  name: string;
+  type: string;
+}
 import { ChevronDownIcon, BuildingOfficeIcon } from '@heroicons/react/24/outline';
 
 export const OrganizationSelector: React.FC = () => {
   const { currentOrganization, organizations, switchOrganization, loading } = usePermissions();
   const [isOpen, setIsOpen] = useState(false);
 
-  const handleOrganizationChange = async (org: Organization) => {
+  const handleOrganizationChange = async (org: SimpleOrganization) => {
     await switchOrganization(org._id);
     setIsOpen(false);
   };
 
   // Group organizations by type
-  const groupedOrganizations = organizations.reduce((acc, org) => {
+  const groupedOrganizations = organizations.reduce((acc: Record<string, SimpleOrganization[]>, org: SimpleOrganization) => {
     if (!acc[org.type]) {
       acc[org.type] = [];
     }
     acc[org.type].push(org);
     return acc;
-  }, {} as Record<string, Organization[]>);
+  }, {} as Record<string, SimpleOrganization[]>);
 
   if (loading || organizations.length === 0) {
     return null;
@@ -75,7 +80,7 @@ export const OrganizationSelector: React.FC = () => {
                     <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase bg-gray-50">
                       {type}s
                     </div>
-                    {orgs.map(org => (
+                    {orgs.map((org: SimpleOrganization) => (
                       <button
                         key={org._id}
                         onClick={() => handleOrganizationChange(org)}
@@ -86,11 +91,6 @@ export const OrganizationSelector: React.FC = () => {
                         <div className="flex items-center">
                           <span className="truncate">{org.name}</span>
                         </div>
-                        {org.metadata?.address && (
-                          <div className="text-xs text-gray-500 mt-1 truncate">
-                            {org.metadata.address}
-                          </div>
-                        )}
                       </button>
                     ))}
                   </div>
@@ -130,7 +130,7 @@ export const OrganizationBadge: React.FC = () => {
       </span>
       {role && (
         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-          {role.displayName}
+          {role}
         </span>
       )}
     </div>

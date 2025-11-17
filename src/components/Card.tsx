@@ -7,6 +7,7 @@ interface CardProps {
   shadow?: 'sm' | 'md' | 'lg';
   rounded?: 'sm' | 'md' | 'lg' | 'xl';
   hover?: boolean;
+  onClick?: () => void;
 }
 
 export default function Card({ 
@@ -15,7 +16,8 @@ export default function Card({
   padding = 'md',
   shadow = 'sm',
   rounded = 'lg',
-  hover = false
+  hover = false,
+  onClick
 }: CardProps) {
   const paddingClasses = {
     none: '',
@@ -47,8 +49,10 @@ export default function Card({
         ${roundedClasses[rounded]} 
         ${paddingClasses[padding]} 
         ${hoverClasses}
+        ${onClick ? 'cursor-pointer' : ''}
         ${className}
       `.trim()}
+      onClick={onClick}
     >
       {children}
     </div>

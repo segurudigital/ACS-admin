@@ -1,20 +1,18 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import AdminLayout from '../../components/AdminLayout';
 import { PermissionGate } from '@/components/PermissionGate';
 import { usePermissions } from '@/contexts/PermissionContext';
 import { rbacService } from '@/lib/rbac';
 import { User, Organization, Role, OrganizationAssignment } from '@/types/rbac';
-import DataTable, { Column, ActionCell, IconButton, StatusBadge } from '@/components/DataTable';
+import { Column, ActionCell, IconButton, StatusBadge } from '@/components/DataTable';
 import { 
   UserIcon, 
   PencilIcon, 
   TrashIcon, 
-  UserPlusIcon,
   BuildingOfficeIcon,
   ShieldCheckIcon,
-  ChevronDownIcon
 } from '@heroicons/react/24/outline';
 import Button from '@/components/Button';
 import UserModal from '@/components/UserModal';
@@ -22,7 +20,7 @@ import ConfirmationModal from '@/components/ConfirmationModal';
 import { useToast } from '@/contexts/ToastContext';
 
 export default function Users() {
-  const { hasPermission } = usePermissions();
+  const {} = usePermissions();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -34,11 +32,7 @@ export default function Users() {
   const [searchQuery, setSearchQuery] = useState('');
   const toast = useToast();
 
-  useEffect(() => {
-    fetchUsers();
-  }, []);
-
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     try {
       setLoading(true);
       console.log('Fetching users...');
@@ -46,7 +40,21 @@ export default function Users() {
       console.log('Users data received:', data);
       console.log('Is data an array?', Array.isArray(data));
       console.log('Data length:', data?.length);
-      setUsers(Array.isArray(data) ? data : []);
+      
+      // Map the simplified API response to the full User interface
+      const mappedUsers = Array.isArray(data) ? data.map(user => ({
+        ...user,
+        id: user._id, // Add id alias for _id
+        verified: false, // Default value for missing field
+        createdAt: new Date().toISOString(), // Default value for missing field
+        updatedAt: new Date().toISOString(), // Default value for missing field
+        organizations: (user.organizations || []).map(org => ({
+          ...org,
+          assignedAt: new Date().toISOString() // Add missing assignedAt field
+        }))
+      })) : [];
+      
+      setUsers(mappedUsers);
     } catch (error) {
       console.error('Error fetching users:', error);
       setUsers([]);
@@ -54,7 +62,11 @@ export default function Users() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
+
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
 
   const handleDeleteUser = async (user: User) => {
     try {
@@ -384,11 +396,7 @@ function RoleAssignmentModal({ user, onClose, onUpdate }: RoleAssignmentModalPro
   const [loading, setLoading] = useState(false);
   const [userRoles, setUserRoles] = useState<OrganizationAssignment[]>([]);
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       const [orgs, systemRoles, userRoleData] = await Promise.all([
         rbacService.getOrganizations(),
@@ -402,7 +410,11 @@ function RoleAssignmentModal({ user, onClose, onUpdate }: RoleAssignmentModalPro
     } catch (error) {
       console.error('Error fetching data:', error);
     }
-  };
+  }, [user._id]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const handleAssignRole = async () => {
     if (!selectedOrg || !selectedRole) return;

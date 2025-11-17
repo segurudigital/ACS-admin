@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   CheckCircleIcon,
   XCircleIcon,
@@ -28,8 +28,16 @@ const ToastComponent = ({ toast, onDismiss }: ToastProps) => {
   const [isVisible, setIsVisible] = useState(false);
   const [isExiting, setIsExiting] = useState(false);
 
+  const handleDismiss = useCallback(() => {
+    setIsExiting(true);
+    setTimeout(() => {
+      onDismiss(toast.id);
+    }, 150); // Animation duration
+  }, [onDismiss, toast.id]);
+
   useEffect(() => {
-    setIsVisible(true);
+    // Use setTimeout to avoid direct setState in effect
+    setTimeout(() => setIsVisible(true), 0);
     
     if (toast.duration && toast.duration > 0) {
       const timer = setTimeout(() => {
@@ -38,14 +46,7 @@ const ToastComponent = ({ toast, onDismiss }: ToastProps) => {
 
       return () => clearTimeout(timer);
     }
-  }, [toast.duration]);
-
-  const handleDismiss = () => {
-    setIsExiting(true);
-    setTimeout(() => {
-      onDismiss(toast.id);
-    }, 150); // Animation duration
-  };
+  }, [toast.duration, handleDismiss]);
 
   const getToastStyles = () => {
     switch (toast.type) {

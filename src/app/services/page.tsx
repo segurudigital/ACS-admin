@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import AdminLayout from '../../components/AdminLayout';
 import { PermissionGate } from '@/components/PermissionGate';
 import { StatusBadge } from '@/components/DataTable';
@@ -8,7 +8,7 @@ import Button from '@/components/Button';
 import ServiceModal from '@/components/ServiceModal';
 import ConfirmationModal from '@/components/ConfirmationModal';
 import { useToast } from '@/contexts/ToastContext';
-import { serviceManagement } from '@/lib/serviceManagement';
+import { serviceManagement, Service } from '@/lib/serviceManagement';
 import { 
   BuildingStorefrontIcon,
   MapPinIcon,
@@ -16,38 +16,6 @@ import {
   TrashIcon
 } from '@heroicons/react/24/outline';
 
-interface Service {
-  _id: string;
-  name: string;
-  type: string;
-  organization: {
-    _id: string;
-    name: string;
-    type: string;
-  };
-  descriptionShort: string;
-  status: 'active' | 'paused' | 'archived';
-  locations: Array<{
-    label: string;
-    address: {
-      street?: string;
-      suburb?: string;
-      state?: string;
-      postcode?: string;
-    };
-  }>;
-  primaryImage?: {
-    url: string;
-    alt: string;
-  };
-  permissions?: {
-    canUpdate: boolean;
-    canDelete: boolean;
-    canManage: boolean;
-  };
-  createdAt: string;
-  updatedAt: string;
-}
 
 export default function Services() {
   const [services, setServices] = useState<Service[]>([]);
@@ -60,11 +28,7 @@ export default function Services() {
   const [serviceToDelete, setServiceToDelete] = useState<Service | null>(null);
   const { success, error } = useToast();
 
-  useEffect(() => {
-    fetchServices();
-  }, []);
-
-  const fetchServices = async () => {
+  const fetchServices = useCallback(async () => {
     try {
       setLoading(true);
       const data = await serviceManagement.getServices();
@@ -76,7 +40,11 @@ export default function Services() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [error]);
+
+  useEffect(() => {
+    fetchServices();
+  }, [fetchServices]);
 
   const handleDeleteService = async (service: Service) => {
     try {
@@ -337,7 +305,7 @@ export default function Services() {
             setSelectedService(null);
           }}
           onSave={handleServiceSaved}
-          service={showEditModal ? selectedService : null}
+          service={showEditModal ? selectedService || undefined : undefined}
         />
 
         {/* Delete Confirmation Modal */}

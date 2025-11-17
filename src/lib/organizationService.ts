@@ -143,7 +143,7 @@ export class OrganizationService {
           errorMessage = data.error;
         } else if (data.errors && Array.isArray(data.errors) && data.errors.length > 0) {
           // Handle validation errors array
-          errorMessage = data.errors.map((err: any) => {
+          errorMessage = data.errors.map((err: string | {message?: string; msg?: string}) => {
             if (typeof err === 'string') return err;
             if (err.message) return err.message;
             if (err.msg) return err.msg;
@@ -206,7 +206,7 @@ export class OrganizationService {
           errorMessage = data.error;
         } else if (data.errors && Array.isArray(data.errors) && data.errors.length > 0) {
           // Handle validation errors array
-          errorMessage = data.errors.map((err: any) => {
+          errorMessage = data.errors.map((err: string | {message?: string; msg?: string}) => {
             if (typeof err === 'string') return err;
             if (err.message) return err.message;
             if (err.msg) return err.msg;

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import AdminLayout from '../../components/AdminLayout';
 // import { PermissionGate } from '@/components/PermissionGate';
 import { Column, ActionCell, IconButton, StatusBadge } from '@/components/DataTable';
@@ -30,11 +30,7 @@ export default function Roles() {
   const [searchQuery, setSearchQuery] = useState('');
   const toast = useToast();
 
-  useEffect(() => {
-    fetchRoles();
-  }, []);
-
-  const fetchRoles = async () => {
+  const fetchRoles = useCallback(async () => {
     try {
       setLoading(true);
       const data = await rbacService.getRoles(true); // Include system roles
@@ -46,7 +42,11 @@ export default function Roles() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
+
+  useEffect(() => {
+    fetchRoles();
+  }, [fetchRoles]);
 
   const handleDeleteRole = async (role: Role) => {
     try {

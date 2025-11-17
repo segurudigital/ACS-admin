@@ -3,14 +3,14 @@
 import { useState, useEffect } from 'react';
 import Modal, { ModalBody, ModalFooter } from './Modal';
 import { useToast } from '@/contexts/ToastContext';
-import { serviceManagement } from '@/lib/serviceManagement';
+import { serviceManagement, Service } from '@/lib/serviceManagement';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 
 interface ServiceModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (service: any, isEdit: boolean) => void;
-  service?: any;
+  onSave: (service: Service, isEdit: boolean) => void;
+  service?: Service;
   organizationId?: string;
 }
 
@@ -41,7 +41,7 @@ export default function ServiceModal({
     organization: organizationId || '',
     descriptionShort: '',
     descriptionLong: '',
-    status: 'active',
+    status: 'active' as 'active' | 'paused' | 'archived',
     tags: [] as string[],
     locations: [{
       label: 'Main Location',
@@ -62,21 +62,31 @@ export default function ServiceModal({
   });
   
   const [loading, setLoading] = useState(false);
-  const [organizations, setOrganizations] = useState<any[]>([]);
+  const [organizations, setOrganizations] = useState<Array<{_id: string; name: string; type: string}>>([]);
   const [tagInput, setTagInput] = useState('');
-  const { error: showError, success: showSuccess } = useToast();
+  const { error: showError } = useToast();
 
   useEffect(() => {
     if (service) {
       setFormData({
         name: service.name || '',
         type: service.type || '',
-        organization: service.organization._id || service.organization || '',
+        organization: typeof service.organization === 'object' ? service.organization._id : service.organization || '',
         descriptionShort: service.descriptionShort || '',
         descriptionLong: service.descriptionLong || '',
         status: service.status || 'active',
         tags: service.tags || [],
-        locations: service.locations || [{
+        locations: service.locations?.map(location => ({
+          ...location,
+          address: {
+            street: location.address?.street || '',
+            suburb: location.address?.suburb || '',
+            state: location.address?.state || '',
+            postcode: location.address?.postcode || ''
+          },
+          isMobile: false,
+          openingHours: []
+        })) || [{
           label: 'Main Location',
           address: {
             street: '',
@@ -87,10 +97,10 @@ export default function ServiceModal({
           isMobile: false,
           openingHours: []
         }],
-        contactInfo: service.contactInfo || {
-          email: '',
-          phone: '',
-          website: ''
+        contactInfo: {
+          email: service.contactInfo?.email || '',
+          phone: service.contactInfo?.phone || '',
+          website: service.contactInfo?.website || ''
         }
       });
     } else if (organizationId) {
@@ -144,8 +154,8 @@ export default function ServiceModal({
 
       onSave(savedService, !!service);
       onClose();
-    } catch (error: any) {
-      showError(error.message || `Failed to ${service ? 'update' : 'create'} service`);
+    } catch (error: unknown) {
+      showError((error as Error)?.message || `Failed to ${service ? 'update' : 'create'} service`);
     } finally {
       setLoading(false);
     }
@@ -460,7 +470,7 @@ export default function ServiceModal({
               </label>
               <select
                 value={formData.status}
-                onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                onChange={(e) => setFormData({ ...formData, status: e.target.value as 'active' | 'paused' | 'archived' })}
                 className="mt-1 block w-full px-4 py-3 text-base rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
               >
                 <option value="active">Active</option>

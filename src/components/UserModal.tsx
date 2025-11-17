@@ -2,7 +2,6 @@
 
 import React, { useState } from 'react';
 import Modal, { ModalBody, ModalFooter } from './Modal';
-import { rbacService } from '@/lib/rbac';
 import { useToast } from '@/contexts/ToastContext';
 import { User } from '@/types/rbac';
 

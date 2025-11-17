@@ -1,15 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import AdminLayout from '@/components/AdminLayout';
 import Button from '@/components/Button';
 import { StatusBadge } from '@/components/DataTable';
-import { PermissionGate } from '@/components/PermissionGate';
 import ServiceModal from '@/components/ServiceModal';
 import ConfirmationModal from '@/components/ConfirmationModal';
 import { useToast } from '@/contexts/ToastContext';
-import { serviceManagement } from '@/lib/serviceManagement';
+import { serviceManagement, Service } from '@/lib/serviceManagement';
 import { 
   ArrowLeftIcon,
   PencilIcon,
@@ -24,10 +23,43 @@ import {
 } from '@heroicons/react/24/outline';
 
 interface ServiceDetails {
-  service: any;
-  events: any[];
-  roles: any[];
-  stories: any[];
+  service: {
+    _id: string;
+    name: string;
+    type: string;
+    organization: { _id: string; name: string; type: string };
+    descriptionShort: string;
+    descriptionLong: string;
+    status: 'active' | 'paused' | 'archived';
+    primaryImage?: {
+      url: string;
+      alt: string;
+    };
+    tags?: string[];
+    locations: Array<{
+      label: string;
+      address: {
+        street?: string;
+        suburb?: string;
+        state?: string;
+        postcode?: string;
+      };
+      coordinates?: {
+        lat: number;
+        lng: number;
+      };
+    }>;
+    contactInfo: {
+      email?: string;
+      phone?: string;
+      website?: string;
+    };
+    createdAt: string;
+    updatedAt: string;
+  };
+  events: Array<{ _id: string; title: string; date: string }>;
+  roles: Array<{ _id: string; title: string; description: string }>;
+  stories: Array<{ _id: string; title: string; content: string }>;
   permissions: {
     canUpdate: boolean;
     canDelete: boolean;
@@ -45,46 +77,46 @@ export default function ServiceDetailPage() {
   const [loading, setLoading] = useState(true);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const { showToast } = useToast();
+  const { error: showErrorToast, success: showSuccessToast } = useToast();
 
-  useEffect(() => {
-    if (serviceId) {
-      fetchServiceDetails();
-    }
-  }, [serviceId]);
-
-  const fetchServiceDetails = async () => {
+  const fetchServiceDetails = useCallback(async () => {
     try {
       setLoading(true);
       const data = await serviceManagement.getServiceDetails(serviceId);
       setServiceData(data);
     } catch (error) {
-      showToast('Failed to fetch service details', 'error');
+      showErrorToast('Failed to fetch service details');
       console.error('Error:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [serviceId, showErrorToast]);
+
+  useEffect(() => {
+    if (serviceId) {
+      fetchServiceDetails();
+    }
+  }, [serviceId, fetchServiceDetails]);
 
   const handleDelete = async () => {
     if (!serviceData) return;
     
     try {
       await serviceManagement.deleteService(serviceId);
-      showToast(`${serviceData.service.name} has been archived`, 'success');
+      showSuccessToast(`${serviceData.service.name} has been archived`);
       router.push('/services');
     } catch (error) {
-      showToast('Failed to delete service', 'error');
+      showErrorToast('Failed to delete service');
       console.error('Error:', error);
     }
   };
 
-  const handleServiceSaved = (updatedService: any) => {
+  const handleServiceSaved = (updatedService: Service, isEdit: boolean) => {
     setServiceData(prev => prev ? {
       ...prev,
       service: updatedService
     } : null);
-    showToast(`${updatedService.name} has been updated`, 'success');
+    showSuccessToast(`${updatedService.name} has been updated`);
     setShowEditModal(false);
     fetchServiceDetails(); // Refresh data
   };
@@ -206,7 +238,7 @@ export default function ServiceDetailPage() {
               {service.locations && service.locations.length > 0 && (
                 <div className="border-t pt-4">
                   <h3 className="text-sm font-medium text-gray-900 mb-3">Location</h3>
-                  {service.locations.map((location: any, index: number) => (
+                  {service.locations.map((location: ServiceDetails['service']['locations'][0], index: number) => (
                     <div key={index} className="flex items-start space-x-2 text-sm text-gray-600">
                       <MapPinIcon className="h-5 w-5 text-gray-400 mt-0.5" />
                       <div>
@@ -344,8 +376,8 @@ export default function ServiceDetailPage() {
           onConfirm={handleDelete}
           title="Archive Service"
           message={`Are you sure you want to archive "${service.name}"? This service will no longer be visible to the public.`}
-          confirmText="Archive"
-          confirmButtonClassName="bg-red-600 hover:bg-red-700 focus:ring-red-500"
+          confirmLabel="Archive"
+          confirmButtonColor="red"
         />
       </div>
     </AdminLayout>

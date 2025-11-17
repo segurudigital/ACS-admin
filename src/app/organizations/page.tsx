@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import AdminLayout from '../../components/AdminLayout';
 import { PermissionGate } from '@/components/PermissionGate';
-import DataTable, { Column, ActionCell, IconButton, StatusBadge } from '@/components/DataTable';
+import { Column, ActionCell, IconButton, StatusBadge } from '@/components/DataTable';
 import Button from '@/components/Button';
 import OrganizationModal from '@/components/OrganizationModal';
 import ConfirmationModal from '@/components/ConfirmationModal';
@@ -11,7 +11,6 @@ import { useToast } from '@/contexts/ToastContext';
 import { OrganizationService } from '@/lib/organizationService';
 import { 
   BuildingOfficeIcon, 
-  PlusIcon,
   PencilIcon,
   TrashIcon,
   MapPinIcon,
@@ -51,11 +50,7 @@ export default function Organizations() {
   const [searchQuery, setSearchQuery] = useState('');
   const toast = useToast();
 
-  useEffect(() => {
-    fetchOrganizations();
-  }, []);
-
-  const fetchOrganizations = async () => {
+  const fetchOrganizations = useCallback(async () => {
     try {
       setLoading(true);
       const response = await OrganizationService.getOrganizations();
@@ -74,7 +69,11 @@ export default function Organizations() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
+
+  useEffect(() => {
+    fetchOrganizations();
+  }, [fetchOrganizations]);
 
   const handleDeleteOrganization = async (organization: Organization) => {
     try {

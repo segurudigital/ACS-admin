@@ -196,7 +196,7 @@ export default function RoleModal({
             </label>
             <select
               value={formData.level}
-              onChange={(e) => setFormData(prev => ({ ...prev, level: e.target.value as any }))}
+              onChange={(e) => setFormData(prev => ({ ...prev, level: e.target.value as 'union' | 'conference' | 'church' }))}
               disabled={viewMode || role?.isSystem}
               className="mt-1 block w-full px-4 py-3 text-base rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-gray-100"
             >

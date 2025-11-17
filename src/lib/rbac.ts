@@ -285,7 +285,7 @@ class RBACService {
     }
   }
 
-  async assignUserRole(userId: string, organizationId: string, roleName: string): Promise<any> {
+  async assignUserRole(userId: string, organizationId: string, roleName: string): Promise<{success: boolean; data?: {organizations: Array<{organization: string; role: string}>}; error?: string}> {
     try {
       const response = await fetch(`${this.apiBaseUrl}/api/users/${userId}/roles`, {
         method: 'POST',
@@ -306,7 +306,7 @@ class RBACService {
     }
   }
 
-  async revokeUserRole(userId: string, organizationId: string): Promise<any> {
+  async revokeUserRole(userId: string, organizationId: string): Promise<{success: boolean; data?: {organizations: Array<{organization: string; role: string}>}; error?: string}> {
     try {
       const response = await fetch(
         `${this.apiBaseUrl}/api/users/${userId}/roles/${organizationId}`,
@@ -351,7 +351,7 @@ class RBACService {
   }
 
   // User Management
-  async getUsers(): Promise<any[]> {
+  async getUsers(): Promise<Array<{_id: string; name: string; email: string; organizations: Array<{organization: string; role: string}>}>> {
     try {
       const response = await fetch(`${this.apiBaseUrl}/api/users?limit=100`, {
         headers: this.getAuthHeaders(),
