@@ -111,7 +111,7 @@ export default function ServiceDetailPage() {
     }
   };
 
-  const handleServiceSaved = (updatedService: Service, isEdit: boolean) => {
+  const handleServiceSaved = (updatedService: Service) => {
     setServiceData(prev => prev ? {
       ...prev,
       service: updatedService

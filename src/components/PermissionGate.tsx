@@ -1,7 +1,6 @@
 'use client';
 
 import React, { ReactNode } from 'react';
-import { usePermissions } from '@/contexts/PermissionContext';
 
 interface PermissionGateProps {
   permission?: string;
@@ -21,10 +20,6 @@ interface PermissionGateProps {
  * @param children - Components to render if permission check passes
  */
 export const PermissionGate: React.FC<PermissionGateProps> = ({
-  permission,
-  permissions,
-  requireAll = false,
-  fallback = null,
   children
 }) => {
   // Always render children (no permission checking)
@@ -43,10 +38,6 @@ interface RoleGateProps {
  * RoleGate component for conditional rendering based on user role
  */
 export const RoleGate: React.FC<RoleGateProps> = ({
-  role,
-  roles,
-  level,
-  fallback = null,
   children
 }) => {
   // Always render children (no role checking)
@@ -61,7 +52,7 @@ interface CanProps {
 /**
  * Simple permission check component for inline use
  */
-export const Can: React.FC<CanProps> = ({ permission, children }) => {
+export const Can: React.FC<CanProps> = ({ children }) => {
   // Always render children (no permission checking)
   return <>{children}</>;
 };
@@ -74,7 +65,7 @@ interface CannotProps {
 /**
  * Inverse permission check component
  */
-export const Cannot: React.FC<CannotProps> = ({ permission, children }) => {
+export const Cannot: React.FC<CannotProps> = () => {
   // Never render children (no permission checking)
   return null;
 };

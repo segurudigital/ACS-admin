@@ -43,7 +43,7 @@ export default function OrganizationModal({
   const [formData, setFormData] = useState({
     name: organization?.name || '',
     type: organization?.type || '',
-    parentOrganization: typeof organization?.parentOrganization === 'object' 
+    parentOrganization: typeof organization?.parentOrganization === 'object' && organization.parentOrganization !== null
       ? organization.parentOrganization._id 
       : organization?.parentOrganization || '',
     metadata: {
@@ -162,7 +162,7 @@ export default function OrganizationModal({
       setFormData({
         name: organization?.name || '',
         type: organization?.type || '',
-        parentOrganization: typeof organization?.parentOrganization === 'object' 
+        parentOrganization: typeof organization?.parentOrganization === 'object' && organization.parentOrganization !== null
           ? organization.parentOrganization._id 
           : organization?.parentOrganization || '',
         metadata: {

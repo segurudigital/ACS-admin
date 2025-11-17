@@ -230,7 +230,6 @@ export default function RoleModal({
               {Object.entries(availablePermissions).map(([resource, perms]) => {
                 const permissionKeys = perms.map(p => p.key);
                 const hasAllPermissions = permissionKeys.every(p => formData.permissions.includes(p));
-                const hasSomePermissions = permissionKeys.some(p => formData.permissions.includes(p));
                 
                 return (
                   <div key={resource} className="border rounded-lg p-4">

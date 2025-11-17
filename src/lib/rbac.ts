@@ -93,7 +93,8 @@ class RBACService {
         throw new Error('Failed to fetch organizations');
       }
 
-      return response.json();
+      const result = await response.json();
+      return result.data || result;
     } catch (error) {
       console.error('Error fetching organizations:', error);
       throw error;

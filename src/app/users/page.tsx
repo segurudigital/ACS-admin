@@ -404,11 +404,14 @@ function RoleAssignmentModal({ user, onClose, onUpdate }: RoleAssignmentModalPro
         rbacService.getUserRoles(user._id)
       ]);
       
-      setOrganizations(orgs);
-      setRoles(systemRoles);
-      setUserRoles(userRoleData);
+      setOrganizations(Array.isArray(orgs) ? orgs : []);
+      setRoles(Array.isArray(systemRoles) ? systemRoles : []);
+      setUserRoles(Array.isArray(userRoleData) ? userRoleData : []);
     } catch (error) {
       console.error('Error fetching data:', error);
+      setOrganizations([]);
+      setRoles([]);
+      setUserRoles([]);
     }
   }, [user._id]);
 
@@ -462,9 +465,9 @@ function RoleAssignmentModal({ user, onClose, onUpdate }: RoleAssignmentModalPro
               <p className="text-sm text-gray-500">No roles assigned</p>
             ) : (
               <ul className="space-y-2">
-                {userRoles.map((assignment) => (
+                {userRoles.map((assignment, index) => (
                   <li 
-                    key={`${assignment.organization}-${assignment.role}`}
+                    key={`${typeof assignment.organization === 'object' ? assignment.organization._id : assignment.organization}-${typeof assignment.role === 'object' ? assignment.role._id || assignment.role.name : assignment.role}-${index}`}
                     className="flex items-center justify-between p-3 bg-gray-50 rounded-md"
                   >
                     <div>
@@ -513,7 +516,7 @@ function RoleAssignmentModal({ user, onClose, onUpdate }: RoleAssignmentModalPro
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                 >
                   <option value="">Select organization...</option>
-                  {organizations.map((org) => (
+                  {(organizations || []).map((org) => (
                     <option key={org._id} value={org._id}>
                       {org.name} ({org.type})
                     </option>
@@ -532,10 +535,10 @@ function RoleAssignmentModal({ user, onClose, onUpdate }: RoleAssignmentModalPro
                   disabled={!selectedOrg}
                 >
                   <option value="">Select role...</option>
-                  {roles
+                  {(roles || [])
                     .filter(role => {
                       // Filter roles based on selected organization type
-                      const org = organizations.find(o => o._id === selectedOrg);
+                      const org = (organizations || []).find(o => o._id === selectedOrg);
                       if (!org) return true;
                       
                       // Church can have all roles
