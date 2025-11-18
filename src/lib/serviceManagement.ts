@@ -217,14 +217,41 @@ class ServiceManagementService {
     });
   }
 
-  // Upload service image
-  async uploadServiceImage(serviceId: string, file: File, imageType: 'primary' | 'gallery') {
+  // Get service images
+  async getServiceImages(serviceId: string) {
+    return this.fetchWithAuth(`/services/${serviceId}/images`);
+  }
+
+  // Update service banner
+  async updateServiceBanner(serviceId: string, file: File) {
     const formData = new FormData();
-    formData.append('image', file);
-    formData.append('imageType', imageType);
+    formData.append('banner', file);
 
     const token = AuthService.getToken();
-    const response = await fetch(`${API_BASE_URL}/services/${serviceId}/upload-image`, {
+    const response = await fetch(`${API_BASE_URL}/services/${serviceId}/banner`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to upload banner image');
+    }
+
+    return response.json();
+  }
+
+  // Add images to gallery
+  async addGalleryImages(serviceId: string, files: File[]) {
+    const formData = new FormData();
+    files.forEach(file => {
+      formData.append('images', file);
+    });
+
+    const token = AuthService.getToken();
+    const response = await fetch(`${API_BASE_URL}/services/${serviceId}/gallery`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -233,10 +260,17 @@ class ServiceManagementService {
     });
 
     if (!response.ok) {
-      throw new Error('Failed to upload image');
+      throw new Error('Failed to upload gallery images');
     }
 
     return response.json();
+  }
+
+  // Remove image from gallery
+  async removeGalleryImage(serviceId: string, imageId: string) {
+    return this.fetchWithAuth(`/services/${serviceId}/gallery/${imageId}`, {
+      method: 'DELETE',
+    });
   }
 
   // Service Events

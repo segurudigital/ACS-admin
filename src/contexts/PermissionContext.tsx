@@ -22,6 +22,7 @@ interface PermissionContextType {
   organizations: Array<{_id: string; name: string; type: string}>;
   role: string | null;
   switchOrganization: (organizationId: string) => void;
+  reloadPermissions: () => Promise<void>;
 }
 
 const PermissionContext = createContext<PermissionContextType | undefined>(undefined);
@@ -176,6 +177,7 @@ export const PermissionProvider: React.FC<PermissionProviderProps> = ({ children
     organizations,
     role,
     switchOrganization,
+    reloadPermissions: loadUserAndPermissions,
   };
 
   return (

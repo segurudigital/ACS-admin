@@ -6,9 +6,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Button from "../components/Button";
 import { AuthService } from "../lib/auth";
+import { usePermissions } from "@/contexts/PermissionContext";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { reloadPermissions } = usePermissions();
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -37,6 +39,9 @@ export default function LoginPage() {
       if (response.success && response.data) {
         // Store the token
         AuthService.setToken(response.data.token);
+        
+        // Reload permissions to update sidebar immediately
+        await reloadPermissions();
         
         // Redirect to dashboard or main admin page
         router.push('/dashboard');
