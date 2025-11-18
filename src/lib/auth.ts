@@ -1,4 +1,4 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 interface LoginCredentials {
   email: string;
@@ -87,7 +87,9 @@ export class AuthService {
         success: true,
         message: 'Authentication verified',
         data: {
-          user: data,
+          user: data.data.user,
+          permissions: data.data.permissions,
+          role: data.data.role,
           token,
         },
       };

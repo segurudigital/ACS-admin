@@ -62,7 +62,7 @@ class RBACService {
   private apiBaseUrl: string;
 
   constructor() {
-    this.apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
+    this.apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
   }
 
   private getAuthHeaders(): HeadersInit {
@@ -188,19 +188,28 @@ class RBACService {
 
   async getSystemRoles(): Promise<Role[]> {
     try {
+      console.log('Making API request to:', `${this.apiBaseUrl}/api/roles?isSystemRole=true`);
       const response = await fetch(`${this.apiBaseUrl}/api/roles?isSystemRole=true`, {
         headers: this.getAuthHeaders(),
         credentials: 'include',
       });
 
+      console.log('Response status:', response.status);
+      console.log('Response ok:', response.ok);
+
       if (!response.ok) {
         if (response.status === 404) {
+          console.log('No system roles found (404)');
           return []; // Return empty array if no system roles found
         }
+        const errorText = await response.text();
+        console.log('API Error response:', errorText);
         throw new Error('Failed to fetch system roles');
       }
 
       const result = await response.json();
+      console.log('Raw API response:', result);
+      console.log('Returning roles:', result.data || result);
       return result.data || result;
     } catch (error) {
       console.error('Error fetching system roles:', error);
@@ -370,6 +379,46 @@ class RBACService {
       return data.users || [];
     } catch (error) {
       console.error('Error fetching users:', error);
+      throw error;
+    }
+  }
+
+  // Permission Management
+  async getAvailablePermissions(): Promise<Record<string, Array<{key: string; label: string; description: string; allowedScopes?: string[]}>>> {
+    try {
+      const response = await fetch(`${this.apiBaseUrl}/api/permissions`, {
+        headers: this.getAuthHeaders(),
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch permissions');
+      }
+
+      const result = await response.json();
+      return result.permissions || {};
+    } catch (error) {
+      console.error('Error fetching permissions:', error);
+      throw error;
+    }
+  }
+
+  async getAvailablePermissionsForRole(roleLevel?: string): Promise<Record<string, Array<{key: string; label: string; description: string; allowedScopes?: string[]}>>> {
+    try {
+      const params = roleLevel ? `?roleLevel=${roleLevel}` : '';
+      const response = await fetch(`${this.apiBaseUrl}/api/permissions/available-for-role${params}`, {
+        headers: this.getAuthHeaders(),
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch permissions for role');
+      }
+
+      const result = await response.json();
+      return result.permissions || {};
+    } catch (error) {
+      console.error('Error fetching permissions for role:', error);
       throw error;
     }
   }

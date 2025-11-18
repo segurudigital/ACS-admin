@@ -254,7 +254,7 @@ export default function Organizations() {
       className: 'px-6 py-4 whitespace-nowrap text-right text-sm font-medium',
       accessor: (org) => (
         <ActionCell>
-          <PermissionGate>
+          <PermissionGate permission="organizations.update">
             <IconButton
               onClick={() => {
                 setSelectedOrg(org);
@@ -265,7 +265,7 @@ export default function Organizations() {
             />
           </PermissionGate>
           
-          <PermissionGate>
+          <PermissionGate permission="organizations.delete">
             <IconButton
               onClick={() => {
                 setOrgToDelete(org);
@@ -301,7 +301,7 @@ export default function Organizations() {
                   className="block w-full px-4 py-2 rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white"
                 />
               </div>
-              <PermissionGate>
+              <PermissionGate permission="organizations.create">
                 <Button onClick={() => setShowCreateModal(true)} className="whitespace-nowrap" size="sm">
                   Add Organization
                 </Button>

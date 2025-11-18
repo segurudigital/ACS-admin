@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { AuthService } from '@/lib/auth';
 
 interface User {
@@ -46,12 +46,33 @@ export const PermissionProvider: React.FC<PermissionProviderProps> = ({ children
   const [organizations, setOrganizations] = useState<Array<{_id: string; name: string; type: string}>>([]);
   const [role, setRole] = useState<string | null>(null);
 
-  // Load user data and permissions on mount
-  useEffect(() => {
-    loadUserAndPermissions();
-  }, []);
+  const loadPermissionsForOrganization = useCallback(async (organizationId: string | undefined) => {
+    if (!organizationId || !user) return;
+    
+    try {
+      const token = AuthService.getToken();
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+      const response = await fetch(`${API_BASE_URL}/api/users/${user.id}/permissions?organizationId=${organizationId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+      });
 
-  const loadUserAndPermissions = async () => {
+      if (response.ok) {
+        const permissionData = await response.json();
+        setPermissions(permissionData.permissions || []);
+        setRole(permissionData.role?.name || null);
+      } else {
+        console.error('Failed to load permissions:', response.status, response.statusText);
+      }
+    } catch (error) {
+      console.error('Error loading permissions for organization:', error);
+    }
+  }, [user]);
+
+  const loadUserAndPermissions = useCallback(async () => {
     try {
       setLoading(true);
       const token = AuthService.getToken();
@@ -83,30 +104,67 @@ export const PermissionProvider: React.FC<PermissionProviderProps> = ({ children
         }
       }
       
-      // Set role - this could be based on current organization
-      setRole('admin'); // Default role
+      // Extract actual permissions and role from auth response
+      const userRole = authResponse.data.role;
+      const userPermissions = authResponse.data.permissions || [];
       
-      // Set basic permissions (everyone can read, create, etc.)
-      setPermissions(['users.read', 'users.create', 'users.update', 'users.delete', 'users.assign_role']);
+      setRole(userRole?.name || null);
+      setPermissions(userPermissions);
+      
     } catch (error) {
       console.error('Error loading user data:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  // Load user data and permissions on mount
+  useEffect(() => {
+    loadUserAndPermissions();
+  }, [loadUserAndPermissions]);
 
 
-  const switchOrganization = (organizationId: string) => {
+  const switchOrganization = async (organizationId: string) => {
     const org = organizations.find((o: {_id: string; name: string; type: string}) => o._id === organizationId);
     if (org) {
       setCurrentOrganization(org);
-      // Optionally update user preferences here
+      await loadPermissionsForOrganization(organizationId);
     }
   };
 
   const hasPermission = (permission: string): boolean => {
-    // Simple check - everyone has basic permissions
-    return permissions.includes(permission);
+    if (!permissions || permissions.length === 0) {
+      return false;
+    }
+
+    // Check for wildcard permissions (*, all)
+    if (permissions.includes('*') || permissions.includes('all')) {
+      return true;
+    }
+
+    // Check exact match
+    if (permissions.includes(permission)) {
+      return true;
+    }
+
+    // Check resource wildcard (e.g., 'users.*' matches 'users.create')
+    const [resource, action] = permission.split('.');
+    if (permissions.includes(`${resource}.*`)) {
+      return true;
+    }
+
+    // Check for scoped permissions (e.g., 'organizations.create:subordinate' matches 'organizations.create')
+    const hasScoped = permissions.some(perm => {
+      const [permResource, permActionWithScope] = perm.split('.');
+      if (!permActionWithScope || !permActionWithScope.includes(':')) {
+        return false;
+      }
+
+      const [permAction] = permActionWithScope.split(':');
+      return permResource === resource && permAction === action;
+    });
+
+    return hasScoped;
   };
 
   const contextValue: PermissionContextType = {

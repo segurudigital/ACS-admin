@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Modal, { ModalBody, ModalFooter } from './Modal';
 import { rbacService } from '@/lib/rbac';
 import { useToast } from '@/contexts/ToastContext';
@@ -29,44 +29,33 @@ export default function RoleModal({
     permissions: role?.permissions || [] as string[]
   });
   const [loading, setLoading] = useState(false);
+  const [permissionsLoading, setPermissionsLoading] = useState(false);
+  const [availablePermissions, setAvailablePermissions] = useState<Record<string, Array<{key: string; label: string; description: string}>>>({});
   const toast = useToast();
 
-  // Available permissions grouped by resource with descriptions
-  const availablePermissions = {
-    users: [
-      { key: 'users.create', label: 'Create new users and add them to the system' },
-      { key: 'users.read', label: 'View user profiles and information' },
-      { key: 'users.update', label: 'Edit user profiles and personal information' },
-      { key: 'users.delete', label: 'Remove users from the system' },
-      { key: 'users.assign_role', label: 'Assign roles and permissions to users' }
-    ],
-    organizations: [
-      { key: 'organizations.create', label: 'Create new churches, conferences, or unions' },
-      { key: 'organizations.read', label: 'View organization details and structure' },
-      { key: 'organizations.update', label: 'Edit organization information and settings' },
-      { key: 'organizations.delete', label: 'Remove organizations from the system' }
-    ],
-    roles: [
-      { key: 'roles.create', label: 'Create new roles with custom permissions' },
-      { key: 'roles.read', label: 'View existing roles and their permissions' },
-      { key: 'roles.update', label: 'Modify role permissions and settings' },
-      { key: 'roles.delete', label: 'Remove roles from the system' }
-    ],
-    reports: [
-      { key: 'reports.create', label: 'Generate new reports and analytics' },
-      { key: 'reports.read', label: 'View existing reports and data' },
-      { key: 'reports.export', label: 'Export reports to PDF, Excel, or other formats' }
-    ],
-    notifications: [
-      { key: 'notifications.create', label: 'Create and compose new notifications' },
-      { key: 'notifications.read', label: 'View notification history and content' },
-      { key: 'notifications.send', label: 'Send notifications to users or groups' }
-    ],
-    settings: [
-      { key: 'settings.read', label: 'View system configuration and settings' },
-      { key: 'settings.update', label: 'Modify system settings and preferences' }
-    ]
-  };
+  const fetchPermissions = useCallback(async () => {
+    try {
+      setPermissionsLoading(true);
+      // Fetch permissions based on role level
+      const permissions = await rbacService.getAvailablePermissionsForRole(
+        role?.name === 'super_admin' ? 'union' : formData.level
+      );
+      setAvailablePermissions(permissions);
+    } catch (error) {
+      console.error('Error fetching permissions:', error);
+      toast.error('Failed to load permissions', 'Please try again later');
+    } finally {
+      setPermissionsLoading(false);
+    }
+  }, [role?.name, formData.level, toast]);
+
+  // Fetch available permissions when modal opens
+  useEffect(() => {
+    if (isOpen && !viewMode) {
+      fetchPermissions();
+    }
+  }, [isOpen, viewMode, fetchPermissions]);
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -103,6 +92,24 @@ export default function RoleModal({
     }
   };
 
+  const hasWildcardPermission = () => {
+    return formData.permissions.includes('*') || formData.permissions.includes('all');
+  };
+
+  const hasPermission = (permission: string) => {
+    // Check for wildcard
+    if (hasWildcardPermission()) return true;
+    
+    // Check exact match
+    if (formData.permissions.includes(permission)) return true;
+    
+    // Check resource wildcard (e.g., 'users.*' matches 'users.create')
+    const [resource] = permission.split('.');
+    if (formData.permissions.includes(`${resource}.*`)) return true;
+    
+    return false;
+  };
+
   const togglePermission = (permission: string) => {
     setFormData(prev => ({
       ...prev,
@@ -114,7 +121,7 @@ export default function RoleModal({
 
   const toggleAllPermissions = (resource: string, permissions: { key: string; label: string }[]) => {
     const permissionKeys = permissions.map(p => p.key);
-    const hasAllPermissions = permissionKeys.every(p => formData.permissions.includes(p));
+    const hasAllPermissions = permissionKeys.every(p => hasPermission(p));
     
     if (hasAllPermissions) {
       // Remove all permissions for this resource
@@ -226,10 +233,23 @@ export default function RoleModal({
             <label className="block text-sm font-medium text-gray-900 mb-3">
               Permissions *
             </label>
-            <div className="space-y-4">
-              {Object.entries(availablePermissions).map(([resource, perms]) => {
+            {hasWildcardPermission() && (
+              <div className="mb-4 bg-blue-50 border border-blue-200 rounded-md p-3">
+                <p className="text-sm text-blue-700">
+                  This role has wildcard permissions (*) which grants full system access.
+                  All permission checkboxes are shown as checked.
+                </p>
+              </div>
+            )}
+            {permissionsLoading ? (
+              <div className="text-center py-8">
+                <p className="text-gray-500">Loading permissions...</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {Object.entries(availablePermissions).map(([resource, perms]) => {
                 const permissionKeys = perms.map(p => p.key);
-                const hasAllPermissions = permissionKeys.every(p => formData.permissions.includes(p));
+                const hasAllPermissions = permissionKeys.every(p => hasPermission(p));
                 
                 return (
                   <div key={resource} className="border rounded-lg p-4">
@@ -255,13 +275,13 @@ export default function RoleModal({
                         <label key={perm.key} className="flex items-start space-x-3">
                           <input
                             type="checkbox"
-                            checked={formData.permissions.includes(perm.key)}
+                            checked={hasPermission(perm.key)}
                             onChange={() => togglePermission(perm.key)}
                             disabled={viewMode || role?.isSystem}
                             className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded disabled:opacity-50 mt-0.5"
                           />
                           <div className="flex-1">
-                            <div className="text-sm text-gray-900">{perm.label}</div>
+                            <div className="text-sm text-gray-900">{perm.description || perm.label}</div>
                           </div>
                         </label>
                       ))}
@@ -270,6 +290,7 @@ export default function RoleModal({
                 );
               })}
             </div>
+            )}
           </div>
 
           {(role?.isSystem || viewMode) && (

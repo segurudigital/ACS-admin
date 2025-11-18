@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import Image from 'next/image';
 import AdminLayout from '../../components/AdminLayout';
 import { PermissionGate } from '@/components/PermissionGate';
 import { StatusBadge } from '@/components/DataTable';
@@ -50,7 +51,7 @@ export default function Services() {
     try {
       await serviceManagement.deleteService(service._id);
       setServices(prev => prev.filter(s => s._id !== service._id));
-      success(`${service.name} has been successfully archived.`);
+      success(`${service.name} has been successfully deleted.`);
     } catch (err) {
       console.error('Error deleting service:', err);
       error('Failed to delete service');
@@ -83,10 +84,12 @@ export default function Services() {
       accessor: (service: Service) => (
         <div className="flex items-start space-x-3">
           {service.primaryImage?.url && (
-            <img 
+            <Image 
               src={service.primaryImage.url} 
-              alt={service.primaryImage.alt}
-              className="w-10 h-10 object-cover rounded flex-shrink-0"
+              alt={service.primaryImage.alt || 'Service image'}
+              width={40}
+              height={40}
+              className="object-cover rounded flex-shrink-0"
             />
           )}
           <div className="min-w-0">
@@ -317,8 +320,8 @@ export default function Services() {
           }}
           onConfirm={() => serviceToDelete && handleDeleteService(serviceToDelete)}
           title="Delete Service"
-          message={`Are you sure you want to archive "${serviceToDelete?.name}"? This service will no longer be visible to the public.`}
-          confirmLabel="Archive"
+          message={`Are you sure you want to delete "${serviceToDelete?.name}"? This service will no longer be visible to the public.`}
+          confirmLabel="Delete"
           confirmButtonColor="red"
         />
       </div>

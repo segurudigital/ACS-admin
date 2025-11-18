@@ -17,3 +17,8 @@ body {
   color: #171717;
   font-family: var(--font-poppins, Arial, Helvetica, sans-serif);
 }
+
+/* Ensure Poppins font applies to all select elements and their options */
+select, select option {
+  font-family: var(--font-poppins, Arial, Helvetica, sans-serif) !important;
+}

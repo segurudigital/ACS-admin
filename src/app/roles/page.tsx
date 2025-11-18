@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import AdminLayout from '../../components/AdminLayout';
-// import { PermissionGate } from '@/components/PermissionGate';
+import { PermissionGate } from '@/components/PermissionGate';
 import { Column, ActionCell, IconButton, StatusBadge } from '@/components/DataTable';
 import Button from '@/components/Button';
 import RoleModal from '@/components/RoleModal';
@@ -211,33 +211,39 @@ export default function Roles() {
       className: 'px-6 py-4 whitespace-nowrap text-right text-sm font-medium',
       accessor: (role) => (
         <ActionCell>
-          <IconButton
-            onClick={() => {
-              setSelectedRole(role);
-              setShowViewModal(true);
-            }}
-            title="View Role Details"
-            icon={<EyeIcon className="h-5 w-5" />}
-          />
+          <PermissionGate permission="roles.read">
+            <IconButton
+              onClick={() => {
+                setSelectedRole(role);
+                setShowViewModal(true);
+              }}
+              title="View Role Details"
+              icon={<EyeIcon className="h-5 w-5" />}
+            />
+          </PermissionGate>
           
-          <IconButton
-            onClick={() => {
-              setSelectedRole(role);
-              setShowEditModal(true);
-            }}
-            title="Edit Role"
-            icon={<PencilIcon className="h-5 w-5" />}
-          />
+          <PermissionGate permission="roles.update">
+            <IconButton
+              onClick={() => {
+                setSelectedRole(role);
+                setShowEditModal(true);
+              }}
+              title="Edit Role"
+              icon={<PencilIcon className="h-5 w-5" />}
+            />
+          </PermissionGate>
           
-          <IconButton
-            onClick={() => {
-              setRoleToDelete(role);
-              setShowDeleteConfirm(true);
-            }}
-            title="Delete Role"
-            icon={<TrashIcon className="h-5 w-5" />}
-            variant="danger"
-          />
+          <PermissionGate permission="roles.delete">
+            <IconButton
+              onClick={() => {
+                setRoleToDelete(role);
+                setShowDeleteConfirm(true);
+              }}
+              title="Delete Role"
+              icon={<TrashIcon className="h-5 w-5" />}
+              variant="danger"
+            />
+          </PermissionGate>
         </ActionCell>
       )
     }
@@ -263,9 +269,11 @@ export default function Roles() {
                   className="block w-full px-4 py-2 rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white"
                 />
               </div>
-              <Button onClick={() => setShowCreateModal(true)} className="whitespace-nowrap" size="sm">
-                Add Role
-              </Button>
+              <PermissionGate permission="roles.create">
+                <Button onClick={() => setShowCreateModal(true)} className="whitespace-nowrap" size="sm">
+                  Add Role
+                </Button>
+              </PermissionGate>
             </div>
           </div>
           

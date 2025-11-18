@@ -2,6 +2,7 @@
 
 import { useEffect, useState, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { AuthService } from '../lib/auth';
 import Sidebar from './Sidebar';
 
@@ -107,20 +108,22 @@ export default function AdminLayout({ children, title, description }: AdminLayou
           {/* User Info */}
           <div className="flex items-center space-x-3">
             <div className="text-right">
-              <p className="text-sm font-medium text-gray-900">{user.name}</p>
+              <p className="text-sm font-medium text-gray-900">{user.name || 'User'}</p>
               <p className="text-xs text-gray-500">{user.email}</p>
             </div>
             
             <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ backgroundColor: '#454545' }}>
               {user.avatar ? (
-                <img 
+                <Image 
                   src={user.avatar} 
                   alt="Profile" 
-                  className="w-8 h-8 rounded-full object-cover"
+                  width={32}
+                  height={32}
+                  className="rounded-full object-cover"
                 />
               ) : (
                 <span className="text-white text-sm font-medium">
-                  {user.name.charAt(0).toUpperCase()}
+                  {user.name ? user.name.charAt(0).toUpperCase() : 'U'}
                 </span>
               )}
             </div>

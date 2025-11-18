@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import Image from 'next/image';
 import AdminLayout from '@/components/AdminLayout';
 import Button from '@/components/Button';
 import { StatusBadge } from '@/components/DataTable';
@@ -189,10 +190,12 @@ export default function ServiceDetailPage() {
           <div className="px-4 py-5 sm:p-6">
             <div className="flex items-start space-x-5">
               {service.primaryImage?.url && (
-                <img 
+                <Image 
                   src={service.primaryImage.url} 
-                  alt={service.primaryImage.alt}
-                  className="h-24 w-24 rounded-lg object-cover"
+                  alt={service.primaryImage.alt || 'Service image'}
+                  width={96}
+                  height={96}
+                  className="rounded-lg object-cover"
                 />
               )}
               <div className="flex-1">

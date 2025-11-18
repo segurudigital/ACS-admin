@@ -1,6 +1,6 @@
 import { AuthService } from './auth';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 interface Organization {
   _id: string;
@@ -43,12 +43,18 @@ interface ApiResponse<T> {
 }
 
 export class OrganizationService {
-  private static getAuthHeaders() {
+  private static getAuthHeaders(organizationId?: string) {
     const token = AuthService.getToken();
-    return {
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       Authorization: token ? `Bearer ${token}` : '',
     };
+    
+    if (organizationId) {
+      headers['X-Organization-Id'] = organizationId;
+    }
+    
+    return headers;
   }
 
   static async getOrganizations(params?: {
