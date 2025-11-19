@@ -7,6 +7,8 @@ import AdminLayout from '@/components/AdminLayout';
 import Button from '@/components/Button';
 import { StatusBadge } from '@/components/DataTable';
 import ImageUploadModal from '@/components/ImageUploadModal';
+import VolunteersModal from '@/components/VolunteersModal';
+import StoriesModal from '@/components/StoriesModal';
 import { useToast } from '@/contexts/ToastContext';
 import { serviceManagement } from '@/lib/serviceManagement';
 import {
@@ -15,10 +17,6 @@ import {
    EnvelopeIcon,
    PhoneIcon,
    GlobeAltIcon,
-   CalendarIcon,
-   UserGroupIcon,
-   BookOpenIcon,
-   PhotoIcon,
    XMarkIcon,
 } from '@heroicons/react/24/outline';
 
@@ -66,8 +64,8 @@ interface ServiceDetails {
       createdAt: string;
       updatedAt: string;
    };
-   events: Array<{ _id: string; title: string; date: string }>;
-   roles: Array<{ _id: string; title: string; description: string }>;
+   events: Array<{ _id: string; name: string; start: string; end?: string; description?: string; locationText?: string }>;
+   roles: Array<{ _id: string; title: string; description: string; category?: string; status?: string; numberOfPositions?: number; positionsFilled?: number; timeCommitment?: { type?: string; hoursPerWeek?: { minimum?: number; maximum?: number } }; location?: { type?: string }; requirements?: { minimumAge?: number }; applicationProcess?: { contactEmail?: string } }>; // Full VolunteerRole objects with all fields
    stories: Array<{ _id: string; title: string; content: string }>;
    permissions: {
       canUpdate: boolean;
@@ -77,14 +75,39 @@ interface ServiceDetails {
    };
 }
 
+function ServiceBannerImage({ service }: { service: ServiceDetails['service'] }) {
+  const [imageError, setImageError] = useState(false);
+
+  if (!service.primaryImage?.url || imageError) {
+    return <div className="absolute inset-0 bg-gradient-to-br from-[#F5821F] to-[#e0741c]"></div>;
+  }
+
+  return (
+    <Image
+      src={service.primaryImage.url}
+      alt={service.primaryImage.alt || service.name}
+      fill
+      className="object-cover opacity-50"
+      priority
+      onError={() => {
+        console.error('Banner image failed to load:', service.primaryImage?.url);
+        setImageError(true);
+      }}
+      onLoad={() => console.log('Banner image loaded successfully')}
+    />
+  );
+}
+
 export default function ServiceDetailPage() {
    const params = useParams();
    const router = useRouter();
-   const serviceId = params.id as string;
+   const serviceId = params?.id as string;
 
    const [serviceData, setServiceData] = useState<ServiceDetails | null>(null);
    const [loading, setLoading] = useState(true);
    const [showImageUploadModal, setShowImageUploadModal] = useState(false);
+   const [showVolunteersModal, setShowVolunteersModal] = useState(false);
+   const [showStoriesModal, setShowStoriesModal] = useState(false);
    const { error: showErrorToast } = useToast();
 
    const fetchServiceDetails = useCallback(async () => {
@@ -109,6 +132,7 @@ export default function ServiceDetailPage() {
       setShowImageUploadModal(false);
       fetchServiceDetails();
    };
+
 
    if (loading) {
       return (
@@ -150,20 +174,18 @@ export default function ServiceDetailPage() {
    const { service, events, roles, stories, permissions } = serviceData;
 
    return (
-      <>
+      <AdminLayout
+         title={service.name}
+         description={`${service.organization.name} • ${service.type.replace(
+            /_/g,
+            ' '
+         )}`}
+         hideTitle={true}
+         hideHeader={true}
+      >
          {/* Hero Banner Section */}
-         <div className="relative h-80 md:h-96 bg-gray-900">
-            {service.primaryImage ? (
-               <Image
-                  src={service.primaryImage.url}
-                  alt={service.primaryImage.alt || service.name}
-                  fill
-                  className="object-cover opacity-50"
-                  priority
-               />
-            ) : (
-               <div className="absolute inset-0 bg-gradient-to-br from-[#F5821F] to-[#e0741c]"></div>
-            )}
+         <div className="relative h-80 md:h-96 bg-gray-900 -mx-6 -mt-6">
+            <ServiceBannerImage service={service} />
 
             {/* User Profile Overlay */}
             <div className="absolute top-8 right-4 z-20">
@@ -252,16 +274,7 @@ export default function ServiceDetailPage() {
             </button>
          </div>
 
-         <AdminLayout
-            title={service.name}
-            description={`${service.organization.name} • ${service.type.replace(
-               /_/g,
-               ' '
-            )}`}
-            hideTitle={true}
-            hideHeader={true}
-         >
-            <div className="-mt-8">
+         <div className="mt-8">
                {/* Main Content Container */}
                <div className="max-w-6xl mx-auto">
                   {/* Description Section */}
@@ -379,36 +392,64 @@ export default function ServiceDetailPage() {
 
                   {/* Events Section */}
                   <div className="bg-white rounded-lg shadow-sm p-8 mb-8">
-                     <div className="flex items-center justify-between mb-6">
-                        <h2 className="text-2xl font-bold text-gray-900 flex items-center">
-                           <CalendarIcon className="h-7 w-7 text-blue-600 mr-3" />
+                     <div className="mb-6">
+                        <h2 className="text-2xl font-bold text-gray-900">
                            Events
                         </h2>
-                        {permissions.canManage && (
-                           <Button
-                              variant="primary"
-                              size="sm"
-                              onClick={() =>
-                                 router.push(`/services/${serviceId}/events`)
-                              }
-                           >
-                              Manage Events
-                           </Button>
-                        )}
                      </div>
                      {events.length > 0 ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                           {events.slice(0, 6).map((event) => (
-                              <div
-                                 key={event._id}
-                                 className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
-                              >
-                                 <h3 className="font-medium text-gray-900">
-                                    {event.title}
-                                 </h3>
-                                 <p className="text-sm text-gray-500 mt-1">
-                                    {new Date(event.date).toLocaleDateString()}
-                                 </p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                           {events.slice(0, 10).map((event) => (
+                              <div key={event._id} className="p-6">
+                                 <div className="mb-4">
+                                    <h3 className="text-lg font-medium text-gray-900">
+                                       {event.name}
+                                    </h3>
+                                    {event.description && (
+                                       <p className="text-gray-600 mt-1 text-sm">
+                                          {event.description}
+                                       </p>
+                                    )}
+                                 </div>
+                                 
+                                 <div className="space-y-2">
+                                    <div className="flex items-center text-sm text-gray-600">
+                                       <span className="font-medium w-16">Date:</span>
+                                       <span>
+                                          {new Date(event.start).toLocaleDateString('en-AU', {
+                                             year: 'numeric',
+                                             month: 'long',
+                                             day: 'numeric'
+                                          })}
+                                       </span>
+                                    </div>
+                                    {event.start.includes('T') && new Date(event.start).getHours() !== 0 && (
+                                       <div className="flex items-center text-sm text-gray-600">
+                                          <span className="font-medium w-16">Time:</span>
+                                          <span>
+                                             {new Date(event.start).toLocaleTimeString('en-AU', {
+                                                hour: '2-digit',
+                                                minute: '2-digit'
+                                             })}
+                                             {event.end && (
+                                                <span>
+                                                   {' - '} 
+                                                   {new Date(event.end).toLocaleTimeString('en-AU', {
+                                                      hour: '2-digit',
+                                                      minute: '2-digit'
+                                                   })}
+                                                </span>
+                                             )}
+                                          </span>
+                                       </div>
+                                    )}
+                                    {event.locationText && (
+                                       <div className="flex items-center text-sm text-gray-600">
+                                          <span className="font-medium w-16">Location:</span>
+                                          <span>{event.locationText}</span>
+                                       </div>
+                                    )}
+                                 </div>
                               </div>
                            ))}
                         </div>
@@ -421,38 +462,97 @@ export default function ServiceDetailPage() {
 
                   {/* Volunteer Roles Section */}
                   <div className="bg-white rounded-lg shadow-sm p-8 mb-8">
-                     <div className="flex items-center justify-between mb-6">
-                        <h2 className="text-2xl font-bold text-gray-900 flex items-center">
-                           <UserGroupIcon className="h-7 w-7 text-green-600 mr-3" />
+                     <div className="mb-6">
+                        <h2 className="text-2xl font-bold text-gray-900">
                            Volunteer Opportunities
                         </h2>
-                        {permissions.canManage && (
-                           <Button
-                              variant="primary"
-                              size="sm"
-                              onClick={() =>
-                                 router.push(
-                                    `/services/${serviceId}/volunteers`
-                                 )
-                              }
-                           >
-                              Manage Volunteers
-                           </Button>
-                        )}
                      </div>
                      {roles.length > 0 ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                           {roles.slice(0, 4).map((role) => (
-                              <div
-                                 key={role._id}
-                                 className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
-                              >
-                                 <h3 className="font-medium text-gray-900">
-                                    {role.title}
-                                 </h3>
-                                 <p className="text-sm text-gray-600 mt-2">
-                                    {role.description}
-                                 </p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                           {roles.slice(0, 10).map((role) => (
+                              <div key={role._id} className="p-6">
+                                 <div className="mb-4">
+                                    <div className="flex items-start justify-between mb-2">
+                                       <h3 className="text-lg font-medium text-gray-900">
+                                          {role.title}
+                                       </h3>
+                                       {role.status && (
+                                          <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                                             role.status === 'open' ? 'bg-green-100 text-green-800' : 
+                                             role.status === 'filled' ? 'bg-purple-100 text-purple-800' :
+                                             role.status === 'paused' ? 'bg-yellow-100 text-yellow-800' :
+                                             'bg-gray-100 text-gray-800'
+                                          }`}>
+                                             {role.status.charAt(0).toUpperCase() + role.status.slice(1)}
+                                          </span>
+                                       )}
+                                    </div>
+                                    <p className="text-gray-600 mt-1 text-sm">
+                                       {role.description}
+                                    </p>
+                                    {role.category && (
+                                       <p className="text-sm text-orange-600 font-medium mt-2">
+                                          {role.category}
+                                       </p>
+                                    )}
+                                 </div>
+                                 
+                                 <div className="space-y-2">
+                                    {role.numberOfPositions && (
+                                       <div className="flex items-center text-sm text-gray-600">
+                                          <span className="font-medium w-20">Positions:</span>
+                                          <span>
+                                             {role.positionsFilled || 0} / {role.numberOfPositions} filled
+                                             {((role.numberOfPositions - (role.positionsFilled || 0)) > 0) && (
+                                                <span className="text-green-600 ml-1">
+                                                   ({role.numberOfPositions - (role.positionsFilled || 0)} available)
+                                                </span>
+                                             )}
+                                          </span>
+                                       </div>
+                                    )}
+                                    
+                                    {role.timeCommitment?.type && (
+                                       <div className="flex items-center text-sm text-gray-600">
+                                          <span className="font-medium w-20">Time:</span>
+                                          <span>
+                                             {role.timeCommitment.type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                                             {role.timeCommitment.hoursPerWeek && (
+                                                <span>
+                                                   {` (${role.timeCommitment.hoursPerWeek.minimum || 0}${
+                                                      role.timeCommitment.hoursPerWeek.maximum && role.timeCommitment.hoursPerWeek.maximum !== role.timeCommitment.hoursPerWeek.minimum 
+                                                         ? `-${role.timeCommitment.hoursPerWeek.maximum}` : ''
+                                                   }h/week)`}
+                                                </span>
+                                             )}
+                                          </span>
+                                       </div>
+                                    )}
+                                    
+                                    {role.location?.type && (
+                                       <div className="flex items-center text-sm text-gray-600">
+                                          <span className="font-medium w-20">Location:</span>
+                                          <span>{role.location.type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</span>
+                                       </div>
+                                    )}
+                                    
+                                    {role.requirements?.minimumAge && (
+                                       <div className="flex items-center text-sm text-gray-600">
+                                          <span className="font-medium w-20">Min Age:</span>
+                                          <span>{role.requirements.minimumAge} years</span>
+                                       </div>
+                                    )}
+                                    
+                                    {role.applicationProcess?.contactEmail && (
+                                       <div className="flex items-center text-sm text-gray-600">
+                                          <span className="font-medium w-20">Contact:</span>
+                                          <a href={`mailto:${role.applicationProcess.contactEmail}`} 
+                                             className="text-orange-600 hover:text-orange-700">
+                                             {role.applicationProcess.contactEmail}
+                                          </a>
+                                       </div>
+                                    )}
+                                 </div>
                               </div>
                            ))}
                         </div>
@@ -466,20 +566,16 @@ export default function ServiceDetailPage() {
                   {/* Stories Section */}
                   <div className="bg-white rounded-lg shadow-sm p-8 mb-8">
                      <div className="flex items-center justify-between mb-6">
-                        <h2 className="text-2xl font-bold text-gray-900 flex items-center">
-                           <BookOpenIcon className="h-7 w-7 text-purple-600 mr-3" />
+                        <h2 className="text-2xl font-bold text-gray-900">
                            Success Stories
                         </h2>
                         {permissions.canManage && (
-                           <Button
-                              variant="primary"
-                              size="sm"
-                              onClick={() =>
-                                 router.push(`/services/${serviceId}/stories`)
-                              }
+                           <button
+                              onClick={() => setShowStoriesModal(true)}
+                              className="text-[#F5821F] hover:text-[#e0741c] font-medium text-sm"
                            >
                               Manage Stories
-                           </Button>
+                           </button>
                         )}
                      </div>
                      {stories.length > 0 ? (
@@ -508,20 +604,18 @@ export default function ServiceDetailPage() {
                   {/* Images Section */}
                   <div className="bg-white rounded-lg shadow-sm p-8 mb-8">
                      <div className="flex items-center justify-between mb-6">
-                        <h2 className="text-2xl font-bold text-gray-900 flex items-center">
-                           <PhotoIcon className="h-7 w-7 text-[#F5821F] mr-3" />
+                        <h2 className="text-2xl font-bold text-gray-900">
                            Images & Gallery
                         </h2>
                         {permissions.canUpdate && (
-                           <Button
-                              variant="primary"
-                              size="sm"
+                           <button
                               onClick={() =>
                                  router.push(`/services/${serviceId}/images`)
                               }
+                              className="text-[#F5821F] hover:text-[#e0741c] font-medium text-sm"
                            >
                               Manage Images
-                           </Button>
+                           </button>
                         )}
                      </div>
 
@@ -609,7 +703,7 @@ export default function ServiceDetailPage() {
                </div>
             </div>
 
-            {/* Image Upload Modal */}
+            {/* Modals */}
             {showImageUploadModal && (
                <ImageUploadModal
                   isOpen={showImageUploadModal}
@@ -618,7 +712,24 @@ export default function ServiceDetailPage() {
                   serviceId={serviceId}
                />
             )}
+            
+            {showVolunteersModal && (
+               <VolunteersModal
+                  isOpen={showVolunteersModal}
+                  onClose={() => setShowVolunteersModal(false)}
+                  serviceId={serviceId}
+                  permissions={permissions}
+               />
+            )}
+            
+            {showStoriesModal && (
+               <StoriesModal
+                  isOpen={showStoriesModal}
+                  onClose={() => setShowStoriesModal(false)}
+                  serviceId={serviceId}
+                  permissions={permissions}
+               />
+            )}
          </AdminLayout>
-      </>
    );
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -10,7 +10,7 @@ import { usePermissions } from "@/contexts/PermissionContext";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { reloadPermissions } = usePermissions();
+  const { user, loading: contextLoading, reloadPermissions } = usePermissions();
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -18,6 +18,13 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+
+  // Redirect to dashboard if already authenticated
+  useEffect(() => {
+    if (!contextLoading && user) {
+      router.push('/dashboard');
+    }
+  }, [user, contextLoading, router]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData(prev => ({
@@ -55,6 +62,23 @@ export default function LoginPage() {
       setIsLoading(false);
     }
   };
+
+  // Show loading while checking authentication
+  if (contextLoading) {
+    return (
+      <div className="min-h-screen bg-[#454545] flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto"></div>
+          <p className="mt-4 text-white">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Don't show login form if user is authenticated (will redirect)
+  if (user) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-[#454545] flex items-center justify-center px-4">

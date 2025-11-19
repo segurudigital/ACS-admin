@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Modal, { ModalBody, ModalFooter } from './Modal';
 import { useToast } from '@/contexts/ToastContext';
 import { serviceManagement, Service } from '@/lib/serviceManagement';
+import { serviceTypeAPI } from '@/lib/serviceTypes';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 
 interface ServiceModalProps {
@@ -14,19 +15,6 @@ interface ServiceModalProps {
   organizationId?: string;
 }
 
-const SERVICE_TYPES = [
-  { value: 'op_shop', label: 'Op Shop' },
-  { value: 'food_pantry', label: 'Food Pantry' },
-  { value: 'soup_kitchen', label: 'Soup Kitchen' },
-  { value: 'disaster_response', label: 'Disaster Response' },
-  { value: 'health_program', label: 'Health Program' },
-  { value: 'youth_outreach', label: 'Youth Outreach' },
-  { value: 'emergency_shelter', label: 'Emergency Shelter' },
-  { value: 'counseling_service', label: 'Counseling Service' },
-  { value: 'education_program', label: 'Education Program' },
-  { value: 'community_garden', label: 'Community Garden' },
-  { value: 'other', label: 'Other' }
-];
 
 export default function ServiceModal({ 
   isOpen, 
@@ -63,6 +51,7 @@ export default function ServiceModal({
   
   const [loading, setLoading] = useState(false);
   const [organizations, setOrganizations] = useState<Array<{_id: string; name: string; type: string}>>([]);
+  const [serviceTypes, setServiceTypes] = useState<Array<{value: string; label: string; description?: string}>>([]);
   const [tagInput, setTagInput] = useState('');
   const { error: showError } = useToast();
 
@@ -108,13 +97,7 @@ export default function ServiceModal({
     }
   }, [service, organizationId]);
 
-  useEffect(() => {
-    if (isOpen) {
-      fetchOrganizations();
-    }
-  }, [isOpen]);
-
-  const fetchOrganizations = async () => {
+  const fetchOrganizations = useCallback(async () => {
     try {
       console.log('Fetching organizations...');
       const data = await serviceManagement.getServiceOrganizations();
@@ -125,7 +108,38 @@ export default function ServiceModal({
       console.error('Error fetching organizations:', error);
       console.error('Failed to fetch organizations - 500 error');
     }
-  };
+  }, []);
+
+  const fetchServiceTypes = useCallback(async () => {
+    try {
+      const types = await serviceTypeAPI.getActive();
+      
+      // Check if response is an array
+      if (!Array.isArray(types)) {
+        showError('Invalid response format from service types API');
+        return;
+      }
+      
+      // Format types for dropdown
+      const formattedTypes = types.map(type => ({
+        value: type.value,
+        label: type.name,
+        description: type.description
+      }));
+      
+      setServiceTypes(formattedTypes);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      showError(`Failed to fetch service types: ${errorMessage}`);
+    }
+  }, [showError]);
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchOrganizations();
+      fetchServiceTypes();
+    }
+  }, [isOpen, fetchOrganizations, fetchServiceTypes]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -214,7 +228,7 @@ export default function ServiceModal({
                 required
               >
                 <option value="">Choose Type</option>
-                {SERVICE_TYPES.map(type => (
+                {serviceTypes.map(type => (
                   <option key={type.value} value={type.value}>
                     {type.label}
                   </option>

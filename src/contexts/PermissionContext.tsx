@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
@@ -9,6 +10,11 @@ interface User {
   email: string;
   verified: boolean;
   avatar?: string;
+  phone?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  country?: string;
   organizations?: Array<{_id: string; name: string; type: string}>;
   primaryOrganization?: string;
 }
@@ -34,6 +40,9 @@ export const usePermissions = () => {
   }
   return context;
 };
+
+// Alias for backward compatibility
+export const useAuth = usePermissions;
 
 interface PermissionProviderProps {
   children: ReactNode;
@@ -122,6 +131,31 @@ export const PermissionProvider: React.FC<PermissionProviderProps> = ({ children
   // Load user data and permissions on mount
   useEffect(() => {
     loadUserAndPermissions();
+  }, [loadUserAndPermissions]);
+
+  // Listen for storage changes to handle cross-tab authentication
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      // Check if the token was removed (logout in another tab)
+      if (e.key === 'token' && !e.newValue) {
+        setUser(null);
+        setPermissions([]);
+        setRole(null);
+        setOrganizations([]);
+        setCurrentOrganization(null);
+        window.location.href = '/';
+      }
+      // Check if token was added or changed (login in another tab)
+      else if (e.key === 'token' && e.newValue) {
+        loadUserAndPermissions();
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
   }, [loadUserAndPermissions]);
 
 

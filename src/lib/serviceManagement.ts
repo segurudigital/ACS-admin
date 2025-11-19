@@ -278,14 +278,137 @@ class ServiceManagementService {
     return this.fetchWithAuth(`/services/${serviceId}/events`);
   }
 
-  async createServiceEvent(serviceId: string, eventData: Partial<ServiceEvent>) {
+  async createServiceEvent(serviceId: string, eventData: {
+    title: string;
+    description?: string;
+    date: string;
+    time?: string;
+    location?: string;
+    capacity?: number;
+  }) {
+    // Transform data to match backend expectations
+    const start = new Date(eventData.date);
+    if (eventData.time) {
+      const [hours, minutes] = eventData.time.split(':');
+      start.setHours(parseInt(hours, 10), parseInt(minutes, 10));
+    }
+    
+    // Default end time to 2 hours after start if no time specified, or 1 hour if time is specified
+    const end = new Date(start);
+    end.setHours(end.getHours() + (eventData.time ? 1 : 2));
+    
+    const transformedData = {
+      name: eventData.title,
+      description: eventData.description || '',
+      start: start.toISOString(),
+      end: end.toISOString(),
+      locationText: eventData.location || '',
+      ...(eventData.capacity ? { capacity: { maximum: eventData.capacity } } : {})
+    };
+    
     return this.fetchWithAuth(`/services/${serviceId}/events`, {
       method: 'POST',
+      body: JSON.stringify(transformedData),
+    });
+  }
+
+  async updateServiceEvent(serviceId: string, eventId: string, eventData: Partial<{
+    title: string;
+    description?: string;
+    date: string;
+    time?: string;
+    location?: string;
+    capacity?: number;
+  }>) {
+    return this.fetchWithAuth(`/services/${serviceId}/events/${eventId}`, {
+      method: 'PUT',
       body: JSON.stringify(eventData),
     });
   }
 
-  // Stories
+  async deleteServiceEvent(serviceId: string, eventId: string) {
+    return this.fetchWithAuth(`/services/${serviceId}/events/${eventId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // Service Volunteer Roles
+  async getServiceVolunteerRoles(serviceId: string) {
+    return this.fetchWithAuth(`/services/${serviceId}/volunteer-roles`);
+  }
+
+  async createServiceVolunteerRole(serviceId: string, roleData: {
+    title: string;
+    description: string;
+    requirements?: string;
+    timeCommitment?: string;
+    volunteersNeeded?: number;
+    isActive: boolean;
+  }) {
+    return this.fetchWithAuth(`/services/${serviceId}/volunteer-roles`, {
+      method: 'POST',
+      body: JSON.stringify(roleData),
+    });
+  }
+
+  async updateServiceVolunteerRole(serviceId: string, roleId: string, roleData: Partial<{
+    title: string;
+    description: string;
+    requirements?: string;
+    timeCommitment?: string;
+    volunteersNeeded?: number;
+    isActive: boolean;
+  }>) {
+    return this.fetchWithAuth(`/services/${serviceId}/volunteer-roles/${roleId}`, {
+      method: 'PUT',
+      body: JSON.stringify(roleData),
+    });
+  }
+
+  async deleteServiceVolunteerRole(serviceId: string, roleId: string) {
+    return this.fetchWithAuth(`/services/${serviceId}/volunteer-roles/${roleId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // Service Stories
+  async getServiceStories(serviceId: string) {
+    return this.fetchWithAuth(`/services/${serviceId}/stories`);
+  }
+
+  async createServiceStory(serviceId: string, storyData: {
+    title: string;
+    content: string;
+    author?: string;
+    tags?: string[];
+    isPublished: boolean;
+  }) {
+    return this.fetchWithAuth(`/services/${serviceId}/stories`, {
+      method: 'POST',
+      body: JSON.stringify(storyData),
+    });
+  }
+
+  async updateServiceStory(serviceId: string, storyId: string, storyData: Partial<{
+    title: string;
+    content: string;
+    author?: string;
+    tags?: string[];
+    isPublished: boolean;
+  }>) {
+    return this.fetchWithAuth(`/services/${serviceId}/stories/${storyId}`, {
+      method: 'PUT',
+      body: JSON.stringify(storyData),
+    });
+  }
+
+  async deleteServiceStory(serviceId: string, storyId: string) {
+    return this.fetchWithAuth(`/services/${serviceId}/stories/${storyId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // Global Stories (Admin)
   async getStories(params: {
     page?: number;
     limit?: number;

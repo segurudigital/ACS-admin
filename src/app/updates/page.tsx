@@ -112,17 +112,21 @@ const updates: Update[] = [
   {
     id: "6",
     title: "Community Services Management",
-    description: "Full-featured service management for ACS programs",
+    description: "Comprehensive service management system for ACS programs with advanced features",
     date: "2024-11-07",
     version: "1.3.0",
     type: "feature",
     details: [
-      "Built service types (op_shop, food_pantry, soup_kitchen, etc.)",
-      "Added geographic location with coordinate mapping",
-      "Implemented service hours and contact management",
-      "Created image gallery upload system",
-      "Added eligibility requirements and capacity tracking",
-      "Built service discovery with location-based search"
+      "Built comprehensive service CRUD operations with soft delete",
+      "Implemented service status management (active/paused/archived)",
+      "Added geographic location with coordinate mapping and multiple locations",
+      "Created contact management with social media integration",
+      "Built banner image and gallery management (max 20 images per service)",
+      "Added eligibility requirements and capacity tracking with notes",
+      "Implemented service discovery with location-based and text search",
+      "Created featured services with expiration management",
+      "Added service tags and categorization system",
+      "Integrated cloud storage for image uploads with thumbnail generation"
     ],
     impact: "high"
   },
@@ -146,51 +150,60 @@ const updates: Update[] = [
   {
     id: "8",
     title: "Service Events & Scheduling",
-    description: "Event management system for community programs",
+    description: "Comprehensive event management system with advanced scheduling and registration",
     date: "2024-11-11",
     version: "1.5.0",
     type: "feature",
     details: [
-      "Created event types (workshop, training, fundraiser, etc.)",
-      "Implemented event scheduling with start/end times",
-      "Added recurring event patterns",
-      "Built registration system with capacity limits",
-      "Created location management for events",
-      "Added event-service relationship management"
+      "Created comprehensive event types (workshop, training, fundraiser, community_meal, distribution, health_screening)",
+      "Implemented advanced scheduling with recurring patterns (daily, weekly, monthly)",
+      "Built registration system with capacity limits and external link integration",
+      "Added flexible location management (service location or custom)",
+      "Created event status workflow (draft, published, cancelled, completed)",
+      "Implemented visibility controls (public, members_only, private)",
+      "Added event cancellation tracking with reason documentation",
+      "Built event-service relationship management with permission controls"
     ],
     impact: "medium"
   },
   {
     id: "9",
     title: "Volunteer Management System",
-    description: "Comprehensive volunteer role and requirement management",
+    description: "Advanced volunteer role management with detailed requirements and tracking",
     date: "2024-11-12",
     version: "1.6.0",
     type: "feature",
     details: [
-      "Created volunteer roles with skill requirements",
-      "Added background check and age restriction management",
-      "Implemented training requirement tracking",
-      "Built time commitment and scheduling system",
-      "Created volunteer application process",
-      "Added volunteer-service assignment interface"
+      "Created comprehensive volunteer role categories (administration, direct_service, fundraising, etc.)",
+      "Built detailed requirement specification (skills, experience, background checks)",
+      "Added working with children check and age restriction management",
+      "Implemented training requirement tracking with descriptions",
+      "Created flexible time commitment options (one_time, occasional, regular, flexible)",
+      "Built location types (on_site, remote, hybrid) with benefits listing",
+      "Added position management (tracking needed vs filled positions)",
+      "Created application process configuration (email, phone, online form, in-person)",
+      "Implemented status tracking (draft, open, closed, filled, paused)"
     ],
     impact: "medium"
   },
   {
     id: "10",
     title: "Stories & Content Management",
-    description: "Impact story system with rich content and publication workflow",
+    description: "Comprehensive story system with rich content, media, and service integration",
     date: "2024-11-13",
     version: "1.7.0",
     type: "feature",
     details: [
-      "Built story types (beneficiary, volunteer, donor, community)",
-      "Implemented rich content editor with images and videos",
-      "Created publication workflow (draft → review → published)",
-      "Added featured stories with expiration management",
-      "Built SEO metadata and related content linking",
-      "Created story archiving and version control"
+      "Built comprehensive story types (beneficiary, volunteer, donor, community, organization)",
+      "Created rich content editor with body text, summaries, and titles",
+      "Implemented media integration (featured images, galleries, video embeds)",
+      "Added impact metrics tracking and highlighted quotes system",
+      "Built publication workflow (draft → review → published → archived)",
+      "Created story categories (success_story, news, update, testimonial, case_study, annual_report)",
+      "Implemented service-story relationship linking",
+      "Added SEO optimization with meta titles, descriptions, and keywords",
+      "Created author attribution and call-to-action configuration",
+      "Built view and share count tracking with featured story management"
     ],
     impact: "medium"
   },
@@ -210,6 +223,65 @@ const updates: Update[] = [
       "Created email template management"
     ],
     impact: "medium"
+  },
+  {
+    id: "12",
+    title: "Advanced Image Management System",
+    description: "Comprehensive image upload, storage, and management for services",
+    date: "2025-11-18",
+    version: "1.8.1",
+    type: "feature",
+    details: [
+      "Built banner image management with minimum dimension validation (800x200)",
+      "Created comprehensive gallery system (max 20 images per service)",
+      "Implemented cloud storage integration (S3/Wasabi) with secure deletion",
+      "Added thumbnail generation and image optimization",
+      "Created image captions and alt text support for accessibility",
+      "Built dedicated image management pages with upload progress tracking",
+      "Implemented image validation and multiple format support",
+      "Added individual image removal from galleries"
+    ],
+    impact: "medium"
+  },
+  {
+    id: "13",
+    title: "Service Types Management",
+    description: "Comprehensive service type configuration and management system",
+    date: "2025-11-19",
+    version: "1.9.0",
+    type: "feature",
+    details: [
+      "Created service types configuration in admin settings",
+      "Implemented auto-generation of values from service type names",
+      "Added validation for lowercase letters and underscores pattern",
+      "Built service type CRUD operations with soft delete",
+      "Integrated service types dropdown in service creation modal",
+      "Added display order management for service types",
+      "Created default service types seed (op shop, food pantry, etc.)",
+      "Implemented usage tracking to prevent deletion of active types"
+    ],
+    impact: "medium"
+  },
+  {
+    id: "14",
+    title: "Dedicated Events Management System",
+    description: "Comprehensive events administration with centralized management and advanced features",
+    date: "2025-11-19",
+    version: "1.10.0",
+    type: "feature",
+    details: [
+      "Created dedicated Events page with consistent design matching services and users pages",
+      "Implemented centralized event management across all services and organizations",
+      "Built advanced event creation modal with service selection and enhanced time controls",
+      "Added comprehensive event listing with search, filtering, and status indicators",
+      "Created event status system (upcoming, active, completed) with visual badges",
+      "Implemented multi-organization event management with proper permission controls",
+      "Added enhanced date/time displays with Australian formatting and time ranges",
+      "Built service-specific filtering and cross-service event visibility",
+      "Created event CRUD operations with validation and error handling",
+      "Added delete confirmation modals and comprehensive event management workflow"
+    ],
+    impact: "high"
   }
 ]
 
@@ -237,14 +309,7 @@ export default function UpdatesPage() {
     >
       <div className="space-y-6">
 
-        {/* Implementation Timeline */}
         <div className="space-y-6">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">Implementation Timeline</h2>
-            <p className="text-gray-600 mt-1">Detailed history of system updates and features</p>
-          </div>
-          
-          <div className="space-y-6">
             {sortedUpdates.map((update) => {
               return (
                 <Card key={update.id} className="overflow-hidden">
@@ -298,7 +363,6 @@ export default function UpdatesPage() {
                 </Card>
               )
             })}
-          </div>
         </div>
 
         {/* Development Journey */}

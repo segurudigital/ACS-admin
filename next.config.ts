@@ -15,6 +15,9 @@ const nextConfig: NextConfig = {
       },
       // Add any other image domains you need
     ],
+    formats: ['image/webp', 'image/avif'],
+    dangerouslyAllowSVG: false,
+    unoptimized: false,
   },
 };
 

@@ -14,7 +14,7 @@ interface SidebarItemProps {
 
 export default function SidebarItem({ href, icon, label, badge, onClick }: SidebarItemProps) {
   const pathname = usePathname();
-  const isActive = pathname === href || (href !== '/dashboard' && pathname.startsWith(href));
+  const isActive = pathname === href || (href !== '/dashboard' && pathname?.startsWith(href));
 
   const handleClick = () => {
     if (onClick) {

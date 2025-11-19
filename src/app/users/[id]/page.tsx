@@ -15,7 +15,7 @@ import AdminLayout from '@/components/AdminLayout';
 export default function UserDetails() {
   const params = useParams();
   const router = useRouter();
-  const userId = params.id as string;
+  const userId = params?.id as string;
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [showEditModal, setShowEditModal] = useState(false);

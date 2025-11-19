@@ -18,6 +18,29 @@ import {
 } from '@heroicons/react/24/outline';
 
 
+function ServiceImage({ service }: { service: Service }) {
+  const [imageError, setImageError] = useState(false);
+
+  if (!service.primaryImage?.url || imageError) {
+    return (
+      <div className="w-10 h-10 rounded flex-shrink-0 bg-gray-100 flex items-center justify-center">
+        <BuildingStorefrontIcon className="w-5 h-5 text-gray-400" />
+      </div>
+    );
+  }
+
+  return (
+    <Image 
+      src={service.primaryImage.url} 
+      alt={service.primaryImage.alt || 'Service image'}
+      width={40}
+      height={40}
+      className="object-cover rounded flex-shrink-0"
+      onError={() => setImageError(true)}
+    />
+  );
+}
+
 export default function Services() {
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
@@ -83,17 +106,14 @@ export default function Services() {
       header: 'Service',
       accessor: (service: Service) => (
         <div className="flex items-start space-x-3">
-          {service.primaryImage?.url && (
-            <Image 
-              src={service.primaryImage.url} 
-              alt={service.primaryImage.alt || 'Service image'}
-              width={40}
-              height={40}
-              className="object-cover rounded flex-shrink-0"
-            />
-          )}
+          <ServiceImage service={service} />
           <div className="min-w-0">
-            <div className="font-medium text-gray-900 truncate">{service.name}</div>
+            <button
+              onClick={() => window.location.href = `/services/${service._id}`}
+              className="font-medium text-indigo-600 hover:text-indigo-900 truncate text-left cursor-pointer"
+            >
+              {service.name}
+            </button>
             <div className="text-sm text-gray-500 truncate">{service.descriptionShort}</div>
           </div>
         </div>
@@ -174,13 +194,6 @@ export default function Services() {
       className: 'px-6 py-4 whitespace-nowrap text-right text-sm font-medium',
       accessor: (service: Service) => (
         <div className="flex items-center justify-end space-x-2">
-          <button
-            onClick={() => window.location.href = `/services/${service._id}`}
-            className="text-indigo-600 hover:text-indigo-900 text-sm font-medium"
-          >
-            View
-          </button>
-          
           <PermissionGate 
             permission="services.update"
           >
@@ -189,7 +202,7 @@ export default function Services() {
                 setSelectedService(service);
                 setShowEditModal(true);
               }}
-              className="text-indigo-600 hover:text-indigo-900"
+              className="text-gray-600 hover:text-gray-900"
               title="Edit Service"
             >
               <PencilIcon className="h-5 w-5" />
@@ -204,7 +217,7 @@ export default function Services() {
                 setServiceToDelete(service);
                 setShowDeleteConfirm(true);
               }}
-              className="text-red-600 hover:text-red-900"
+              className="text-gray-600 hover:text-gray-900"
               title="Delete Service"
             >
               <TrashIcon className="h-5 w-5" />

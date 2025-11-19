@@ -16,7 +16,7 @@ interface UserData {
 function VerifyEmailContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const token = searchParams.get('token');
+  const token = searchParams?.get('token');
   
   const initialState = useMemo(() => {
     if (!token) {

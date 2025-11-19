@@ -31,7 +31,7 @@ export default function ServiceImagesPage() {
   const params = useParams();
   const router = useRouter();
   const { error: showErrorToast, success: showSuccessToast } = useToast();
-  const serviceId = params.id as string;
+  const serviceId = params?.id as string;
 
   const [loading, setLoading] = useState(true);
   const [serviceName, setServiceName] = useState<string>('');

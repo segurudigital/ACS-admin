@@ -4,15 +4,9 @@ import { useEffect, useState, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { AuthService } from '../lib/auth';
+import { usePermissions } from '../contexts/PermissionContext';
 import Sidebar from './Sidebar';
 
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  verified: boolean;
-  avatar?: string;
-}
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -24,42 +18,23 @@ interface AdminLayoutProps {
 
 export default function AdminLayout({ children, title, description, hideTitle, hideHeader }: AdminLayoutProps) {
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const { user: contextUser, loading: contextLoading } = usePermissions();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
-    const verifyAuth = async () => {
+    // Only check authentication after context has finished loading
+    if (!contextLoading) {
       const token = AuthService.getToken();
       
-      if (!token) {
+      // If no token or no user in context, redirect to login
+      if (!token || !contextUser) {
         router.push('/');
-        return;
       }
+    }
+  }, [contextUser, contextLoading, router]);
 
-      try {
-        const response = await AuthService.verifyAuth(token);
-        
-        if (response.success && response.data) {
-          setUser(response.data.user);
-        } else {
-          AuthService.removeToken();
-          router.push('/');
-        }
-      } catch (error) {
-        console.error('Auth verification failed:', error);
-        AuthService.removeToken();
-        router.push('/');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    verifyAuth();
-  }, [router]);
-
-  if (isLoading) {
+  if (contextLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -70,7 +45,7 @@ export default function AdminLayout({ children, title, description, hideTitle, h
     );
   }
 
-  if (!user) {
+  if (!contextUser) {
     return null; // Will redirect
   }
 
@@ -133,14 +108,20 @@ export default function AdminLayout({ children, title, description, hideTitle, h
             {/* User Info */}
             <div className="flex items-center space-x-3">
               <div className="text-right">
-                <p className="text-sm font-medium text-gray-900">{user.name || 'User'}</p>
-                <p className="text-xs text-gray-500">{user.email}</p>
+                <p className="text-sm font-medium text-gray-900">{contextUser.name || 'User'}</p>
+                <p className="text-xs text-gray-500">{contextUser.email}</p>
               </div>
               
-              <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ backgroundColor: '#454545' }}>
-                {user.avatar ? (
+              <button
+                onClick={() => router.push('/profile')}
+                className="w-8 h-8 rounded-full flex items-center justify-center hover:ring-2 hover:ring-blue-500 hover:ring-offset-1 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 cursor-pointer"
+                style={{ backgroundColor: '#454545' }}
+                aria-label="Go to profile page"
+                title="Go to profile"
+              >
+                {contextUser.avatar && typeof contextUser.avatar === 'string' && contextUser.avatar.trim() !== "" ? (
                   <Image 
-                    src={user.avatar} 
+                    src={contextUser.avatar} 
                     alt="Profile" 
                     width={32}
                     height={32}
@@ -148,10 +129,10 @@ export default function AdminLayout({ children, title, description, hideTitle, h
                   />
                 ) : (
                   <span className="text-white text-sm font-medium">
-                    {user.name ? user.name.charAt(0).toUpperCase() : 'U'}
+                    {contextUser.name ? contextUser.name.charAt(0).toUpperCase() : 'U'}
                   </span>
                 )}
-              </div>
+              </button>
             </div>
           </header>
         )}
