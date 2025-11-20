@@ -51,10 +51,7 @@ function VerifyEmailContent() {
       if (response.ok) {
         setStatus('success');
         setMessage(data.message || 'Email verified successfully!');
-        // Redirect to login after 3 seconds
-        setTimeout(() => {
-          router.push('/');
-        }, 3000);
+        // Don't auto-redirect - let user click the button to go to login
       } else {
         setStatus('error');
         setMessage(data.message || 'Failed to verify email. The link may be expired or invalid.');
@@ -64,7 +61,7 @@ function VerifyEmailContent() {
       setStatus('error');
       setMessage('An error occurred while verifying your email. Please try again later.');
     }
-  }, [router]);
+  }, []);
 
   const checkToken = useCallback(async (verificationToken: string) => {
     try {
@@ -117,11 +114,8 @@ function VerifyEmailContent() {
 
       if (response.ok) {
         setStatus('success');
-        setMessage('Email verified and password set successfully!');
-        // Redirect to login after 3 seconds
-        setTimeout(() => {
-          router.push('/');
-        }, 3000);
+        setMessage('Account setup completed successfully! Your email has been verified and password has been set.');
+        // Don't auto-redirect - let user click the button to go to login
       } else {
         setPasswordError(data.message || 'Failed to set password. Please try again.');
       }
@@ -129,7 +123,7 @@ function VerifyEmailContent() {
       console.error('Error setting password:', error);
       setPasswordError('An error occurred while setting your password. Please try again.');
     }
-  }, [router]);
+  }, []);
 
   const handlePasswordSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
@@ -313,10 +307,10 @@ function VerifyEmailContent() {
                   />
                 </svg>
               </div>
-              <h3 className="text-lg font-medium text-navy-deep mb-2">Setup Complete!</h3>
+              <h3 className="text-lg font-medium text-navy-deep mb-2">Account Setup Complete!</h3>
               <p className="text-neutral-gray text-sm mb-4">{message}</p>
               <p className="text-neutral-gray text-xs mb-6">
-                Redirecting to login page in 3 seconds...
+                You can now log in with your email and the password you just created.
               </p>
               <Button
                 variant="primary"
@@ -324,7 +318,7 @@ function VerifyEmailContent() {
                 fullWidth
                 onClick={() => router.push('/')}
               >
-                Go to Login Now
+                Continue to Login
               </Button>
             </div>
           )}
@@ -363,7 +357,7 @@ function VerifyEmailContent() {
           )}
         </div>
 
-        <div className="mt-6 pt-6 border-t border-gray-100 text-center">
+        <div className="mt-6 text-center">
           <p className="text-sm text-neutral-gray mb-4">
             Need help?{' '}
             <span className="text-navy-medium">
