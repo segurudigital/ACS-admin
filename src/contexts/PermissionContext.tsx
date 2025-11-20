@@ -84,10 +84,17 @@ export const PermissionProvider: React.FC<PermissionProviderProps> = ({ children
 
   const loadUserAndPermissions = useCallback(async () => {
     try {
+      console.log('[PermissionContext] loadUserAndPermissions called');
       setLoading(true);
       const token = AuthService.getToken();
       
       if (!token) {
+        console.log('[PermissionContext] No token found, clearing user state');
+        setUser(null);
+        setPermissions([]);
+        setRole(null);
+        setOrganizations([]);
+        setCurrentOrganization(null);
         setLoading(false);
         return;
       }
@@ -133,28 +140,59 @@ export const PermissionProvider: React.FC<PermissionProviderProps> = ({ children
     loadUserAndPermissions();
   }, [loadUserAndPermissions]);
 
-  // Listen for storage changes to handle cross-tab authentication
+  // Listen for storage changes and custom logout events
   useEffect(() => {
+    const logoutTimeout: NodeJS.Timeout | null = null;
+    
+    const handleLogout = () => {
+      console.log('[PermissionContext] Logout event received, clearing state');
+      
+      // Clear any pending logout timeout
+      if (logoutTimeout) {
+        clearTimeout(logoutTimeout);
+      }
+      
+      // Clear state immediately
+      setUser(null);
+      setPermissions([]);
+      setRole(null);
+      setOrganizations([]);
+      setCurrentOrganization(null);
+      
+      // Navigate to login page
+      if (window.location.pathname !== '/') {
+        console.log('[PermissionContext] Redirecting to login page');
+        window.location.href = '/';
+      } else {
+        console.log('[PermissionContext] Already on login page, skipping redirect');
+      }
+    };
+    
     const handleStorageChange = (e: StorageEvent) => {
+      console.log('[PermissionContext] Storage event:', e.key, 'newValue:', e.newValue);
+      
       // Check if the token was removed (logout in another tab)
       if (e.key === 'token' && !e.newValue) {
-        setUser(null);
-        setPermissions([]);
-        setRole(null);
-        setOrganizations([]);
-        setCurrentOrganization(null);
-        window.location.href = '/';
+        handleLogout();
       }
       // Check if token was added or changed (login in another tab)
       else if (e.key === 'token' && e.newValue) {
+        console.log('[PermissionContext] Token added/changed, reloading permissions');
         loadUserAndPermissions();
       }
     };
 
+    // Listen for custom logout event (same tab logout)
+    window.addEventListener('logout', handleLogout);
+    // Listen for storage changes (cross-tab logout)
     window.addEventListener('storage', handleStorageChange);
     
     return () => {
+      window.removeEventListener('logout', handleLogout);
       window.removeEventListener('storage', handleStorageChange);
+      if (logoutTimeout) {
+        clearTimeout(logoutTimeout);
+      }
     };
   }, [loadUserAndPermissions]);
 

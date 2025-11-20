@@ -15,8 +15,15 @@ export default function Sidebar({ collapsed = false, onClose }: SidebarProps) {
   const router = useRouter();
 
   const handleLogout = async () => {
-    await AuthService.logout();
-    router.push('/');
+    console.log('[Sidebar] Logout initiated');
+    try {
+      await AuthService.logout();
+      console.log('[Sidebar] AuthService.logout() completed - waiting for context to handle redirect');
+    } catch (error) {
+      console.error('[Sidebar] Logout error:', error);
+      // If logout fails, manually redirect immediately
+      router.push('/');
+    }
   };
 
   return (

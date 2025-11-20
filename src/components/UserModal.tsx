@@ -39,7 +39,7 @@ export default function UserModal({
    const { hasPermission } = usePermissions();
 
    const fetchRoles = useCallback(async () => {
-      if (!isOpen || user) return; // Only fetch for new users
+      if (!isOpen) return; // Fetch for both new and existing users
 
       try {
          console.log('Fetching roles...');
@@ -51,10 +51,10 @@ export default function UserModal({
          console.error('Error fetching roles:', error);
          setRoles([]);
       }
-   }, [isOpen, user]);
+   }, [isOpen]);
 
    const fetchOrganizations = useCallback(async () => {
-      if (!isOpen || user) return; // Only fetch for new users
+      if (!isOpen) return; // Fetch for both new and existing users
 
       try {
          console.log('Fetching organizations...');
@@ -66,14 +66,14 @@ export default function UserModal({
          console.error('Error fetching organizations:', error);
          setOrganizations([]);
       }
-   }, [isOpen, user]);
+   }, [isOpen]);
 
    useEffect(() => {
-      if (isOpen && !user && hasPermission('users.assign_role')) {
+      if (isOpen && hasPermission('users.assign_role')) {
          fetchRoles();
          fetchOrganizations();
       }
-   }, [fetchRoles, fetchOrganizations, isOpen, user, hasPermission]);
+   }, [fetchRoles, fetchOrganizations, isOpen, hasPermission]);
 
    const getFilteredRoles = useCallback(() => {
       // Find the selected organization object
@@ -96,6 +96,16 @@ export default function UserModal({
       // Filter roles based on selected organization type
       const filteredRoles = roles.filter((role) => {
          console.log('Checking role:', role.name, 'level:', role.level, 'against org type:', selectedOrgObj.type);
+         
+         // Security check: Only super admins can assign super_admin roles
+         if (role.name === 'super_admin') {
+            const currentUserIsSuperAdmin = hasPermission('*');
+            console.log('Super admin role check - current user has wildcard permission:', currentUserIsSuperAdmin);
+            if (!currentUserIsSuperAdmin) {
+               console.log('Non-super-admin user cannot assign super_admin role');
+               return false;
+            }
+         }
          
          // Church can have all roles
          if (selectedOrgObj.type === 'church') {
@@ -120,7 +130,7 @@ export default function UserModal({
       });
       console.log('Filtered roles result:', filteredRoles);
       return filteredRoles;
-   }, [selectedOrganization, organizations, roles]);
+   }, [selectedOrganization, organizations, roles, hasPermission]);
 
    const handleSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
@@ -150,15 +160,21 @@ export default function UserModal({
             verified: formData.verified,
          };
 
-         // Add role assignment data if selected and not editing
-         if (!user && selectedOrganization && selectedRole) {
+         // Add role assignment data if selected
+         if (selectedOrganization && selectedRole) {
             userData.organizationId = selectedOrganization;
             userData.role = selectedRole;
          }
 
          let response;
          if (user) {
-            // Update existing user
+            // Update existing user - split into user info update and role assignment
+            
+            // First, update basic user information (exclude role assignment fields)
+            const basicUserData = { ...userData };
+            delete basicUserData.organizationId;
+            delete basicUserData.role;
+            
             response = await fetch(
                `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/users/${user._id}`,
                {
@@ -168,11 +184,45 @@ export default function UserModal({
                      Authorization: `Bearer ${localStorage.getItem('token')}`,
                   },
                   credentials: 'include',
-                  body: JSON.stringify(userData),
+                  body: JSON.stringify(basicUserData),
                }
             );
+
+            if (!response.ok) {
+               throw new Error('Failed to update user information');
+            }
+
+            // If role/organization is being updated, make separate call to role assignment endpoint
+            if (selectedOrganization && selectedRole) {
+               console.log('Updating user role - Organization ID:', selectedOrganization, 'Role:', selectedRole);
+               const roleResponse = await fetch(
+                  `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/users/${user._id}/roles`,
+                  {
+                     method: 'POST',
+                     headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${localStorage.getItem('token')}`,
+                     },
+                     credentials: 'include',
+                     body: JSON.stringify({
+                        organizationId: selectedOrganization,
+                        roleName: selectedRole,
+                     }),
+                  }
+               );
+
+               if (!roleResponse.ok) {
+                  const roleErrorText = await roleResponse.text();
+                  console.error('Role assignment failed:', roleResponse.status, roleErrorText);
+                  throw new Error('Failed to update user role: ' + roleErrorText);
+               } else {
+                  console.log('Role assignment successful');
+               }
+            } else if (user) {
+               console.log('No role/organization selected for update');
+            }
          } else {
-            // Create new user
+            // Create new user (existing logic works fine)
             response = await fetch(
                `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/users`,
                {
@@ -188,8 +238,35 @@ export default function UserModal({
          }
 
          if (response.ok) {
-            const savedUser = await response.json();
-            console.log('API Response:', savedUser); // Debug log
+            let savedUser;
+            
+            if (user) {
+               // For user updates, we need to fetch the updated user data since we made separate API calls
+               console.log('Fetching updated user data after role assignment...');
+               const updatedUserResponse = await fetch(
+                  `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/users/${user._id}`,
+                  {
+                     method: 'GET',
+                     headers: {
+                        Authorization: `Bearer ${localStorage.getItem('token')}`,
+                     },
+                     credentials: 'include',
+                  }
+               );
+               
+               if (updatedUserResponse.ok) {
+                  savedUser = await updatedUserResponse.json();
+                  console.log('Fetched updated user:', savedUser);
+               } else {
+                  // Fallback to original user data if fetch fails
+                  savedUser = user;
+                  console.warn('Failed to fetch updated user data, using original');
+               }
+            } else {
+               // For new users, use the response from the create endpoint
+               savedUser = await response.json();
+               console.log('API Response for new user:', savedUser);
+            }
 
             // Ensure both _id and id are present for compatibility
             if (savedUser._id && !savedUser.id) {
@@ -242,8 +319,30 @@ export default function UserModal({
             country: user?.country || '',
             verified: user?.verified || false,
          });
-         setSelectedRole('');
-         setSelectedOrganization('');
+         
+         // Set current role and organization if editing an existing user
+         if (user && user.organizations && user.organizations.length > 0) {
+            const currentOrg = user.organizations[0]; // Use first organization
+            console.log('Setting initial values for edit - currentOrg:', currentOrg);
+            
+            // Extract organization ID - it could be a string or an object
+            const orgId = typeof currentOrg.organization === 'string' 
+               ? currentOrg.organization 
+               : currentOrg.organization?._id || '';
+            
+            // Extract role name - it could be a string or an object
+            const roleName = typeof currentOrg.role === 'string' 
+               ? currentOrg.role 
+               : currentOrg.role?.name || '';
+            
+            console.log('Extracted orgId:', orgId, 'roleName:', roleName);
+            setSelectedOrganization(orgId);
+            setSelectedRole(roleName);
+         } else {
+            console.log('No organizations found for user, clearing selections');
+            setSelectedRole('');
+            setSelectedOrganization('');
+         }
       }
    }, [user, isOpen]);
 
@@ -409,8 +508,8 @@ export default function UserModal({
                   </label>
                </div>
 
-               {/* Organization and Role Assignment - Only show for new users with permission */}
-               {!user && hasPermission('users.assign_role') && (
+               {/* Organization and Role Assignment - Show for users with permission */}
+               {hasPermission('users.assign_role') && (
                   <div className="space-y-4">
                      <div>
                         <label className="block text-sm font-medium text-gray-700">
@@ -471,10 +570,7 @@ export default function UserModal({
                   disabled={
                      loading ||
                      !formData.name ||
-                     !formData.email ||
-                     (!user &&
-                        hasPermission('users.assign_role') &&
-                        (!selectedOrganization || !selectedRole))
+                     !formData.email
                   }
                   className="px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-[#F5821F] hover:bg-[#e0741c] disabled:bg-gray-300 disabled:cursor-not-allowed"
                >
