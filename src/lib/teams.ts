@@ -4,6 +4,11 @@ export interface Team {
   _id: string;
   name: string;
   organizationId: string;
+  organization?: {
+    _id: string;
+    name: string;
+    type: string;
+  };
   type: 'acs' | 'communications' | 'general';
   leaderId?: string;
   description?: string;
@@ -19,6 +24,11 @@ export interface Team {
     region?: string;
     conference?: string;
     district?: string;
+  };
+  createdBy?: {
+    _id: string;
+    name: string;
+    email: string;
   };
   createdAt: string;
   updatedAt: string;
@@ -78,23 +88,34 @@ class TeamService {
     includeInactive?: boolean;
   }) {
     const params = new URLSearchParams();
-    if (options?.type) params.append('type', options.type);
-    if (options?.includeInactive) params.append('includeInactive', 'true');
-
-    const response = await fetch(
-      `${API_BASE_URL}/api/teams/organization/${organizationId}?${params}`,
-      {
-        headers: this.getHeaders(),
-        credentials: 'include',
-      }
-    );
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || 'Failed to fetch teams');
+    if (options?.type) {
+      params.append('type', options.type);
+    }
+    if (options?.includeInactive) {
+      params.append('includeInactive', 'true');
     }
 
-    return response.json();
+    const url = `${API_BASE_URL}/api/teams/organization/${organizationId}?${params}`;
+    const headers = this.getHeaders();
+
+    const response = await fetch(url, {
+      headers,
+      credentials: 'include',
+    });
+
+    if (!response.ok) {
+      let errorMessage = 'Failed to fetch teams';
+      try {
+        const error = await response.json();
+        errorMessage = error.message || errorMessage;
+      } catch (parseError) {
+        const errorText = await response.text();
+      }
+      throw new Error(errorMessage);
+    }
+
+    const data = await response.json();
+    return data;
   }
 
   // Get user's teams
@@ -107,6 +128,27 @@ class TeamService {
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.message || 'Failed to fetch user teams');
+    }
+
+    return response.json();
+  }
+
+  // Get all teams for super admins
+  async getAllTeams() {
+    const response = await fetch(`${API_BASE_URL}/api/teams/all`, {
+      headers: this.getHeaders(),
+      credentials: 'include',
+    });
+
+    if (!response.ok) {
+      let errorMessage = 'Failed to fetch all teams';
+      try {
+        const error = await response.json();
+        errorMessage = error.message || errorMessage;
+      } catch (parseError) {
+        const errorText = await response.text();
+      }
+      throw new Error(errorMessage);
     }
 
     return response.json();

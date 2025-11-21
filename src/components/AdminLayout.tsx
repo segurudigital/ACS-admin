@@ -119,22 +119,30 @@ export default function AdminLayout({ children, title, description, hideTitle, h
                 aria-label="Go to profile page"
                 title="Go to profile"
               >
-                {contextUser.avatar && (
-                (typeof contextUser.avatar === 'object' && contextUser.avatar.url) ||
-                (typeof contextUser.avatar === 'string' && contextUser.avatar.trim() !== "")
-              ) ? (
-                  <Image 
-                    src={typeof contextUser.avatar === 'object' ? contextUser.avatar.url : contextUser.avatar} 
-                    alt="Profile" 
-                    width={32}
-                    height={32}
-                    className="rounded-full object-cover"
-                  />
-                ) : (
-                  <span className="text-white text-sm font-medium">
-                    {contextUser.name ? contextUser.name.charAt(0).toUpperCase() : 'U'}
-                  </span>
-                )}
+                {(() => {
+                  let avatarUrl = '';
+                  if (contextUser.avatar) {
+                    if (typeof contextUser.avatar === 'object' && contextUser.avatar.url) {
+                      avatarUrl = contextUser.avatar.url;
+                    } else if (typeof contextUser.avatar === 'string' && contextUser.avatar.trim() !== "") {
+                      avatarUrl = contextUser.avatar;
+                    }
+                  }
+                  
+                  return avatarUrl ? (
+                    <Image 
+                      src={avatarUrl} 
+                      alt="Profile" 
+                      width={32}
+                      height={32}
+                      className="rounded-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-white text-sm font-medium">
+                      {contextUser.name ? contextUser.name.charAt(0).toUpperCase() : 'U'}
+                    </span>
+                  );
+                })()}
               </button>
             </div>
           </header>

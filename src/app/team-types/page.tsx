@@ -21,31 +21,31 @@ export default function TeamTypesPage() {
   const { currentOrganization } = usePermissions();
 
   const loadTeamTypes = useCallback(async () => {
-    if (!currentOrganization?._id) {
+    if (!currentOrganization?.organization?._id) {
       setLoading(false);
       return;
     }
 
     try {
       setLoading(true);
-      const response = await teamTypeService.getOrganizationTeamTypes(currentOrganization._id, true);
-      setTeamTypes(response.data || []);
+      const response = await teamTypeService.getOrganizationTeamTypes(currentOrganization.organization._id, true);
+      const teamTypesData = response.data || [];
+      setTeamTypes(teamTypesData);
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to load team types';
-      console.error('Error loading team types:', error);
-      setTeamTypes([]); // Set empty array on error
+      setTeamTypes([]);
       toast({
-        title: 'Error',
+        title: 'Error Loading Team Types',
         description: errorMessage,
         variant: 'destructive',
       });
     } finally {
       setLoading(false);
     }
-  }, [currentOrganization?._id]);
+  }, [currentOrganization?.organization?._id]);
 
   useEffect(() => {
-    if (currentOrganization?._id) {
+    if (currentOrganization?.organization?._id) {
       loadTeamTypes();
     }
   }, [currentOrganization, loadTeamTypes]);
@@ -202,7 +202,7 @@ export default function TeamTypesPage() {
   }
 
   return (
-    <AdminLayout title="Team Types" description={`Manage team types for ${currentOrganization.name}`}>
+    <AdminLayout title="Team Types" description={`Manage team types for ${currentOrganization.organization.name}`}>
       <div className="space-y-6">
         {/* Table with custom header */}
         <div className="bg-white shadow overflow-hidden sm:rounded-lg">

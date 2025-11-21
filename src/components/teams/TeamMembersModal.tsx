@@ -130,7 +130,7 @@ export function TeamMembersModal({ open, onOpenChange, team, onUpdate }: TeamMem
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Team Members - {team.name}</DialogTitle>
             <DialogDescription>
@@ -173,12 +173,13 @@ export function TeamMembersModal({ open, onOpenChange, team, onUpdate }: TeamMem
                 No members in this team yet
               </div>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-3">
                 {members.map((member) => (
                   <div
                     key={member._id}
-                    className="flex items-center justify-between p-3 rounded-lg border"
+                    className="p-4 rounded-lg border space-y-3"
                   >
+                    {/* Member Info Row */}
                     <div className="flex items-center gap-3">
                       <Avatar>
                         <AvatarImage src={member.avatar} />
@@ -186,42 +187,54 @@ export function TeamMembersModal({ open, onOpenChange, team, onUpdate }: TeamMem
                           {member.name.split(' ').map((n) => n[0]).join('').toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
-                      <div>
+                      <div className="flex-1">
                         <p className="font-medium">{member.name}</p>
                         <p className="text-sm text-muted-foreground">{member.email}</p>
                       </div>
-                    </div>
-                    
-                    <div className="flex items-center gap-2">
                       <Badge variant={getRoleBadgeVariant(member.teamRole)}>
                         {getRoleIcon(member.teamRole)}
                         <span className="ml-1">{member.teamRole}</span>
                       </Badge>
-                      
-                      <PermissionGate permission="teams.manage_members">
-                        <Select
-                          value={member.teamRole}
-                          onValueChange={(value: string) => handleUpdateRole(member._id, value as 'leader' | 'member' | 'communications')}
-                        >
-                          <SelectTrigger className="w-32">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="leader">Leader</SelectItem>
-                            <SelectItem value="member">Member</SelectItem>
-                            <SelectItem value="communications">Communications</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleRemoveMember(member._id)}
-                        >
-                          <UserX className="w-4 h-4 text-destructive" />
-                        </Button>
-                      </PermissionGate>
                     </div>
+                    
+                    {/* Actions Row */}
+                    <PermissionGate permission="teams.manage_members">
+                      <div className="flex items-center gap-2 pt-2 border-t">
+                        <div className="flex-1">
+                          <label className="text-sm font-medium text-gray-700 block mb-1">
+                            Change Role:
+                          </label>
+                          <Select
+                            value={member.teamRole}
+                            onValueChange={(value: string) => handleUpdateRole(member._id, value as 'leader' | 'member' | 'communications')}
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="leader">Leader</SelectItem>
+                              <SelectItem value="member">Member</SelectItem>
+                              <SelectItem value="communications">Communications</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        
+                        <div className="flex flex-col">
+                          <label className="text-sm font-medium text-gray-700 block mb-1">
+                            Actions:
+                          </label>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleRemoveMember(member._id)}
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          >
+                            <UserX className="w-4 h-4 mr-1" />
+                            Remove
+                          </Button>
+                        </div>
+                      </div>
+                    </PermissionGate>
                   </div>
                 ))}
               </div>

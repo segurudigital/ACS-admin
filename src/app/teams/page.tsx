@@ -13,6 +13,7 @@ import { teamTypeService, TeamType } from '@/lib/teamTypes';
 import { usePermissions } from '@/contexts/PermissionContext';
 import { CreateTeamModal } from '@/components/teams/CreateTeamModal';
 import { TeamMembersModal } from '@/components/teams/TeamMembersModal';
+import { useSuperAdmin } from '@/hooks/useSuperAdmin';
 
 export default function TeamsPage() {
   const [teams, setTeams] = useState<Team[]>([]);
@@ -22,32 +23,43 @@ export default function TeamsPage() {
   const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [teamTypes, setTeamTypes] = useState<TeamType[]>([]);
+  const [selectedOrgFilter, setSelectedOrgFilter] = useState<string>('all');
   const router = useRouter();
-  const { currentOrganization } = usePermissions();
+  const { currentOrganization, organizations } = usePermissions();
+  const { isSuperAdmin } = useSuperAdmin();
 
   const loadTeams = useCallback(async () => {
-    if (!currentOrganization?._id) {
-      setLoading(false);
-      return;
-    }
-
     try {
       setLoading(true);
-      const response = await teamService.getOrganizationTeams(currentOrganization._id);
-      setTeams(response.data || []);
+      let response;
+      
+      if (isSuperAdmin && selectedOrgFilter === 'all') {
+        // Super admin viewing all teams
+        response = await teamService.getAllTeams();
+      } else {
+        // Specific organization or regular user
+        const orgId = isSuperAdmin && selectedOrgFilter !== 'all' ? selectedOrgFilter : currentOrganization?._id;
+        if (!orgId) {
+          setLoading(false);
+          return;
+        }
+        response = await teamService.getOrganizationTeams(orgId);
+      }
+      
+      const teamsData = response.data || [];
+      setTeams(teamsData);
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to load teams';
-      console.error('Error loading teams:', error);
-      setTeams([]); // Set empty array on error
+      setTeams([]);
       toast({
-        title: 'Error',
+        title: 'Error Loading Teams',
         description: errorMessage,
         variant: 'destructive',
       });
     } finally {
       setLoading(false);
     }
-  }, [currentOrganization?._id]);
+  }, [currentOrganization?._id, isSuperAdmin, selectedOrgFilter]);
 
   const loadTeamTypes = useCallback(async () => {
     if (!currentOrganization?._id) return;
@@ -56,17 +68,18 @@ export default function TeamsPage() {
       const response = await teamTypeService.getOrganizationTeamTypes(currentOrganization._id);
       setTeamTypes(response.data);
     } catch (error: unknown) {
-      console.error('Error loading team types:', error);
       // Don't show toast for team types error as it's not critical
     }
   }, [currentOrganization?._id]);
 
   useEffect(() => {
-    if (currentOrganization?._id) {
+    if (isSuperAdmin) {
+      loadTeams();
+    } else if (currentOrganization?._id) {
       loadTeams();
       loadTeamTypes();
     }
-  }, [currentOrganization, loadTeams, loadTeamTypes]);
+  }, [currentOrganization, loadTeams, loadTeamTypes, isSuperAdmin]);
 
   const handleCreateTeam = async (teamData: {
     name: string;
@@ -187,6 +200,16 @@ export default function TeamsPage() {
         );
       }
     },
+    // Add Organization column for super admin viewing all teams
+    ...(isSuperAdmin && selectedOrgFilter === 'all' ? [{
+      key: 'organization' as keyof Team,
+      header: 'Organization',
+      accessor: (team: Team) => (
+        <span className="text-sm text-gray-900">
+          {team.organization?.name || 'Unknown'}
+        </span>
+      )
+    }] : []),
     {
       key: 'members',
       header: 'Members',
@@ -213,6 +236,16 @@ export default function TeamsPage() {
         );
       }
     },
+    // Add Created By column for super admin
+    ...(isSuperAdmin ? [{
+      key: 'createdBy' as keyof Team,
+      header: 'Created By',
+      accessor: (team: Team) => (
+        <span className="text-sm text-gray-900">
+          {team.createdBy?.name || team.createdBy?.email || 'System Admin'}
+        </span>
+      )
+    }] : []),
     {
       key: 'status',
       header: 'Status',
@@ -235,8 +268,8 @@ export default function TeamsPage() {
         <ActionCell>
           <PermissionGate permission="teams.read">
             <IconButton
-              onClick={() => handleViewMembers(team)}
-              title="View Members"
+              onClick={() => router.push(`/teams/${team._id}`)}
+              title="View Team Details"
               icon={<Users className="h-5 w-5" />}
             />
           </PermissionGate>
@@ -260,7 +293,8 @@ export default function TeamsPage() {
     }
   ];
 
-  if (!currentOrganization) {
+
+  if (!currentOrganization && !isSuperAdmin) {
     return (
       <AdminLayout title="Teams" description="Manage teams for your organization">
         <div className="bg-white shadow overflow-hidden sm:rounded-lg">
@@ -273,22 +307,46 @@ export default function TeamsPage() {
     );
   }
 
+  const description = isSuperAdmin && selectedOrgFilter === 'all'
+    ? "Manage teams across all organizations"
+    : `Manage teams for ${currentOrganization?.name ? String(currentOrganization.name) : 'your organization'}`;
+
   return (
-    <AdminLayout title="Teams" description={`Manage teams for ${currentOrganization.name}`}>
-      <div className="space-y-6">
-        {/* Table with custom header */}
-        <div className="bg-white shadow overflow-hidden sm:rounded-lg">
-          {/* Custom header with search and button */}
-          <div className="px-6 py-4 border-b border-gray-200">
+    <AdminLayout 
+      title="Teams" 
+      description={description}
+    >
+        <div className="space-y-6">
+          {/* Table with custom header */}
+          <div className="bg-white shadow overflow-hidden sm:rounded-lg">
+            {/* Custom header with search and button */}
+            <div className="px-6 py-4 border-b border-gray-200">
             <div className="flex items-center justify-between gap-4">
-              <div className="max-w-xs">
-                <input
-                  type="text"
-                  placeholder="Search teams..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="block w-full px-4 py-2 rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white"
-                />
+              <div className="flex items-center gap-4">
+                <div className="max-w-xs">
+                  <input
+                    type="text"
+                    placeholder="Search teams..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="block w-full px-4 py-2 rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white"
+                  />
+                </div>
+                {/* Organization filter for super admins */}
+                {isSuperAdmin && (
+                  <div>
+                    <select
+                      value={selectedOrgFilter}
+                      onChange={(e) => setSelectedOrgFilter(e.target.value)}
+                      className="block w-64 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                    >
+                      <option value="all">All Organizations</option>
+                      {organizations.filter(org => org && org._id && org.name).map((org) => (
+                        <option key={org._id} value={org._id}>{String(org.name)}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
               </div>
               <PermissionGate permission="teams.create">
                 <Button onClick={() => setCreateModalOpen(true)} className="whitespace-nowrap" size="sm">

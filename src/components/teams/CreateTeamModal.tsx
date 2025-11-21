@@ -35,17 +35,27 @@ export function CreateTeamModal({ open, onOpenChange, onSubmit }: CreateTeamModa
   const [loadingTypes, setLoadingTypes] = useState(false);
 
   const loadTeamTypes = useCallback(async () => {
-    if (!currentOrganization?._id) return;
+    if (!currentOrganization?._id) {
+      return;
+    }
 
     try {
       setLoadingTypes(true);
       const response = await teamTypeService.getOrganizationTeamTypes(currentOrganization._id);
-      setTeamTypes(response.data);
+      setTeamTypes(response.data || []);
+      
+      // If no team types exist, suggest initialization
+      if (!response.data || response.data.length === 0) {
+        toast({
+          title: 'No Team Types Found',
+          description: 'Contact your administrator to set up team types for your organization.',
+          variant: 'destructive',
+        });
+      }
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to load team types';
-      console.error('Error loading team types:', error);
       toast({
-        title: 'Error',
+        title: 'Error Loading Team Types',
         description: errorMessage,
         variant: 'destructive',
       });
@@ -100,7 +110,7 @@ export function CreateTeamModal({ open, onOpenChange, onSubmit }: CreateTeamModa
       onOpenChange(false);
     } catch (error: unknown) {
       // Error is handled in parent
-      console.error('Error in handleSubmit:', error);
+      // Error is handled in parent
     } finally {
       setLoading(false);
     }
@@ -148,24 +158,41 @@ export function CreateTeamModal({ open, onOpenChange, onSubmit }: CreateTeamModa
                 }
               >
                 <SelectTrigger>
-                  <SelectValue placeholder={loadingTypes ? "Loading types..." : "Choose team type"} />
+                  <SelectValue 
+                    placeholder={
+                      loadingTypes 
+                        ? "Loading types..." 
+                        : teamTypes.length === 0 
+                          ? "No team types available" 
+                          : "Choose team type"
+                    } 
+                  />
                 </SelectTrigger>
                 <SelectContent>
-                  {teamTypes.map((teamType) => (
-                    <SelectItem key={teamType._id} value={teamType.name}>
-                      <div className="flex items-center gap-2">
-                        <span className="px-2 py-1 rounded text-xs bg-gray-100 text-gray-800">
-                          📋
-                        </span>
-                        <div>
-                          <div className="font-medium">{teamType.name}</div>
-                          {teamType.description && (
-                            <div className="text-xs text-gray-500">{teamType.description}</div>
-                          )}
-                        </div>
+                  {teamTypes.length === 0 && !loadingTypes ? (
+                    <SelectItem value="" disabled>
+                      <div className="flex items-center gap-2 text-gray-500">
+                        <span>⚠️</span>
+                        <div>No team types found. Contact your administrator.</div>
                       </div>
                     </SelectItem>
-                  ))}
+                  ) : (
+                    teamTypes.map((teamType) => (
+                      <SelectItem key={teamType._id} value={teamType.name}>
+                        <div className="flex items-center gap-2">
+                          <span className="px-2 py-1 rounded text-xs bg-gray-100 text-gray-800">
+                            📋
+                          </span>
+                          <div>
+                            <div className="font-medium">{teamType.name}</div>
+                            {teamType.description && (
+                              <div className="text-xs text-gray-500">{teamType.description}</div>
+                            )}
+                          </div>
+                        </div>
+                      </SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
             </div>

@@ -16,6 +16,19 @@ interface TeamAssignment {
   };
 }
 
+interface OrganizationAssignment {
+  organization: {
+    _id: string;
+    name: string;
+    type: string;
+  };
+  role: {
+    _id: string;
+    name: string;
+  };
+  assignedAt: string;
+}
+
 interface User {
   id: string;
   name: string;
@@ -30,7 +43,7 @@ interface User {
   city?: string;
   state?: string;
   country?: string;
-  organizations?: Array<{_id: string; name: string; type: string}>;
+  organizations?: Array<OrganizationAssignment | {_id: string; name: string; type: string}>;
   primaryOrganization?: string;
   teamAssignments?: TeamAssignment[];
   primaryTeam?: string;
@@ -142,13 +155,53 @@ export const PermissionProvider: React.FC<PermissionProviderProps> = ({ children
       
       // Set organizations and current organization
       if (userData.organizations) {
-        setOrganizations(userData.organizations);
+        console.log('🏢 [PERMISSION CONTEXT] User organizations:', userData.organizations);
+        
+        // Extract the organization objects from the assignment structure
+        const extractedOrgs: Array<{_id: string; name: string; type: string}> = userData.organizations.map((orgAssignment: OrganizationAssignment | {_id: string; name: string; type: string}) => {
+          if ('organization' in orgAssignment && orgAssignment.organization) {
+            return orgAssignment.organization;
+          }
+          // Fallback for simple structure
+          return orgAssignment as {_id: string; name: string; type: string};
+        });
+        
+        setOrganizations(extractedOrgs);
+        
         if (userData.primaryOrganization) {
-          const primaryOrg = userData.organizations.find((org: {_id: string; name: string; type: string}) => org._id === userData.primaryOrganization);
-          setCurrentOrganization(primaryOrg || userData.organizations[0] || null);
+          console.log('🎯 [PERMISSION CONTEXT] User primary organization ID:', userData.primaryOrganization);
+          const primaryOrgAssignment = userData.organizations.find((orgAssignment: OrganizationAssignment | {_id: string; name: string; type: string}) => {
+            const orgId = 'organization' in orgAssignment ? orgAssignment.organization._id : orgAssignment._id;
+            return orgId === userData.primaryOrganization;
+          }) as (OrganizationAssignment | {_id: string; name: string; type: string}) | undefined;
+          let selectedOrg: {_id: string; name: string; type: string} | null = null;
+          
+          if (primaryOrgAssignment) {
+            selectedOrg = 'organization' in primaryOrgAssignment 
+              ? primaryOrgAssignment.organization 
+              : primaryOrgAssignment as {_id: string; name: string; type: string};
+          } else if (extractedOrgs.length > 0) {
+            selectedOrg = extractedOrgs[0];
+          }
+          
+          console.log('✅ [PERMISSION CONTEXT] Setting current organization:', selectedOrg);
+          setCurrentOrganization(selectedOrg);
+          // Update localStorage for API calls
+          if (typeof window !== 'undefined' && selectedOrg) {
+            localStorage.setItem('currentOrganizationId', selectedOrg._id);
+          }
         } else if (userData.organizations.length > 0) {
-          setCurrentOrganization(userData.organizations[0]);
+          console.log('📍 [PERMISSION CONTEXT] No primary org, using first organization:', extractedOrgs[0]);
+          setCurrentOrganization(extractedOrgs[0]);
+          // Update localStorage for API calls
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('currentOrganizationId', extractedOrgs[0]._id);
+          }
+        } else {
+          console.warn('⚠️ [PERMISSION CONTEXT] No organizations found for user');
         }
+      } else {
+        console.warn('⚠️ [PERMISSION CONTEXT] No organizations in user data');
       }
       
       // Set teams and current team
@@ -253,6 +306,10 @@ export const PermissionProvider: React.FC<PermissionProviderProps> = ({ children
     const org = organizations.find((o: {_id: string; name: string; type: string}) => o._id === organizationId);
     if (org) {
       setCurrentOrganization(org);
+      // Update localStorage for API calls
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('currentOrganizationId', org._id);
+      }
       await loadPermissionsForOrganization(organizationId);
     }
   };

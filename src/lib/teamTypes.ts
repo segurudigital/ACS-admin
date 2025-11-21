@@ -46,19 +46,27 @@ export const teamTypeService = {
       params.append('includeInactive', 'true');
     }
     
-    const response = await fetch(
-      `${API_BASE_URL}/api/team-types/organization/${organizationId}?${params}`,
-      {
-        headers: getAuthHeaders(),
-        credentials: 'include',
-      }
-    );
+    const url = `${API_BASE_URL}/api/team-types/organization/${organizationId}?${params}`;
+    const headers = getAuthHeaders();
+    
+    const response = await fetch(url, {
+      headers,
+      credentials: 'include',
+    });
 
     if (!response.ok) {
-      throw new Error(`Failed to fetch team types: ${response.statusText}`);
+      let errorMessage = `Failed to fetch team types: ${response.statusText}`;
+      try {
+        const error = await response.json();
+        errorMessage = error.message || errorMessage;
+      } catch (parseError) {
+        await response.text();
+      }
+      throw new Error(errorMessage);
     }
 
-    return response.json();
+    const data = await response.json();
+    return data;
   },
 
   // Get a specific team type

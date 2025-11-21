@@ -32,21 +32,21 @@ export function QuotaStatus() {
   const { currentOrganization, hasPermission } = usePermissions();
 
   const loadQuotaStatus = useCallback(async () => {
-    if (!currentOrganization?._id) return;
+    if (!currentOrganization?.organization?._id) return;
     
     try {
       setLoading(true);
-      const response = await teamService.getQuotaStatus(currentOrganization._id);
+      const response = await teamService.getQuotaStatus(currentOrganization.organization._id);
       setQuotaData(response.data.quotaStatuses || []);
     } catch (error) {
       console.error('Failed to load quota status:', error);
     } finally {
       setLoading(false);
     }
-  }, [currentOrganization?._id]);
+  }, [currentOrganization?.organization?._id]);
 
   useEffect(() => {
-    if (currentOrganization?._id && hasPermission('users.read')) {
+    if (currentOrganization?.organization?._id && hasPermission('users.read')) {
       loadQuotaStatus();
     }
   }, [currentOrganization, hasPermission, loadQuotaStatus]);
@@ -85,7 +85,7 @@ export function QuotaStatus() {
             Role Quotas
           </CardTitle>
           <CardDescription>
-            User limits per role in {currentOrganization?.name}
+            User limits per role in {currentOrganization?.organization?.name}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
