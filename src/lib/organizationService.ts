@@ -269,4 +269,91 @@ export class OrganizationService {
       };
     }
   }
+
+  static async quickSetup(setupData: {
+    organization: {
+      name: string;
+      type: 'union' | 'conference' | 'church';
+      parentId?: string;
+      metadata?: {
+        email?: string;
+        phone?: string;
+        address?: string;
+      };
+    };
+    adminUser: {
+      firstName: string;
+      lastName: string;
+      email: string;
+      role?: string;
+    };
+    sendInvitation?: boolean;
+  }): Promise<unknown> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/organizations/quick-setup`, {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify(setupData),
+        credentials: 'include',
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        console.error('Quick setup API error:', {
+          status: response.status,
+          data: data,
+        });
+        
+        let errorMessage = 'Failed to create organization and user';
+        if (data.message) {
+          errorMessage = data.message;
+        } else if (data.error) {
+          errorMessage = data.error;
+        } else if (data.errors && Array.isArray(data.errors) && data.errors.length > 0) {
+          errorMessage = data.errors.map((err: unknown) => {
+            if (typeof err === 'string') return err;
+            if (typeof err === 'object' && err !== null) {
+              const errObj = err as Record<string, unknown>;
+              if ('message' in errObj && typeof errObj.message === 'string') return errObj.message;
+              if ('msg' in errObj && typeof errObj.msg === 'string') return errObj.msg;
+            }
+            return JSON.stringify(err);
+          }).join(', ');
+        }
+        
+        throw new Error(errorMessage);
+      }
+
+      return data.data;
+    } catch (error) {
+      console.error('Error in quick setup:', error);
+      throw error;
+    }
+  }
+
+  static async getSuggestedParents(type: 'union' | 'conference' | 'church'): Promise<ApiResponse<Organization[]>> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/organizations/suggested-parents?type=${type}`, {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+        credentials: 'include',
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || `HTTP error! status: ${response.status}`);
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Error fetching suggested parents:', error);
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to fetch suggested parents',
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
+  }
 }

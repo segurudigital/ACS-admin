@@ -18,6 +18,7 @@ export interface Organization {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+  childCount?: number;
 }
 
 export interface Role {

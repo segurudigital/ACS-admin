@@ -15,8 +15,25 @@ interface AuthResponse {
       email: string;
       verified: boolean;
       avatar?: string;
+      phone?: string;
+      address?: string;
+      city?: string;
+      state?: string;
+      country?: string;
       organizations?: Array<{_id: string; name: string; type: string}>;
       primaryOrganization?: string;
+      teamAssignments?: Array<{
+        teamId: string;
+        role: 'leader' | 'member' | 'communications';
+        assignedAt: string;
+        team?: {
+          _id: string;
+          name: string;
+          type: string;
+          organizationId: string;
+        };
+      }>;
+      primaryTeam?: string;
     };
     token: string;
     permissions?: string[];

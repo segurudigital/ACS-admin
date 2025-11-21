@@ -41,7 +41,7 @@ export default function UserDetails() {
           city?: string;
           state?: string;
           country?: string;
-          avatar?: string;
+          avatar?: { url: string; key: string } | string;
           createdAt?: string;
           updatedAt?: string;
           primaryOrganization?: string;
@@ -64,7 +64,7 @@ export default function UserDetails() {
           city: apiUser.city || '',
           state: apiUser.state || '',
           country: apiUser.country || '',
-          avatar: apiUser.avatar || '',
+          avatar: typeof apiUser.avatar === 'string' ? apiUser.avatar : apiUser.avatar?.url || '',
           createdAt: apiUser.createdAt || new Date().toISOString(),
           updatedAt: apiUser.updatedAt || new Date().toISOString(),
           primaryOrganization: apiUser.primaryOrganization || '',

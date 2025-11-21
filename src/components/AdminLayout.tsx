@@ -36,7 +36,7 @@ export default function AdminLayout({ children, title, description, hideTitle, h
 
   if (contextLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#FCFCFC' }}>
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
           <p className="mt-2 text-gray-600">Loading...</p>
@@ -50,7 +50,7 @@ export default function AdminLayout({ children, title, description, hideTitle, h
   }
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen" style={{ backgroundColor: '#FCFCFC' }}>
       {/* Sidebar - Hidden on small screens, collapsible on larger screens */}
       <div className={`${sidebarCollapsed ? 'w-16' : 'w-64'} transition-all duration-300 ease-in-out flex-shrink-0 hidden lg:block`}>
         <div className="fixed top-0 left-0 h-full bg-white shadow-lg z-30" 
@@ -119,9 +119,12 @@ export default function AdminLayout({ children, title, description, hideTitle, h
                 aria-label="Go to profile page"
                 title="Go to profile"
               >
-                {contextUser.avatar && typeof contextUser.avatar === 'string' && contextUser.avatar.trim() !== "" ? (
+                {contextUser.avatar && (
+                (typeof contextUser.avatar === 'object' && contextUser.avatar.url) ||
+                (typeof contextUser.avatar === 'string' && contextUser.avatar.trim() !== "")
+              ) ? (
                   <Image 
-                    src={contextUser.avatar} 
+                    src={typeof contextUser.avatar === 'object' ? contextUser.avatar.url : contextUser.avatar} 
                     alt="Profile" 
                     width={32}
                     height={32}

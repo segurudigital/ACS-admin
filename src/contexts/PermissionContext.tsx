@@ -1,15 +1,30 @@
 
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
 import { AuthService } from '@/lib/auth';
+
+interface TeamAssignment {
+  teamId: string;
+  role: 'leader' | 'member' | 'communications';
+  assignedAt: string;
+  team?: {
+    _id: string;
+    name: string;
+    type: string;
+    organizationId: string;
+  };
+}
 
 interface User {
   id: string;
   name: string;
   email: string;
   verified: boolean;
-  avatar?: string;
+  avatar?: {
+    url: string;
+    key: string;
+  } | string;
   phone?: string;
   address?: string;
   city?: string;
@@ -17,6 +32,8 @@ interface User {
   country?: string;
   organizations?: Array<{_id: string; name: string; type: string}>;
   primaryOrganization?: string;
+  teamAssignments?: TeamAssignment[];
+  primaryTeam?: string;
 }
 
 interface PermissionContextType {
@@ -29,6 +46,12 @@ interface PermissionContextType {
   role: string | null;
   switchOrganization: (organizationId: string) => void;
   reloadPermissions: () => Promise<void>;
+  // Team context
+  currentTeam: TeamAssignment['team'] | null;
+  teams: TeamAssignment[];
+  teamRole: TeamAssignment['role'] | null;
+  switchTeam: (teamId: string) => void;
+  hasTeamPermission: (permission: string, teamId?: string) => boolean;
 }
 
 const PermissionContext = createContext<PermissionContextType | undefined>(undefined);
@@ -55,6 +78,13 @@ export const PermissionProvider: React.FC<PermissionProviderProps> = ({ children
   const [currentOrganization, setCurrentOrganization] = useState<{_id: string; name: string; type: string} | null>(null);
   const [organizations, setOrganizations] = useState<Array<{_id: string; name: string; type: string}>>([]);
   const [role, setRole] = useState<string | null>(null);
+  // Team state
+  const [teams, setTeams] = useState<TeamAssignment[]>([]);
+  const [currentTeam, setCurrentTeam] = useState<TeamAssignment['team'] | null>(null);
+  const [teamRole, setTeamRole] = useState<TeamAssignment['role'] | null>(null);
+  
+  // Logout timeout ref
+  const logoutTimeout = useRef<NodeJS.Timeout | null>(null);
 
   const loadPermissionsForOrganization = useCallback(async (organizationId: string | undefined) => {
     if (!organizationId || !user) return;
@@ -121,6 +151,24 @@ export const PermissionProvider: React.FC<PermissionProviderProps> = ({ children
         }
       }
       
+      // Set teams and current team
+      if (userData.teamAssignments) {
+        setTeams(userData.teamAssignments);
+        if (userData.primaryTeam) {
+          const primaryTeamAssignment = userData.teamAssignments.find((ta: TeamAssignment) => ta.teamId === userData.primaryTeam);
+          if (primaryTeamAssignment?.team) {
+            setCurrentTeam(primaryTeamAssignment.team);
+            setTeamRole(primaryTeamAssignment.role);
+          }
+        } else if (userData.teamAssignments.length > 0) {
+          const firstTeam = userData.teamAssignments[0];
+          if (firstTeam.team) {
+            setCurrentTeam(firstTeam.team);
+            setTeamRole(firstTeam.role);
+          }
+        }
+      }
+      
       // Extract actual permissions and role from auth response
       const userRole = authResponse.data.role;
       const userPermissions = authResponse.data.permissions || [];
@@ -142,14 +190,14 @@ export const PermissionProvider: React.FC<PermissionProviderProps> = ({ children
 
   // Listen for storage changes and custom logout events
   useEffect(() => {
-    const logoutTimeout: NodeJS.Timeout | null = null;
     
     const handleLogout = () => {
       console.log('[PermissionContext] Logout event received, clearing state');
       
       // Clear any pending logout timeout
-      if (logoutTimeout) {
-        clearTimeout(logoutTimeout);
+      if (logoutTimeout.current) {
+        clearTimeout(logoutTimeout.current);
+        logoutTimeout.current = null;
       }
       
       // Clear state immediately
@@ -158,6 +206,9 @@ export const PermissionProvider: React.FC<PermissionProviderProps> = ({ children
       setRole(null);
       setOrganizations([]);
       setCurrentOrganization(null);
+      setTeams([]);
+      setCurrentTeam(null);
+      setTeamRole(null);
       
       // Navigate to login page
       if (window.location.pathname !== '/') {
@@ -190,8 +241,9 @@ export const PermissionProvider: React.FC<PermissionProviderProps> = ({ children
     return () => {
       window.removeEventListener('logout', handleLogout);
       window.removeEventListener('storage', handleStorageChange);
-      if (logoutTimeout) {
-        clearTimeout(logoutTimeout);
+      if (logoutTimeout.current) {
+        clearTimeout(logoutTimeout.current);
+        logoutTimeout.current = null;
       }
     };
   }, [loadUserAndPermissions]);
@@ -203,6 +255,48 @@ export const PermissionProvider: React.FC<PermissionProviderProps> = ({ children
       setCurrentOrganization(org);
       await loadPermissionsForOrganization(organizationId);
     }
+  };
+
+  const switchTeam = (teamId: string) => {
+    const teamAssignment = teams.find((ta: TeamAssignment) => ta.teamId === teamId);
+    if (teamAssignment?.team) {
+      setCurrentTeam(teamAssignment.team);
+      setTeamRole(teamAssignment.role);
+      // Team switch might affect permissions, so reload them
+      if (teamAssignment.team.organizationId) {
+        switchOrganization(teamAssignment.team.organizationId);
+      }
+    }
+  };
+
+  const hasTeamPermission = (permission: string, teamId?: string): boolean => {
+    // If no team context, fall back to organization permission
+    if (!teamId && !currentTeam) {
+      return hasPermission(permission);
+    }
+    
+    // Check if user is member of the specified team
+    const targetTeamId = teamId || currentTeam?._id;
+    const teamAssignment = teams.find((ta: TeamAssignment) => ta.teamId === targetTeamId);
+    
+    if (!teamAssignment) {
+      return false;
+    }
+
+    // Team leaders have more permissions
+    if (teamAssignment.role === 'leader') {
+      const teamLeaderPermissions = [
+        'teams.read', 'teams.update', 'teams.manage_members',
+        'services.*', 'stories.*', 'users.read'
+      ];
+      
+      if (teamLeaderPermissions.some(p => hasPermission(p))) {
+        return true;
+      }
+    }
+    
+    // Check regular permissions with team scope
+    return hasPermission(permission);
   };
 
   const hasPermission = (permission: string): boolean => {
@@ -250,6 +344,12 @@ export const PermissionProvider: React.FC<PermissionProviderProps> = ({ children
     role,
     switchOrganization,
     reloadPermissions: loadUserAndPermissions,
+    // Team context
+    currentTeam,
+    teams,
+    teamRole,
+    switchTeam,
+    hasTeamPermission,
   };
 
   return (
@@ -263,5 +363,23 @@ export const PermissionProvider: React.FC<PermissionProviderProps> = ({ children
 export const useHasPermission = (permission: string): boolean => {
   const { hasPermission } = usePermissions();
   return hasPermission(permission);
+};
+
+// Custom hook for team permission checks
+export const useHasTeamPermission = (permission: string, teamId?: string): boolean => {
+  const { hasTeamPermission } = usePermissions();
+  return hasTeamPermission(permission, teamId);
+};
+
+// Custom hook to get current team
+export const useCurrentTeam = () => {
+  const { currentTeam, teamRole } = usePermissions();
+  return { currentTeam, teamRole };
+};
+
+// Custom hook to get user's teams
+export const useUserTeams = () => {
+  const { teams } = usePermissions();
+  return teams;
 };
 

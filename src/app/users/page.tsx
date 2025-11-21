@@ -1,9 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import AdminLayout from '../../components/AdminLayout';
 import { PermissionGate } from '@/components/PermissionGate';
-import { usePermissions } from '@/contexts/PermissionContext';
 import { rbacService } from '@/lib/rbac';
 import { User } from '@/types/rbac';
 import {
@@ -26,7 +25,6 @@ import { useToast } from '@/contexts/ToastContext';
 import { useRouter } from 'next/navigation';
 
 export default function Users() {
-   const {} = usePermissions();
    const router = useRouter();
    const [users, setUsers] = useState<User[]>([]);
    const [loading, setLoading] = useState(true);
@@ -37,6 +35,12 @@ export default function Users() {
    const [userToDelete, setUserToDelete] = useState<User | null>(null);
    const [searchQuery, setSearchQuery] = useState('');
    const toast = useToast();
+   const toastRef = useRef(toast);
+   
+   // Update toast ref when toast changes
+   useEffect(() => {
+      toastRef.current = toast;
+   }, [toast]);
 
    const fetchUsers = useCallback(async () => {
       try {
@@ -85,15 +89,16 @@ export default function Users() {
       } catch (error) {
          console.error('Error fetching users:', error);
          setUsers([]);
-         toast.error('Failed to load users', 'An unexpected error occurred');
+         // Show error without causing infinite loop - use ref to avoid dependency
+         toastRef.current?.error('Failed to load users', 'Please try again later');
       } finally {
          setLoading(false);
       }
-   }, [toast]);
+   }, []); // Remove toast dependency to prevent infinite loop
 
    useEffect(() => {
       fetchUsers();
-   }, [fetchUsers]);
+   }, [fetchUsers]); // Include fetchUsers dependency
 
    const handleDeleteUser = async (user: User) => {
       try {

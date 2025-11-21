@@ -4,8 +4,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import Modal, { ModalBody, ModalFooter } from './Modal';
 import { useToast } from '@/contexts/ToastContext';
 import { usePermissions } from '@/contexts/PermissionContext';
-import { User, Role, Organization } from '@/types/rbac';
+import { User, Role, Organization, OrganizationAssignment } from '@/types/rbac';
 import { rbacService } from '@/lib/rbac';
+import { X, Plus } from 'lucide-react';
 
 interface UserModalProps {
    isOpen: boolean;
@@ -33,8 +34,8 @@ export default function UserModal({
    const [loading, setLoading] = useState(false);
    const [roles, setRoles] = useState<Role[]>([]);
    const [organizations, setOrganizations] = useState<Organization[]>([]);
-   const [selectedRole, setSelectedRole] = useState('');
-   const [selectedOrganization, setSelectedOrganization] = useState('');
+   const [assignments, setAssignments] = useState<OrganizationAssignment[]>([]);
+   const [newAssignment, setNewAssignment] = useState({ organizationId: '', roleId: '' });
    const toast = useToast();
    const { hasPermission } = usePermissions();
 
@@ -75,65 +76,15 @@ export default function UserModal({
       }
    }, [fetchRoles, fetchOrganizations, isOpen, hasPermission]);
 
-   const getFilteredRoles = useCallback(() => {
-      // Find the selected organization object
-      const selectedOrgObj = organizations.find(org => org._id === selectedOrganization);
-      console.log('getFilteredRoles called with selectedOrganization:', selectedOrganization);
-      console.log('selectedOrgObj:', selectedOrgObj);
-      console.log('selectedOrgObj.type:', selectedOrgObj?.type);
-      
-      if (!selectedOrgObj) {
-         console.log('No organization selected - returning all roles');
-         return roles;
-      }
-
-      // If organization type is undefined, return all roles (super admin case)
-      if (!selectedOrgObj.type) {
-         console.log('No organization type defined - returning all roles (super admin)');
-         return roles;
-      }
-
-      // Filter roles based on selected organization type
-      const filteredRoles = roles.filter((role) => {
-         console.log('Checking role:', role.name, 'level:', role.level, 'against org type:', selectedOrgObj.type);
-         
-         // Security check: Only super admins can assign super_admin roles
-         if (role.name === 'super_admin') {
-            const currentUserIsSuperAdmin = hasPermission('*');
-            console.log('Super admin role check - current user has wildcard permission:', currentUserIsSuperAdmin);
-            if (!currentUserIsSuperAdmin) {
-               console.log('Non-super-admin user cannot assign super_admin role');
-               return false;
-            }
-         }
-         
-         // Church can have all roles
-         if (selectedOrgObj.type === 'church') {
-            console.log('Church org - including role:', role.name);
-            return true;
-         }
-         // Conference can have conference and union roles
-         if (selectedOrgObj.type === 'conference') {
-            const canInclude = role.level ? ['conference', 'union'].includes(role.level) : false;
-            console.log('Conference org - can include:', canInclude, 'for role:', role.name);
-            return canInclude;
-         }
-         // Union can only have union roles
-         if (selectedOrgObj.type === 'union') {
-            const canInclude = role.level === 'union';
-            console.log('Union org - can include:', canInclude, 'for role:', role.name);
-            return canInclude;
-         }
-
-         console.log('Unknown org type - excluding role:', role.name);
-         return false;
-      });
-      console.log('Filtered roles result:', filteredRoles);
-      return filteredRoles;
-   }, [selectedOrganization, organizations, roles, hasPermission]);
 
    const handleSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
+
+      // Validate assignments
+      if (hasPermission('users.assign_role') && assignments.length === 0) {
+         toast.error('Validation Error', 'At least one organization assignment is required');
+         return;
+      }
 
       try {
          setLoading(true);
@@ -147,6 +98,10 @@ export default function UserModal({
             state?: string;
             country?: string;
             verified: boolean;
+            organizations?: Array<{
+               organizationId: string;
+               roleName: string;
+            }>;
             organizationId?: string;
             role?: string;
          } = {
@@ -160,20 +115,36 @@ export default function UserModal({
             verified: formData.verified,
          };
 
-         // Add role assignment data if selected
-         if (selectedOrganization && selectedRole) {
-            userData.organizationId = selectedOrganization;
-            userData.role = selectedRole;
+         // Add assignments data
+         if (assignments.length > 0) {
+            userData.organizations = assignments.map(assignment => ({
+               organizationId: typeof assignment.organization === 'string' 
+                  ? assignment.organization 
+                  : assignment.organization._id,
+               roleName: typeof assignment.role === 'string' 
+                  ? assignment.role 
+                  : (assignment.role.name || '')
+            }));
+            
+            // For backward compatibility with single assignment
+            const firstAssignment = assignments[0];
+            userData.organizationId = typeof firstAssignment.organization === 'string' 
+               ? firstAssignment.organization 
+               : firstAssignment.organization._id;
+            userData.role = typeof firstAssignment.role === 'string' 
+               ? firstAssignment.role 
+               : firstAssignment.role.name;
          }
 
          let response;
          if (user) {
-            // Update existing user - split into user info update and role assignment
+            // Update existing user - handle multiple assignments
             
-            // First, update basic user information (exclude role assignment fields)
+            // First, update basic user information
             const basicUserData = { ...userData };
             delete basicUserData.organizationId;
             delete basicUserData.role;
+            delete basicUserData.organizations;
             
             response = await fetch(
                `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/users/${user._id}`,
@@ -192,37 +163,76 @@ export default function UserModal({
                throw new Error('Failed to update user information');
             }
 
-            // If role/organization is being updated, make separate call to role assignment endpoint
-            if (selectedOrganization && selectedRole) {
-               console.log('Updating user role - Organization ID:', selectedOrganization, 'Role:', selectedRole);
-               const roleResponse = await fetch(
-                  `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/users/${user._id}/roles`,
-                  {
-                     method: 'POST',
-                     headers: {
-                        'Content-Type': 'application/json',
-                        Authorization: `Bearer ${localStorage.getItem('token')}`,
-                     },
-                     credentials: 'include',
-                     body: JSON.stringify({
-                        organizationId: selectedOrganization,
-                        roleName: selectedRole,
-                     }),
-                  }
-               );
+            // Handle role assignments - remove existing ones not in new list, add new ones
+            if (user.organizations && user.organizations.length > 0) {
+               // Remove assignments that are no longer in the list
+               for (const existingAssignment of user.organizations) {
+                  const existingOrgId = typeof existingAssignment.organization === 'string' 
+                     ? existingAssignment.organization 
+                     : existingAssignment.organization._id;
+                  
+                  const stillAssigned = assignments.some(newAssignment => {
+                     const newOrgId = typeof newAssignment.organization === 'string' 
+                        ? newAssignment.organization 
+                        : newAssignment.organization._id;
+                     return newOrgId === existingOrgId;
+                  });
 
-               if (!roleResponse.ok) {
-                  const roleErrorText = await roleResponse.text();
-                  console.error('Role assignment failed:', roleResponse.status, roleErrorText);
-                  throw new Error('Failed to update user role: ' + roleErrorText);
-               } else {
-                  console.log('Role assignment successful');
+                  if (!stillAssigned) {
+                     await fetch(
+                        `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/users/${user._id}/roles/${existingOrgId}`,
+                        {
+                           method: 'DELETE',
+                           headers: {
+                              Authorization: `Bearer ${localStorage.getItem('token')}`,
+                           },
+                           credentials: 'include',
+                        }
+                     );
+                  }
                }
-            } else if (user) {
-               console.log('No role/organization selected for update');
+            }
+
+            // Add new assignments
+            for (const assignment of assignments) {
+               const orgId = typeof assignment.organization === 'string' 
+                  ? assignment.organization 
+                  : assignment.organization._id;
+               const roleName = typeof assignment.role === 'string' 
+                  ? assignment.role 
+                  : assignment.role.name;
+
+               // Check if this assignment already exists
+               const alreadyExists = user.organizations?.some(existing => {
+                  const existingOrgId = typeof existing.organization === 'string' 
+                     ? existing.organization 
+                     : existing.organization._id;
+                  const existingRoleName = typeof existing.role === 'string' 
+                     ? existing.role 
+                     : existing.role.name;
+                  return existingOrgId === orgId && existingRoleName === roleName;
+               });
+
+               if (!alreadyExists) {
+                  await fetch(
+                     `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/users/${user._id}/roles`,
+                     {
+                        method: 'POST',
+                        headers: {
+                           'Content-Type': 'application/json',
+                           Authorization: `Bearer ${localStorage.getItem('token')}`,
+                        },
+                        credentials: 'include',
+                        body: JSON.stringify({
+                           organizationId: orgId,
+                           roleName: roleName,
+                        }),
+                     }
+                  );
+               }
             }
          } else {
-            // Create new user (existing logic works fine)
+            // Create new user with all assignments
             response = await fetch(
                `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/users`,
                {
@@ -306,6 +316,55 @@ export default function UserModal({
       }
    };
 
+   // Helper functions for assignment management
+   const getOrganizationName = useCallback((org: string | Organization) => {
+      if (typeof org === 'object' && org.name) {
+         return `${org.name} (${org.type})`;
+      }
+      const orgObj = organizations.find(o => o._id === org);
+      return orgObj ? `${orgObj.name} (${orgObj.type})` : 'Unknown Organization';
+   }, [organizations]);
+
+   const getRoleName = useCallback((role: string | Role) => {
+      if (typeof role === 'object' && role.displayName) {
+         return role.displayName;
+      }
+      const roleObj = roles.find(r => r.name === role || r._id === role);
+      return roleObj ? roleObj.displayName : 'Unknown Role';
+   }, [roles]);
+
+   const isOrganizationAssigned = useCallback((orgId: string) => {
+      return assignments.some(assignment => {
+         const assignedOrgId = typeof assignment.organization === 'string' 
+            ? assignment.organization 
+            : assignment.organization._id;
+         return assignedOrgId === orgId;
+      });
+   }, [assignments]);
+
+   const handleAddAssignment = () => {
+      if (!newAssignment.organizationId || !newAssignment.roleId) return;
+      if (isOrganizationAssigned(newAssignment.organizationId)) return;
+
+      const organization = organizations.find(org => org._id === newAssignment.organizationId);
+      const role = roles.find(r => r._id === newAssignment.roleId || r.name === newAssignment.roleId);
+      
+      if (!organization || !role) return;
+
+      const newAssignmentObj: OrganizationAssignment = {
+         organization: organization,
+         role: role,
+         assignedAt: new Date().toISOString()
+      };
+
+      setAssignments(prev => [...prev, newAssignmentObj]);
+      setNewAssignment({ organizationId: '', roleId: '' });
+   };
+
+   const handleRemoveAssignment = (index: number) => {
+      setAssignments(prev => prev.filter((_, i) => i !== index));
+   };
+
    // Reset form when user changes or modal opens/closes
    React.useEffect(() => {
       if (isOpen) {
@@ -320,29 +379,13 @@ export default function UserModal({
             verified: user?.verified || false,
          });
          
-         // Set current role and organization if editing an existing user
+         // Set assignments for editing
          if (user && user.organizations && user.organizations.length > 0) {
-            const currentOrg = user.organizations[0]; // Use first organization
-            console.log('Setting initial values for edit - currentOrg:', currentOrg);
-            
-            // Extract organization ID - it could be a string or an object
-            const orgId = typeof currentOrg.organization === 'string' 
-               ? currentOrg.organization 
-               : currentOrg.organization?._id || '';
-            
-            // Extract role name - it could be a string or an object
-            const roleName = typeof currentOrg.role === 'string' 
-               ? currentOrg.role 
-               : currentOrg.role?.name || '';
-            
-            console.log('Extracted orgId:', orgId, 'roleName:', roleName);
-            setSelectedOrganization(orgId);
-            setSelectedRole(roleName);
+            setAssignments([...user.organizations]);
          } else {
-            console.log('No organizations found for user, clearing selections');
-            setSelectedRole('');
-            setSelectedOrganization('');
+            setAssignments([]);
          }
+         setNewAssignment({ organizationId: '', roleId: '' });
       }
    }, [user, isOpen]);
 
@@ -508,51 +551,147 @@ export default function UserModal({
                   </label>
                </div>
 
-               {/* Organization and Role Assignment - Show for users with permission */}
+               {/* Organization Assignments - Show for users with permission */}
                {hasPermission('users.assign_role') && (
                   <div className="space-y-4">
-                     <div>
-                        <label className="block text-sm font-medium text-gray-700">
-                           Organization *
-                        </label>
-                        <select
-                           value={selectedOrganization}
-                           onChange={(e) => setSelectedOrganization(e.target.value)}
-                           required
-                           className="mt-1 block w-full px-4 py-3 text-base rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
-                        >
-                           <option value="">Select organization...</option>
-                           {organizations.map((org) => (
-                              <option key={org._id} value={org._id}>
-                                 {org.name} ({org.type})
-                              </option>
-                           ))}
-                        </select>
+                     <div className="flex items-center justify-between">
+                        <h4 className="text-sm font-medium text-gray-900">
+                           Organization Assignments
+                        </h4>
+                        {assignments.length > 1 && (
+                           <span className="text-xs text-gray-500">
+                              {assignments.length} assignments
+                           </span>
+                        )}
                      </div>
 
-                     <div>
-                        <label className="block text-sm font-medium text-gray-700">
-                           User Role *
-                        </label>
-                     <select
-                        value={selectedRole}
-                        onChange={(e) => setSelectedRole(e.target.value)}
-                        required
-                        className="mt-1 block w-full px-4 py-3 text-base rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
-                     >
-                        <option value="">Select role...</option>
-                        {getFilteredRoles().map((role) => (
-                           <option key={role.name} value={role.name}>
-                              {role.displayName} - {role.description}
-                           </option>
-                        ))}
-                     </select>
-                     {selectedOrganization && (
-                        <p className="mt-1 text-sm text-gray-500">
-                           Role will be assigned in: {organizations.find(org => org._id === selectedOrganization)?.name}
-                        </p>
+                     {/* Existing Assignments */}
+                     {assignments.length > 0 && (
+                        <div className="space-y-2">
+                           {assignments.map((assignment, index) => (
+                              <div
+                                 key={index}
+                                 className="flex items-center justify-between p-3 border border-gray-200 rounded-lg bg-gray-50"
+                              >
+                                 <div className="flex-1">
+                                    <div className="text-sm font-medium text-gray-900">
+                                       {getOrganizationName(assignment.organization)}
+                                    </div>
+                                    <div className="text-sm text-gray-600">
+                                       {getRoleName(assignment.role)}
+                                    </div>
+                                    {assignment.assignedAt && (
+                                       <div className="text-xs text-gray-500 mt-1">
+                                          Assigned: {new Date(assignment.assignedAt).toLocaleDateString()}
+                                       </div>
+                                    )}
+                                 </div>
+                                 <button
+                                    type="button"
+                                    onClick={() => handleRemoveAssignment(index)}
+                                    className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+                                    title="Remove assignment"
+                                 >
+                                    <X className="h-4 w-4" />
+                                 </button>
+                              </div>
+                           ))}
+                        </div>
                      )}
+
+                     {/* Add New Assignment */}
+                     <div className="border border-dashed border-gray-300 rounded-lg p-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+                           <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                 Organization
+                              </label>
+                              <select
+                                 value={newAssignment.organizationId}
+                                 onChange={(e) => setNewAssignment(prev => ({
+                                    ...prev,
+                                    organizationId: e.target.value,
+                                    roleId: '' // Reset role when organization changes
+                                 }))}
+                                 className="block w-full px-3 py-2 text-sm rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                              >
+                                 <option value="">Select organization...</option>
+                                 {organizations
+                                    .filter(org => !isOrganizationAssigned(org._id))
+                                    .map((org) => (
+                                       <option key={org._id} value={org._id}>
+                                          {org.name} ({org.type})
+                                       </option>
+                                    ))}
+                              </select>
+                           </div>
+
+                           <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                 Role
+                              </label>
+                              <select
+                                 value={newAssignment.roleId}
+                                 onChange={(e) => setNewAssignment(prev => ({
+                                    ...prev,
+                                    roleId: e.target.value
+                                 }))}
+                                 disabled={!newAssignment.organizationId}
+                                 className="block w-full px-3 py-2 text-sm rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                              >
+                                 <option value="">Select role...</option>
+                                 {newAssignment.organizationId && roles.filter(role => {
+                                    const selectedOrg = organizations.find(org => org._id === newAssignment.organizationId);
+                                    if (!selectedOrg) return false;
+                                    
+                                    // Apply same filtering logic as getFilteredRoles but for specific org
+                                    if (role.name === 'super_admin' && !hasPermission('*')) return false;
+                                    if (selectedOrg.type === 'church') return role.level === 'church';
+                                    if (selectedOrg.type === 'conference') return role.level ? ['conference', 'union'].includes(role.level) : false;
+                                    if (selectedOrg.type === 'union') return role.level === 'union';
+                                    return false;
+                                 }).map((role) => (
+                                    <option key={role._id || role.name} value={role._id || role.name}>
+                                       {role.displayName}
+                                    </option>
+                                 ))}
+                              </select>
+                           </div>
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                           <div className="text-xs text-gray-500">
+                              {assignments.length === 0 ? 'Add at least one assignment' : 'Add additional assignments'}
+                           </div>
+                           <button
+                              type="button"
+                              onClick={handleAddAssignment}
+                              disabled={
+                                 !newAssignment.organizationId || 
+                                 !newAssignment.roleId ||
+                                 isOrganizationAssigned(newAssignment.organizationId)
+                              }
+                              className="inline-flex items-center px-3 py-1 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed rounded-md transition-colors"
+                           >
+                              <Plus className="h-4 w-4 mr-1" />
+                              Add Assignment
+                           </button>
+                        </div>
+
+                        {newAssignment.organizationId && isOrganizationAssigned(newAssignment.organizationId) && (
+                           <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded-md">
+                              <div className="text-yellow-800 text-xs">
+                                 This organization is already assigned to the user
+                              </div>
+                           </div>
+                        )}
                      </div>
+
+                     {assignments.length === 0 && (
+                        <div className="text-center py-4 text-gray-500 text-sm">
+                           No organization assignments yet. Add one above.
+                        </div>
+                     )}
                   </div>
                )}
             </ModalBody>
@@ -570,7 +709,8 @@ export default function UserModal({
                   disabled={
                      loading ||
                      !formData.name ||
-                     !formData.email
+                     !formData.email ||
+                     (hasPermission('users.assign_role') && assignments.length === 0)
                   }
                   className="px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-[#F5821F] hover:bg-[#e0741c] disabled:bg-gray-300 disabled:cursor-not-allowed"
                >

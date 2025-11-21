@@ -12,6 +12,7 @@ export default function ProfileHeader() {
   const { user, reloadPermissions } = usePermissions();
   const { info, error, success } = useToast();
   const [isUploading, setIsUploading] = useState(false);
+  const [imageLoadError, setImageLoadError] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (!user) return null;
@@ -42,7 +43,8 @@ export default function ProfileHeader() {
       
       if (result.success) {
         success('Profile picture updated successfully');
-        // Refresh user data to get the new avatar URL
+        // Reset image load error state and refresh user data to get the new avatar URL
+        setImageLoadError(false);
         await reloadPermissions();
       }
     } catch (uploadError) {
@@ -69,7 +71,31 @@ export default function ProfileHeader() {
   const hasValidAvatar = () => {
     if (!user.avatar) return false;
     
-    return typeof user.avatar === 'string' && user.avatar.trim() !== "";
+    // Handle both object format from backend and string format for compatibility
+    if (typeof user.avatar === 'object' && user.avatar.url) {
+      return user.avatar.url.trim() !== "";
+    }
+    
+    if (typeof user.avatar === 'string') {
+      return user.avatar.trim() !== "";
+    }
+    
+    return false;
+  };
+
+  const getAvatarUrl = () => {
+    if (!user.avatar) return '';
+    
+    // Handle both object format from backend and string format for compatibility
+    if (typeof user.avatar === 'object' && user.avatar.url) {
+      return user.avatar.url;
+    }
+    
+    if (typeof user.avatar === 'string') {
+      return user.avatar;
+    }
+    
+    return '';
   };
 
   return (
@@ -82,16 +108,26 @@ export default function ProfileHeader() {
               onClick={handleAvatarClick}
               disabled={isUploading}
               className="relative group w-24 h-24 rounded-full flex items-center justify-center overflow-hidden hover:ring-4 hover:ring-blue-500/20 transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
-              style={{ backgroundColor: hasValidAvatar() ? 'transparent' : '#454545' }}
+              style={{ backgroundColor: hasValidAvatar() && !imageLoadError ? 'transparent' : '#454545' }}
               aria-label="Change profile picture"
             >
-              {hasValidAvatar() ? (
+              {hasValidAvatar() && !imageLoadError ? (
                 <Image 
-                  src={user.avatar || ''} 
+                  src={getAvatarUrl()} 
                   alt="Profile" 
                   width={96}
                   height={96}
-                  className="rounded-full object-cover"
+                  className="rounded-full object-cover w-24 h-24"
+                  onError={() => {
+                    setImageLoadError(true);
+                  }}
+                  onLoad={() => {
+                    setImageLoadError(false);
+                  }}
+                  style={{ 
+                    position: 'relative',
+                    zIndex: 10
+                  }}
                 />
               ) : (
                 <span className="text-white text-2xl font-medium">
