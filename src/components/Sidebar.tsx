@@ -6,7 +6,7 @@ import { AuthService } from '../lib/auth';
 import SidebarItem from './SidebarItem';
 import SidebarSectionHeader from './SidebarSectionHeader';
 import { PermissionGate } from './PermissionGate';
-import { usePermissions } from '../contexts/PermissionContext';
+import { useHierarchicalPermissions } from '../contexts/HierarchicalPermissionContext';
 
 interface SidebarProps {
   collapsed?: boolean;
@@ -15,7 +15,7 @@ interface SidebarProps {
 
 export default function Sidebar({ collapsed = false, onClose }: SidebarProps) {
   const router = useRouter();
-  const { teamRole, currentTeam, permissions } = usePermissions();
+  const { teamRole, currentTeam, permissions } = useHierarchicalPermissions();
   
   // Check if user has any meaningful settings they can manage
   const hasSettingsAccess = permissions.includes('*') || permissions.includes('manage_service_types');
@@ -33,7 +33,7 @@ export default function Sidebar({ collapsed = false, onClose }: SidebarProps) {
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#B95B09]">
+    <div className="flex flex-col h-full bg-gradient-to-b from-[#F25F29] to-[#F23E16]">
       {/* Logo Section */}
       <div className="flex items-center px-4 py-6 border-b border-orange-700/30">
         <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center mr-3 flex-shrink-0">
@@ -121,7 +121,7 @@ export default function Sidebar({ collapsed = false, onClose }: SidebarProps) {
             href="/teams"
             icon={
               <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 515.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 919.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
               </svg>
             }
             label={collapsed ? "" : "Teams"}
@@ -202,7 +202,7 @@ export default function Sidebar({ collapsed = false, onClose }: SidebarProps) {
             href="/volunteer-opportunities"
             icon={
               <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 515.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 919.288 0M15 7a3 3 0 11-6 0 3 3 0 616 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
               </svg>
             }
             label={collapsed ? "" : "Volunteer Opportunities"}

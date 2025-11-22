@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { usePermissions } from '../contexts/PermissionContext';
+import { usePermissions } from '../contexts/HierarchicalPermissionContext';
 import { useToast } from '../contexts/ToastContext';
 import Button from './Button';
 import Card from './Card';

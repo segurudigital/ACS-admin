@@ -1,4 +1,4 @@
-import { usePermissions } from '@/contexts/PermissionContext';
+import { usePermissions } from '@/contexts/HierarchicalPermissionContext';
 
 export const useSuperAdmin = () => {
   const { hasPermission, role } = usePermissions();

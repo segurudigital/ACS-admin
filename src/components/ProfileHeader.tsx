@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react';
 import Image from 'next/image';
-import { usePermissions } from '../contexts/PermissionContext';
+import { usePermissions } from '../contexts/HierarchicalPermissionContext';
 import { useToast } from '../contexts/ToastContext';
 import { ProfileManagement } from '../lib/profileManagement';
 import Button from './Button';

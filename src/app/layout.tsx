@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Poppins } from "next/font/google";
-import { PermissionProvider } from "@/contexts/PermissionContext";
+import { HierarchicalPermissionProvider } from "@/contexts/HierarchicalPermissionContext";
 import { ToastProvider } from "@/contexts/ToastContext";
 import "./globals.css";
 
@@ -34,11 +34,11 @@ export default function RootLayout({
         className={`${poppins.variable} font-sans antialiased`}
         suppressHydrationWarning={true}
       >
-        <PermissionProvider>
+        <HierarchicalPermissionProvider>
           <ToastProvider>
             {children}
           </ToastProvider>
-        </PermissionProvider>
+        </HierarchicalPermissionProvider>
       </body>
     </html>
   );

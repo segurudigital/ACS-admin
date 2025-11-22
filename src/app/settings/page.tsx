@@ -2,9 +2,10 @@
 
 import { useState } from 'react';
 import AdminLayout from '../../components/AdminLayout';
-import { useAuth } from '../../contexts/PermissionContext';
+import { useAuth } from '../../contexts/HierarchicalPermissionContext';
 import GlobalConfigSettings from '../../components/settings/GlobalConfigSettings';
 import ApplicationSettings from '../../components/settings/ApplicationSettings';
+import SuperAdminSettings from '../../components/settings/SuperAdminSettings';
 
 export default function Settings() {
   const { hasPermission } = useAuth();
@@ -16,7 +17,7 @@ export default function Settings() {
   
   // Determine the default active section based on permissions
   const getDefaultSection = () => {
-    if (isSuperAdmin) return 'role-limits';
+    if (isSuperAdmin) return 'super-admin-management';
     if (canManageServiceTypes) return 'service-types';
     return 'role-limits'; // fallback
   };
@@ -50,8 +51,24 @@ export default function Settings() {
   }
 
   const settingsNavigation = [
-    // Global Configuration - Super Admin Only
+    // Super Admin Section - Super Admin Only
     ...(isSuperAdmin ? [
+      {
+        id: 'super-admin',
+        title: 'Super Administrator',
+        items: [
+          {
+            id: 'super-admin-management',
+            title: 'Super Admin Management',
+            description: 'Grant and revoke super admin privileges',
+            icon: (
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+              </svg>
+            )
+          }
+        ]
+      },
       {
         id: 'global-config',
         title: 'Global Configuration',
@@ -101,6 +118,8 @@ export default function Settings() {
 
   const renderContent = () => {
     switch (activeSection) {
+      case 'super-admin-management':
+        return <SuperAdminSettings />;
       case 'role-limits':
         return <GlobalConfigSettings section="role-limits" />;
       case 'system-config':
@@ -141,7 +160,7 @@ export default function Settings() {
                           }`}
                         >
                           <div className={`mr-3 flex-shrink-0 ${
-                            activeSection === item.id ? 'text-blue-700' : 'text-gray-400'
+                            activeSection === item.id ? 'text-[#B95B09]' : 'text-[#B95B09]'
                           }`}>
                             {item.icon}
                           </div>

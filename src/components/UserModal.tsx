@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Modal, { ModalBody, ModalFooter } from './Modal';
 import { useToast } from '@/contexts/ToastContext';
-import { usePermissions } from '@/contexts/PermissionContext';
+import { usePermissions } from '@/contexts/HierarchicalPermissionContext';
 import { User, Role, Organization, OrganizationAssignment } from '@/types/rbac';
 import { rbacService } from '@/lib/rbac';
 import { X, Plus } from 'lucide-react';

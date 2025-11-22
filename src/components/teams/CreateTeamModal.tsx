@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from '@/components/ui/use-toast';
 import { teamTypeService, TeamType } from '@/lib/teamTypes';
-import { usePermissions } from '@/contexts/PermissionContext';
+import { usePermissions } from '@/contexts/HierarchicalPermissionContext';
 
 interface CreateTeamModalProps {
   open: boolean;

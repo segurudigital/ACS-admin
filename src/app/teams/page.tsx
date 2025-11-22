@@ -10,7 +10,7 @@ import { Users, UserPlus, Settings, Trash } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { teamService, Team } from '@/lib/teams';
 import { teamTypeService, TeamType } from '@/lib/teamTypes';
-import { usePermissions } from '@/contexts/PermissionContext';
+import { usePermissions } from '@/contexts/HierarchicalPermissionContext';
 import { CreateTeamModal } from '@/components/teams/CreateTeamModal';
 import { TeamMembersModal } from '@/components/teams/TeamMembersModal';
 import { useSuperAdmin } from '@/hooks/useSuperAdmin';
@@ -20,7 +20,7 @@ export default function TeamsPage() {
   const [loading, setLoading] = useState(false);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [membersModalOpen, setMembersModalOpen] = useState(false);
-  const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
+  const [selectedTeam] = useState<Team | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [teamTypes, setTeamTypes] = useState<TeamType[]>([]);
   const [selectedOrgFilter, setSelectedOrgFilter] = useState<string>('all');
@@ -67,7 +67,7 @@ export default function TeamsPage() {
     try {
       const response = await teamTypeService.getOrganizationTeamTypes(currentOrganization._id);
       setTeamTypes(response.data);
-    } catch (error: unknown) {
+    } catch {
       // Don't show toast for team types error as it's not critical
     }
   }, [currentOrganization?._id]);
@@ -138,10 +138,6 @@ export default function TeamsPage() {
     }
   };
 
-  const handleViewMembers = (team: Team) => {
-    setSelectedTeam(team);
-    setMembersModalOpen(true);
-  };
 
   const filteredTeams = teams.filter(team =>
     team.name.toLowerCase().includes(searchQuery.toLowerCase()) ||

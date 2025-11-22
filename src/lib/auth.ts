@@ -120,6 +120,68 @@ export class AuthService {
     }
   }
 
+  // NEW: Verify authentication with hierarchical data
+  static async verifyAuthHierarchical(token: string): Promise<AuthResponse & {
+    data?: AuthResponse['data'] & {
+      hierarchyLevel: number;
+      hierarchyPath: string;
+      managedLevels: number[];
+    }
+  }> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/auth/is-auth-hierarchical`, {
+        method: 'GET',
+        headers: this.getAuthHeaders(token),
+        credentials: 'include',
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.err || 'Hierarchical authentication verification failed');
+      }
+
+      return {
+        success: true,
+        message: 'Hierarchical authentication verified',
+        data: {
+          user: data.data.user,
+          permissions: data.data.permissions,
+          role: data.data.role,
+          hierarchyLevel: data.data.hierarchyLevel,
+          hierarchyPath: data.data.hierarchyPath,
+          managedLevels: data.data.managedLevels,
+          token,
+        },
+      };
+    } catch (error) {
+      console.error('Hierarchical auth verification error:', error);
+      
+      // Fallback to regular auth verification if hierarchical endpoint doesn't exist
+      console.log('Falling back to regular auth verification...');
+      const fallbackResult = await this.verifyAuth(token);
+      
+      if (fallbackResult.success) {
+        // Add default hierarchical data
+        return {
+          ...fallbackResult,
+          data: {
+            ...fallbackResult.data!,
+            hierarchyLevel: 4, // Default to lowest level
+            hierarchyPath: '',
+            managedLevels: []
+          }
+        };
+      }
+      
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Hierarchical authentication verification failed',
+        err: error instanceof Error ? error.message : 'Hierarchical authentication verification failed',
+      };
+    }
+  }
+
   static setToken(token: string): void {
     if (typeof window !== 'undefined') {
       localStorage.setItem('token', token);

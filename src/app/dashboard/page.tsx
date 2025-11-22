@@ -9,7 +9,7 @@ import { Users, Shield, Building2, Activity, ArrowRight } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { QuotaStatus } from '@/components/QuotaStatus';
 import { PermissionGate } from '@/components/PermissionGate';
-import { usePermissions, useCurrentTeam, useUserTeams } from '@/contexts/PermissionContext';
+import { usePermissions, useCurrentTeam, useUserTeams } from '@/contexts/HierarchicalPermissionContext';
 
 export default function Dashboard() {
   const router = useRouter();

@@ -14,7 +14,7 @@ export const Button = ({
   ...props 
 }: ButtonProps) => {
   const variantStyles = {
-    default: 'bg-[#B95B09] text-white hover:bg-[#A85408]',
+    default: 'bg-[#F26B1D] text-white hover:bg-[#E55A1A]',
     destructive: 'bg-red-500 text-white hover:bg-red-600',
     outline: 'border border-gray-200 bg-transparent text-gray-900 hover:bg-gray-100',
     secondary: 'bg-gray-100 text-gray-900 hover:bg-gray-200',

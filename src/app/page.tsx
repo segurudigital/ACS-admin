@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Button from "../components/Button";
 import { AuthService } from "../lib/auth";
-import { usePermissions } from "@/contexts/PermissionContext";
+import { usePermissions } from "@/contexts/HierarchicalPermissionContext";
 
 export default function LoginPage() {
   const router = useRouter();

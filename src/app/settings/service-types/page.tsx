@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { usePermissions } from '../../../contexts/PermissionContext';
+import { usePermissions } from '../../../contexts/HierarchicalPermissionContext';
 import { serviceTypeAPI, ServiceType, ServiceTypeFormData } from '../../../lib/serviceTypes';
 import ServiceTypeModal from '../../../components/ServiceTypeModal';
 import ConfirmationModal from '../../../components/ConfirmationModal';

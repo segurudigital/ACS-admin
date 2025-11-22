@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { AlertCircle, Users } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { teamService } from '@/lib/teams';
-import { usePermissions } from '@/contexts/PermissionContext';
+import { usePermissions } from '@/contexts/HierarchicalPermissionContext';
 
 interface QuotaStatusData {
   role: {

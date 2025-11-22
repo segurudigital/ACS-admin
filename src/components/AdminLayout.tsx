@@ -4,7 +4,7 @@ import { useEffect, useState, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { AuthService } from '../lib/auth';
-import { usePermissions } from '../contexts/PermissionContext';
+import { usePermissions } from '../contexts/HierarchicalPermissionContext';
 import Sidebar from './Sidebar';
 
 

@@ -12,6 +12,7 @@ export default {
         sans: ["var(--font-poppins)", "system-ui", "sans-serif"],
       },
       colors: {
+        primary: "#F26B1D",
         navy: {
           deep: "#003366",
           medium: "#006699", 
@@ -19,7 +20,7 @@ export default {
         },
         accent: {
           yellow: "#FFCC00",
-          orange: "#F5821F",
+          orange: "#F26B1D",
         },
         neutral: {
           white: "#FFFFFF",

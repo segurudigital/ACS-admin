@@ -276,6 +276,27 @@ class RBACService {
     }
   }
 
+  async resetSystemRole(id: string): Promise<Role> {
+    try {
+      const response = await fetch(`${this.apiBaseUrl}/api/roles/${id}/reset`, {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to reset system role');
+      }
+
+      const result = await response.json();
+      return result.data || result;
+    } catch (error) {
+      console.error('Error resetting system role:', error);
+      throw error;
+    }
+  }
+
   // User Role Management
   async getUserRoles(userId: string): Promise<OrganizationAssignment[]> {
     try {

@@ -31,7 +31,7 @@ import {
 import { toast } from '@/components/ui/use-toast';
 import { teamService, Team, TeamStatistics, TeamMember } from '@/lib/teams';
 import { PermissionGate } from '@/components/PermissionGate';
-import { usePermissions } from '@/contexts/PermissionContext';
+import { usePermissions } from '@/contexts/HierarchicalPermissionContext';
 import { AddTeamMemberModal } from '@/components/teams/AddTeamMemberModal';
 
 export default function TeamDetailPage() {

@@ -22,9 +22,9 @@ export default function Button({
   const baseStyles = 'inline-flex items-center justify-center font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed';
   
   const variantStyles = {
-    primary: 'bg-[#B95B09] text-white hover:bg-[#A85408] focus:ring-[#B95B09]',
+    primary: 'bg-[#F26B1D] text-white hover:bg-[#E55A1A] focus:ring-[#F26B1D]',
     secondary: 'bg-gray-600 text-white hover:bg-gray-700 focus:ring-gray-500',
-    outline: 'border border-[#B95B09] text-[#B95B09] hover:bg-[#B95B09] hover:text-white focus:ring-[#B95B09]',
+    outline: 'border border-[#F26B1D] text-[#F26B1D] hover:bg-[#F26B1D] hover:text-white focus:ring-[#F26B1D]',
     ghost: 'text-gray-700 hover:bg-gray-100 focus:ring-gray-500',
     danger: 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500'
   };

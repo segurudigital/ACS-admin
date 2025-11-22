@@ -9,7 +9,7 @@ import Button from '@/components/Button';
 import { Settings, Trash, Plus, Tag } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { teamTypeService, TeamType, CreateTeamTypeData } from '@/lib/teamTypes';
-import { usePermissions } from '@/contexts/PermissionContext';
+import { usePermissions } from '@/contexts/HierarchicalPermissionContext';
 import { CreateTeamTypeModal } from '@/components/teamTypes/CreateTeamTypeModal';
 
 export default function TeamTypesPage() {

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { usePermissions } from '@/contexts/PermissionContext';
+import { usePermissions } from '@/contexts/HierarchicalPermissionContext';
 // Simple organization interface for this component
 interface SimpleOrganization {
   _id: string;

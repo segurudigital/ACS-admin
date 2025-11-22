@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import AdminLayout from '../../../components/AdminLayout';
-import { useAuth } from '../../../contexts/PermissionContext';
+import { useAuth } from '../../../contexts/HierarchicalPermissionContext';
 import { useRouter } from 'next/navigation';
 
 interface RoleLimit {

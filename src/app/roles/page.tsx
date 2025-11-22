@@ -10,6 +10,7 @@ import ConfirmationModal from '@/components/ConfirmationModal';
 import { useToast } from '@/contexts/ToastContext';
 import { rbacService } from '@/lib/rbac';
 import { Role } from '@/types/rbac';
+import { useRouter } from 'next/navigation';
 import { 
   ShieldCheckIcon, 
   PencilIcon,
@@ -29,6 +30,7 @@ export default function Roles() {
   const [roleToDelete, setRoleToDelete] = useState<Role | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const toast = useToast();
+  const router = useRouter();
 
   const fetchRoles = useCallback(async () => {
     try {
@@ -116,7 +118,12 @@ export default function Roles() {
           </div>
           <div className="ml-4">
             <div className="text-sm font-medium text-gray-900 flex items-center">
-              {role.displayName || role.name || 'Unnamed Role'}
+              <button
+                onClick={() => router.push(`/roles/${role._id}/permissions`)}
+                className="text-blue-600 hover:text-blue-800 hover:underline focus:outline-none focus:underline"
+              >
+                {role.displayName || role.name || 'Unnamed Role'}
+              </button>
               {role.isSystem && (
                 <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800">
                   <LockClosedIcon className="w-3 h-3 mr-1" />
@@ -221,6 +228,7 @@ export default function Roles() {
               icon={<EyeIcon className="h-5 w-5" />}
             />
           </PermissionGate>
+          
           
           <PermissionGate permission="roles.update">
             <IconButton

@@ -1,5 +1,55 @@
 // RBAC Type Definitions
 
+// Base interface for all organizational levels
+interface BaseOrganization {
+  _id: string;
+  name: string;
+  metadata: {
+    address?: string;
+    phone?: string;
+    territory?: string[];
+    email?: string;
+  };
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  childCount?: number;
+}
+
+// Union: Top-level administrative division (Level 0)
+export interface Union extends BaseOrganization {
+  type: 'union';
+  parentOrganization?: never; // Unions have no parent
+}
+
+// Conference: Regional division under union (Level 1)
+export interface Conference extends BaseOrganization {
+  type: 'conference';
+  unionId: string; // Reference to parent union
+  parentOrganization?: {
+    _id: string;
+    name: string;
+    type: 'union';
+  };
+}
+
+// Church: Local church organization (Level 2)
+export interface Church extends BaseOrganization {
+  type: 'church';
+  conferenceId: string; // Reference to parent conference
+  unionId: string; // Reference to root union (for faster queries)
+  parentOrganization?: {
+    _id: string;
+    name: string;
+    type: 'conference';
+  };
+}
+
+// Union type for all organizational entities
+export type OrganizationalEntity = Union | Conference | Church;
+
+// Legacy Organization interface - deprecated, use specific types above
+/** @deprecated Use Union, Conference, or Church types instead */
 export interface Organization {
   _id: string;
   name: string;
@@ -34,6 +84,36 @@ export interface Role {
   updatedAt?: string;
 }
 
+// New specific assignment types for the hierarchical system
+export interface UnionAssignment {
+  union: Union | string;
+  role: Role | string;
+  assignedAt: string;
+  assignedBy?: User | string;
+  expiresAt?: string;
+}
+
+export interface ConferenceAssignment {
+  conference: Conference | string;
+  role: Role | string;
+  assignedAt: string;
+  assignedBy?: User | string;
+  expiresAt?: string;
+}
+
+export interface ChurchAssignment {
+  church: Church | string;
+  role: Role | string;
+  assignedAt: string;
+  assignedBy?: User | string;
+  expiresAt?: string;
+}
+
+// Union type for all assignment types
+export type HierarchicalAssignment = UnionAssignment | ConferenceAssignment | ChurchAssignment;
+
+// Legacy assignment type - deprecated
+/** @deprecated Use UnionAssignment, ConferenceAssignment, or ChurchAssignment instead */
 export interface OrganizationAssignment {
   organization: Organization | string;
   role: Role | string;
@@ -54,8 +134,23 @@ export interface User {
   country?: string;
   verified: boolean;
   avatar?: string;
+  
+  // New hierarchical assignments
+  unionAssignments?: UnionAssignment[];
+  conferenceAssignments?: ConferenceAssignment[];
+  churchAssignments?: ChurchAssignment[];
+  
+  // Primary organizational assignment
+  primaryUnion?: Union | string;
+  primaryConference?: Conference | string;
+  primaryChurch?: Church | string;
+  
+  // Legacy fields - deprecated
+  /** @deprecated Use unionAssignments, conferenceAssignments, churchAssignments instead */
   organizations: OrganizationAssignment[];
+  /** @deprecated Use primaryUnion, primaryConference, or primaryChurch instead */
   primaryOrganization?: Organization | string;
+  
   createdAt: string;
   updatedAt: string;
 }
@@ -68,6 +163,14 @@ export interface UserPermissions {
     level: string;
   };
   permissions: string[];
+  
+  // New hierarchical organization references
+  union?: string;
+  conference?: string;
+  church?: string;
+  
+  // Legacy field - deprecated
+  /** @deprecated Use union, conference, or church instead */
   organization: string;
 }
 
@@ -85,14 +188,23 @@ export type SystemRoleName = typeof SYSTEM_ROLES[keyof typeof SYSTEM_ROLES];
 
 // Permission resources
 export const PERMISSION_RESOURCES = {
-  ORGANIZATIONS: 'organizations',
+  // New hierarchical resources
+  UNIONS: 'unions',
+  CONFERENCES: 'conferences',
+  CHURCHES: 'churches',
+  
+  // General resources
   USERS: 'users',
   ROLES: 'roles',
   REPORTS: 'reports',
   SERVICES: 'services',
   SETTINGS: 'settings',
   AUDIT: 'audit',
-  NOTIFICATIONS: 'notifications'
+  NOTIFICATIONS: 'notifications',
+  
+  // Legacy resource - deprecated
+  /** @deprecated Use UNIONS, CONFERENCES, or CHURCHES instead */
+  ORGANIZATIONS: 'organizations'
 } as const;
 
 export type PermissionResource = typeof PERMISSION_RESOURCES[keyof typeof PERMISSION_RESOURCES];

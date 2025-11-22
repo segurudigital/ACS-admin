@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { usePermissions } from '../contexts/PermissionContext';
+import { usePermissions } from '../contexts/HierarchicalPermissionContext';
 
 interface TeamPermissionGateProps {
   permission?: string;

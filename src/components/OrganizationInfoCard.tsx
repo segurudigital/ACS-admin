@@ -1,6 +1,6 @@
 'use client';
 
-import { usePermissions } from '../contexts/PermissionContext';
+import { usePermissions } from '../contexts/HierarchicalPermissionContext';
 import Card from './Card';
 
 export default function OrganizationInfoCard() {
