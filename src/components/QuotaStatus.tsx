@@ -29,27 +29,29 @@ interface QuotaStatusData {
 export function QuotaStatus() {
   const [quotaData, setQuotaData] = useState<QuotaStatusData[]>([]);
   const [loading, setLoading] = useState(true);
-  const { currentOrganization, hasPermission } = usePermissions();
+  const { currentUnion, currentConference, currentChurch, hasPermission } = usePermissions();
 
   const loadQuotaStatus = useCallback(async () => {
-    if (!currentOrganization?._id) return;
+    const currentEntityId = currentChurch || currentConference || currentUnion;
+    if (!currentEntityId) return;
     
     try {
       setLoading(true);
-      const response = await teamService.getQuotaStatus(currentOrganization._id);
+      const response = await teamService.getQuotaStatus(currentEntityId);
       setQuotaData(response.data.quotaStatuses || []);
     } catch (error) {
       console.error('Failed to load quota status:', error);
     } finally {
       setLoading(false);
     }
-  }, [currentOrganization?._id]);
+  }, [currentChurch, currentConference, currentUnion]);
 
   useEffect(() => {
-    if (currentOrganization?._id && hasPermission('users.read')) {
+    const currentEntityId = currentChurch || currentConference || currentUnion;
+    if (currentEntityId && hasPermission('users.read')) {
       loadQuotaStatus();
     }
-  }, [currentOrganization, hasPermission, loadQuotaStatus]);
+  }, [currentChurch, currentConference, currentUnion, hasPermission, loadQuotaStatus]);
 
   if (!hasPermission('users.read') || loading || quotaData.length === 0) {
     return null;
@@ -85,7 +87,7 @@ export function QuotaStatus() {
             Role Quotas
           </CardTitle>
           <CardDescription>
-            User limits per role in {currentOrganization?.name}
+            User limits per role in your entity
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

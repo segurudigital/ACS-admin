@@ -13,7 +13,7 @@ import { usePermissions, useCurrentTeam, useUserTeams } from '@/contexts/Hierarc
 
 export default function Dashboard() {
   const router = useRouter();
-  const { user, role, currentOrganization } = usePermissions();
+  const { user, currentUnion, currentConference, currentChurch } = usePermissions();
   const { currentTeam, teamRole } = useCurrentTeam();
   const teams = useUserTeams();
 
@@ -28,9 +28,9 @@ export default function Dashboard() {
           <CardHeader>
             <CardTitle>Welcome back, {user?.name}!</CardTitle>
             <CardDescription>
-              {currentOrganization?.name} • {role && (
+              {currentChurch ? 'Church' : currentConference ? 'Conference' : currentUnion ? 'Union' : 'Entity'} • {teamRole && (
                 <Badge variant="outline" className="ml-2">
-                  {role.replace(/_/g, ' ').toUpperCase()}
+                  {teamRole.replace(/_/g, ' ').toUpperCase()}
                 </Badge>
               )}
             </CardDescription>

@@ -4,7 +4,7 @@ import AdminLayout from '../../components/AdminLayout';
 import ProfileHeader from '../../components/ProfileHeader';
 import PersonalInfoCard from '../../components/PersonalInfoCard';
 import ContactInfoCard from '../../components/ContactInfoCard';
-import OrganizationInfoCard from '../../components/OrganizationInfoCard';
+import HierarchicalInfoCard from '../../components/HierarchicalInfoCard';
 import SecurityCard from '../../components/SecurityCard';
 
 export default function Profile() {
@@ -21,7 +21,7 @@ export default function Profile() {
         <div className="space-y-6">
           <PersonalInfoCard />
           <ContactInfoCard />
-          <OrganizationInfoCard />
+          <HierarchicalInfoCard />
           <SecurityCard />
         </div>
 

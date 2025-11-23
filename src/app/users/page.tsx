@@ -64,10 +64,6 @@ export default function Users() {
             country?: string;
             createdAt?: string;
             updatedAt?: string;
-            organizations: Array<{
-               organization: string;
-               role: string;
-            }>;
          }
 
          // Map the simplified API response to the full User interface
@@ -78,10 +74,6 @@ export default function Users() {
                  verified: user.verified ?? false, // Use actual value or default to false
                  createdAt: user.createdAt || new Date().toISOString(), // Default value for missing field
                  updatedAt: user.updatedAt || new Date().toISOString(), // Default value for missing field
-                 organizations: (user.organizations || []).map((org) => ({
-                    ...org,
-                    assignedAt: new Date().toISOString(), // Add missing assignedAt field
-                 })),
               }))
             : [];
 
@@ -291,26 +283,36 @@ export default function Users() {
       {
          key: 'roles',
          header: 'Roles',
-         accessor: (user) => (
-            <div className="flex flex-wrap gap-1">
-               {user.organizations?.length > 0 ? (
-                  user.organizations.map((org, index) => (
-                     <span
-                        key={`${org.organization || 'unknown'}-${
-                           org.role || 'unknown'
-                        }-${index}`}
-                        className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800"
-                     >
-                        {typeof org.role === 'object'
-                           ? org.role.displayName
-                           : 'Role'}
-                     </span>
-                  ))
-               ) : (
-                  <span className="text-sm text-gray-500">No roles</span>
-               )}
-            </div>
-         ),
+         accessor: (user) => {
+            const allAssignments = [
+               ...(user.unionAssignments || []),
+               ...(user.conferenceAssignments || []),
+               ...(user.churchAssignments || [])
+            ];
+            
+            return (
+               <div className="flex flex-wrap gap-1">
+                  {allAssignments.length > 0 ? (
+                     allAssignments.map((assignment, index) => {
+                        const roleDisplay = typeof assignment.role === 'object' 
+                           ? assignment.role.displayName || assignment.role.name
+                           : 'Unknown Role';
+                        
+                        return (
+                           <span
+                              key={index}
+                              className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800"
+                           >
+                              {roleDisplay}
+                           </span>
+                        );
+                     })
+                  ) : (
+                     <span className="text-sm text-gray-500">No roles</span>
+                  )}
+               </div>
+            );
+         },
          className: 'px-6 py-4',
       },
       {

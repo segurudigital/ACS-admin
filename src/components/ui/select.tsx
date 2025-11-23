@@ -26,6 +26,7 @@ interface SelectItemProps {
   children: React.ReactNode;
   value: string;
   className?: string;
+  disabled?: boolean;
 }
 
 const SelectContext = React.createContext<{
@@ -110,7 +111,7 @@ export const SelectContent = ({ children, className = '' }: SelectContentProps) 
   );
 };
 
-export const SelectItem = ({ children, value, className = '' }: SelectItemProps) => {
+export const SelectItem = ({ children, value, className = '', disabled = false }: SelectItemProps) => {
   const { onValueChange, value: selectedValue } = React.useContext(SelectContext);
   
   const isSelected = value === selectedValue;
@@ -118,8 +119,9 @@ export const SelectItem = ({ children, value, className = '' }: SelectItemProps)
   return (
     <button
       type="button"
-      className={`w-full px-3 py-2 text-left text-sm hover:bg-gray-100 focus:bg-gray-100 focus:outline-none ${isSelected ? 'bg-gray-100 font-medium' : ''} ${className}`}
-      onClick={() => onValueChange?.(value)}
+      disabled={disabled}
+      className={`w-full px-3 py-2 text-left text-sm ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100 focus:bg-gray-100'} focus:outline-none ${isSelected ? 'bg-gray-100 font-medium' : ''} ${className}`}
+      onClick={() => !disabled && onValueChange?.(value)}
     >
       {children}
     </button>

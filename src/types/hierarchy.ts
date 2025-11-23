@@ -1,33 +1,45 @@
 // Hierarchical Service Types
 
-// Proper Union interface that matches the backend model
+// Proper Union interface that matches the backend model and rbac types
 export interface Union {
   _id: string;
   name: string;
+  type: 'union';
   hierarchyPath: string;
   hierarchyLevel: number;
-  territory: {
+  territory?: {
     description?: string;
   };
-  headquarters: {
+  headquarters?: {
     address?: string;
     city?: string;
     state?: string;
     country?: string;
     postalCode?: string;
   };
-  contact: {
+  contact?: {
     email?: string;
     phone?: string;
     website?: string;
+  };
+  primaryImage?: {
+    url: string;
+    key: string;
+    alt: string;
+    mediaFileId?: string;
+    thumbnailUrl?: string;
   };
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
   metadata: {
+    address?: string;
+    phone?: string;
+    territory?: string[];
+    email?: string;
     membershipCount?: number;
     churchCount?: number;
-    lastUpdated: string;
+    lastUpdated?: string;
   };
   statistics?: {
     conferences: number;
@@ -35,6 +47,7 @@ export interface Union {
     teams: number;
     services: number;
   };
+  childCount?: number;
 }
 
 // Import other types from rbac (keeping Conference and Church)
@@ -199,7 +212,7 @@ export interface HierarchyPath {
 export interface HierarchyTreeNode {
   entity: Union | Conference | Church;
   children: HierarchyTreeNode[];
-  level: 'union' | 'conference' | 'church';
+  level: EntityType;
 }
 
 // Quick Setup Types for new hierarchical system
@@ -261,7 +274,7 @@ export interface BulkOperationResult<T> {
 export interface HierarchyServiceError {
   code: string;
   message: string;
-  details?: any;
+  details?: Record<string, unknown>;
   statusCode: number;
 }
 

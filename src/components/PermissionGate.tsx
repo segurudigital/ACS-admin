@@ -65,19 +65,19 @@ export const RoleGate: React.FC<RoleGateProps> = ({
   fallback = null,
   children
 }) => {
-  const { role: userRole, currentOrganization } = usePermissions();
+  const { role: userRole, type } = usePermissions();
 
   // Handle single role check
   if (role && !roles) {
     const hasRole = userRole === role;
-    const hasCorrectLevel = !level || currentOrganization?.type === level;
+    const hasCorrectLevel = !level || type === level;
     return (hasRole && hasCorrectLevel) ? <>{children}</> : <>{fallback}</>;
   }
 
   // Handle multiple roles check
   if (roles && roles.length > 0) {
     const hasRole = roles.includes(userRole || '');
-    const hasCorrectLevel = !level || currentOrganization?.type === level;
+    const hasCorrectLevel = !level || type === level;
     return (hasRole && hasCorrectLevel) ? <>{children}</> : <>{fallback}</>;
   }
 

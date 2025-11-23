@@ -1,21 +1,21 @@
 // New Hierarchical Organization Utilities
 // Replaces hierarchyLevel-based system with Union/Conference/Church specific utilities
 
-import { Union, Conference, Church, OrganizationalEntity } from '../types/rbac';
+import { Union, Conference, Church, HierarchicalEntity } from '../types/rbac';
 import { EntityType, EntityLevel, ENTITY_LEVEL_MAP } from '../types/hierarchy';
 
 /**
  * Type guards for organizational entities
  */
-export function isUnion(entity: OrganizationalEntity): entity is Union {
+export function isUnion(entity: HierarchicalEntity): entity is Union {
   return entity.type === 'union';
 }
 
-export function isConference(entity: OrganizationalEntity): entity is Conference {
+export function isConference(entity: HierarchicalEntity): entity is Conference {
   return entity.type === 'conference';
 }
 
-export function isChurch(entity: OrganizationalEntity): entity is Church {
+export function isChurch(entity: HierarchicalEntity): entity is Church {
   return entity.type === 'church';
 }
 
@@ -30,7 +30,7 @@ export function getEntityLevel(type: EntityType): EntityLevel {
  * Get entity type from level
  */
 export function getEntityTypeFromLevel(level: EntityLevel): EntityType {
-  const entry = Object.entries(ENTITY_LEVEL_MAP).find(([_, info]) => info.level === level);
+  const entry = Object.entries(ENTITY_LEVEL_MAP).find(([, info]) => info.level === level);
   if (!entry) {
     throw new Error(`Invalid entity level: ${level}`);
   }
@@ -62,7 +62,7 @@ export function isValidParentChild(parentType: EntityType, childType: EntityType
 /**
  * Get hierarchy path for organizational entities
  */
-export function getHierarchyPath(entity: OrganizationalEntity): string[] {
+export function getHierarchyPath(entity: HierarchicalEntity): string[] {
   const path: string[] = [];
   
   if (isChurch(entity)) {
@@ -80,8 +80,8 @@ export function getHierarchyPath(entity: OrganizationalEntity): string[] {
  * Check if entity can manage another entity (based on hierarchy)
  */
 export function canManageEntity(
-  manager: OrganizationalEntity,
-  target: OrganizationalEntity
+  manager: HierarchicalEntity,
+  target: HierarchicalEntity
 ): boolean {
   const managerPath = getHierarchyPath(manager);
   const targetPath = getHierarchyPath(target);
@@ -99,9 +99,9 @@ export function canManageEntity(
 /**
  * Get accessible entities for a user based on their organizational assignments
  */
-export function getAccessibleEntities<T extends OrganizationalEntity>(
+export function getAccessibleEntities<T extends HierarchicalEntity>(
   entities: T[],
-  userEntities: OrganizationalEntity[]
+  userEntities: HierarchicalEntity[]
 ): T[] {
   const accessible: T[] = [];
   
@@ -120,14 +120,14 @@ export function getAccessibleEntities<T extends OrganizationalEntity>(
 /**
  * Build entity tree structure
  */
-export interface EntityTreeNode<T extends OrganizationalEntity = OrganizationalEntity> {
+export interface EntityTreeNode<T extends HierarchicalEntity = HierarchicalEntity> {
   entity: T;
   children: EntityTreeNode[];
   level: EntityLevel;
 }
 
-export function buildEntityTree(entities: OrganizationalEntity[]): EntityTreeNode[] {
-  const entityMap = new Map<string, OrganizationalEntity>();
+export function buildEntityTree(entities: HierarchicalEntity[]): EntityTreeNode[] {
+  const entityMap = new Map<string, HierarchicalEntity>();
   const tree: EntityTreeNode[] = [];
   
   // Create map for quick lookup
@@ -187,10 +187,10 @@ export function buildEntityTree(entities: OrganizationalEntity[]): EntityTreeNod
  * Get entity ancestors (parent chain)
  */
 export function getEntityAncestors(
-  entity: OrganizationalEntity,
-  entityMap: Map<string, OrganizationalEntity>
-): OrganizationalEntity[] {
-  const ancestors: OrganizationalEntity[] = [];
+  entity: HierarchicalEntity,
+  entityMap: Map<string, HierarchicalEntity>
+): HierarchicalEntity[] {
+  const ancestors: HierarchicalEntity[] = [];
   
   if (isChurch(entity)) {
     const conference = entityMap.get(entity.conferenceId);
@@ -215,10 +215,10 @@ export function getEntityAncestors(
  * Get entity descendants (all children)
  */
 export function getEntityDescendants(
-  entity: OrganizationalEntity,
-  allEntities: OrganizationalEntity[]
-): OrganizationalEntity[] {
-  const descendants: OrganizationalEntity[] = [];
+  entity: HierarchicalEntity,
+  allEntities: HierarchicalEntity[]
+): HierarchicalEntity[] {
+  const descendants: HierarchicalEntity[] = [];
   
   if (isUnion(entity)) {
     const conferences = allEntities.filter(e => 
@@ -267,8 +267,8 @@ export interface BreadcrumbItem {
 }
 
 export function getEntityBreadcrumbs(
-  entity: OrganizationalEntity,
-  entityMap: Map<string, OrganizationalEntity>
+  entity: HierarchicalEntity,
+  entityMap: Map<string, HierarchicalEntity>
 ): BreadcrumbItem[] {
   const breadcrumbs: BreadcrumbItem[] = [];
   const ancestors = getEntityAncestors(entity, entityMap);
@@ -297,9 +297,9 @@ export function getEntityBreadcrumbs(
 /**
  * Filter entities by access level
  */
-export function filterEntitiesByAccess<T extends OrganizationalEntity>(
+export function filterEntitiesByAccess<T extends HierarchicalEntity>(
   entities: T[],
-  userEntity: OrganizationalEntity,
+  userEntity: HierarchicalEntity,
   includeDescendants: boolean = true
 ): T[] {
   return entities.filter(entity => {
@@ -324,8 +324,8 @@ export function filterEntitiesByAccess<T extends OrganizationalEntity>(
  * Get entity display name with hierarchy context
  */
 export function getEntityDisplayName(
-  entity: OrganizationalEntity,
-  entityMap: Map<string, OrganizationalEntity>,
+  entity: HierarchicalEntity,
+  entityMap: Map<string, HierarchicalEntity>,
   includeAncestors: boolean = false
 ): string {
   if (!includeAncestors) return entity.name;
@@ -347,7 +347,7 @@ export interface EntityValidationResult {
 export function validateEntityCreation(
   type: EntityType,
   data: { name: string; unionId?: string; conferenceId?: string },
-  entityMap: Map<string, OrganizationalEntity>
+  entityMap: Map<string, HierarchicalEntity>
 ): EntityValidationResult {
   const result: EntityValidationResult = {
     isValid: true,
@@ -391,10 +391,10 @@ export function validateEntityCreation(
 /**
  * Search entities by name with hierarchy context
  */
-export function searchEntities<T extends OrganizationalEntity>(
+export function searchEntities<T extends HierarchicalEntity>(
   entities: T[],
   query: string,
-  entityMap?: Map<string, OrganizationalEntity>
+  entityMap?: Map<string, HierarchicalEntity>
 ): T[] {
   const normalizedQuery = query.toLowerCase().trim();
   if (!normalizedQuery) return entities;

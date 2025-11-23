@@ -23,7 +23,7 @@ export default function RoleModal({
   role,
   viewMode = false
 }: RoleModalProps) {
-  const { hasPermission, user, currentLevel } = useAuth();
+  const { hasPermission, currentLevel } = useAuth();
   const isSuperAdmin = hasPermission('*');
   
   // Get user's hierarchy level for restricting role level options
@@ -57,7 +57,7 @@ export default function RoleModal({
   };
   
   // Force view mode if user cannot edit this role level
-  const effectiveViewMode = viewMode || (role && !canEditRoleLevel(role.level));
+  const effectiveViewMode = viewMode || (role && !canEditRoleLevel(role.level || ''));
   
   const [formData, setFormData] = useState({
     name: role?.name || '',
@@ -86,7 +86,7 @@ export default function RoleModal({
     } finally {
       setPermissionsLoading(false);
     }
-  }, [role?.name, formData.level, toast]);
+  }, [formData.level, toast]);
 
   // Fetch available permissions when modal opens
   useEffect(() => {
@@ -356,7 +356,7 @@ export default function RoleModal({
             <div className={`border rounded-md p-4 ${
               viewMode 
                 ? 'bg-blue-50 border-blue-200' 
-                : (role && !canEditRoleLevel(role.level))
+                : (role && !canEditRoleLevel(role.level || ''))
                   ? 'bg-purple-50 border-purple-200'
                 : (role?.isSystem && isSuperAdmin)
                   ? 'bg-orange-50 border-orange-200'
@@ -368,7 +368,7 @@ export default function RoleModal({
                     <svg className="h-5 w-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
                     </svg>
-                  ) : (role && !canEditRoleLevel(role.level)) ? (
+                  ) : (role && !canEditRoleLevel(role.level || '')) ? (
                     <svg className="h-5 w-5 text-purple-400" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M10 1L5 6v4h10V6l-5-5zM8.5 7.5a1.5 1.5 0 113 0 1.5 1.5 0 01-3 0z" clipRule="evenodd" />
                     </svg>
@@ -386,7 +386,7 @@ export default function RoleModal({
                   <h3 className={`text-sm font-medium ${
                     viewMode 
                       ? 'text-blue-800' 
-                      : (role && !canEditRoleLevel(role.level))
+                      : (role && !canEditRoleLevel(role.level || ''))
                         ? 'text-purple-800'
                       : (role?.isSystem && isSuperAdmin)
                         ? 'text-orange-800'
@@ -394,7 +394,7 @@ export default function RoleModal({
                   }`}>
                     {viewMode 
                       ? 'Read-Only View' 
-                      : (role && !canEditRoleLevel(role.level))
+                      : (role && !canEditRoleLevel(role.level || ''))
                         ? 'Hierarchy Restriction'
                       : (role?.isSystem && isSuperAdmin)
                         ? 'System Role - Super Admin Access'
@@ -404,7 +404,7 @@ export default function RoleModal({
                   <div className={`mt-2 text-sm ${
                     viewMode 
                       ? 'text-blue-700' 
-                      : (role && !canEditRoleLevel(role.level))
+                      : (role && !canEditRoleLevel(role.level || ''))
                         ? 'text-purple-700'
                       : (role?.isSystem && isSuperAdmin)
                         ? 'text-orange-700'
@@ -413,7 +413,7 @@ export default function RoleModal({
                     <p>
                       {viewMode 
                         ? 'You are viewing this role in read-only mode. To make changes, use the edit button.'
-                        : (role && !canEditRoleLevel(role.level))
+                        : (role && !canEditRoleLevel(role.level || ''))
                           ? `You cannot edit this ${role.level}-level role. You can only edit roles at your hierarchy level or below.`
                         : (role?.isSystem && isSuperAdmin)
                           ? 'You can modify this system role, but changes will affect all users with this role. Exercise caution when making modifications.'
@@ -422,7 +422,7 @@ export default function RoleModal({
                     </p>
                     {role?.isSystem && isSuperAdmin && !effectiveViewMode && (
                       <p className="mt-1 font-medium">
-                        Consider using "Reset to Default" if you need to restore original permissions.
+                        Consider using &quot;Reset to Default&quot; if you need to restore original permissions.
                       </p>
                     )}
                   </div>

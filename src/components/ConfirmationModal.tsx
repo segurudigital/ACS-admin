@@ -13,6 +13,7 @@ interface ConfirmationModalProps {
   cancelLabel?: string;
   confirmButtonColor?: 'red' | 'blue' | 'green';
   icon?: ReactNode;
+  children?: ReactNode;
 }
 
 export default function ConfirmationModal({
@@ -24,7 +25,8 @@ export default function ConfirmationModal({
   confirmLabel = 'Confirm',
   cancelLabel = 'Cancel',
   confirmButtonColor = 'red',
-  icon
+  icon,
+  children
 }: ConfirmationModalProps) {
   const colorClasses = {
     red: 'bg-red-600 hover:bg-red-700',
@@ -58,6 +60,7 @@ export default function ConfirmationModal({
         <p className="text-sm text-gray-500 mb-6">
           {message}
         </p>
+        {children}
       </ModalBody>
 
       <ModalFooter>

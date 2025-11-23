@@ -27,7 +27,7 @@ export const HierarchyBreadcrumb: React.FC<HierarchyBreadcrumbProps> = ({
   compact = false,
   onNavigate
 }) => {
-  const { user, currentUnion, currentConference, currentChurch, currentTeam, currentPath } = useHierarchicalPermissions();
+  const { user, currentTeam, currentPath, currentChurch } = useHierarchicalPermissions();
 
   const breadcrumbItems = useMemo((): BreadcrumbItem[] => {
     if (!user || !currentPath) return [];
@@ -56,12 +56,12 @@ export const HierarchyBreadcrumb: React.FC<HierarchyBreadcrumbProps> = ({
       // Determine name and icon based on segment type
       switch (segment.type) {
         case 'conference':
-          name = currentOrganization?.name || segment.id;
+          name = segment.id;
           icon = <Building className="w-4 h-4" />;
           break;
         case 'church':
-          if (index === segments.length - 1 && currentOrganization?.hierarchyLevel === 'church') {
-            name = currentOrganization.name;
+          if (index === segments.length - 1 && currentChurch) {
+            name = segment.id;
           }
           icon = <Church className="w-4 h-4" />;
           break;
@@ -90,7 +90,7 @@ export const HierarchyBreadcrumb: React.FC<HierarchyBreadcrumbProps> = ({
     });
 
     return items;
-  }, [user, currentOrganization, currentTeam, currentPath]);
+  }, [user, currentChurch, currentTeam, currentPath]);
 
   if (!user || breadcrumbItems.length === 0) {
     return null;

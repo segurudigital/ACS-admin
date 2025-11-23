@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { SuperAdminService } from '@/lib/superAdmin';
 import { useToast } from '@/contexts/ToastContext';
 import ConfirmationModal from '@/components/ConfirmationModal';
@@ -11,7 +11,12 @@ interface SuperAdminUser {
   email: string;
   isSuperAdmin: boolean;
   avatar?: string;
-  organizations: any[];
+  organizations: Array<{
+    _id: string;
+    name: string;
+    type: 'union' | 'conference' | 'church';
+    role: string;
+  }>;
   createdAt: string;
   lastLogin?: string;
   isActive: boolean;
@@ -22,7 +27,12 @@ interface EligibleUser {
   name: string;
   email: string;
   avatar?: string;
-  organizations: any[];
+  organizations: Array<{
+    _id: string;
+    name: string;
+    type: 'union' | 'conference' | 'church';
+    role: string;
+  }>;
   verified: boolean;
 }
 
@@ -43,31 +53,39 @@ export default function SuperAdminSettings() {
   const [loading, setLoading] = useState(true);
   const [superAdmins, setSuperAdmins] = useState<SuperAdminUser[]>([]);
   const [eligibleUsers, setEligibleUsers] = useState<EligibleUser[]>([]);
-  const [stats, setStats] = useState<any>(null);
+  const [stats, setStats] = useState<{
+    superAdminCount: number;
+    totalUsers: number;
+    verifiedUsers: number;
+    percentageSuperAdmins: string;
+  } | null>(null);
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
   const [showGrantModal, setShowGrantModal] = useState(false);
   const [showRevokeModal, setShowRevokeModal] = useState(false);
   const [reason, setReason] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState<'current' | 'eligible' | 'logs'>('current');
-  const [auditLogs, setAuditLogs] = useState<any[]>([]);
+  const [auditLogs, setAuditLogs] = useState<Array<{
+    _id: string;
+    action: string;
+    targetResource: string;
+    targetId: string;
+    userId: {
+      _id: string;
+      name: string;
+      email: string;
+    };
+    metadata: Record<string, unknown>;
+    createdAt: string;
+    statusCode: number;
+  }>>([]);
   const [auditPagination, setAuditPagination] = useState({
     page: 1,
     totalPages: 1
   });
   const { success, error } = useToast();
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  useEffect(() => {
-    if (activeTab === 'logs') {
-      fetchAuditLogs();
-    }
-  }, [activeTab, auditPagination.page]);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       const [usersData, statsData] = await Promise.all([
@@ -77,16 +95,16 @@ export default function SuperAdminSettings() {
       
       setSuperAdmins(usersData.superAdmins);
       setEligibleUsers(usersData.eligibleUsers);
-      setStats(statsData);
+      setStats(statsData.stats);
     } catch (err) {
       console.error('Error fetching super admin data:', err);
       error('Failed to load super admin data');
     } finally {
       setLoading(false);
     }
-  };
+  }, [error]);
 
-  const fetchAuditLogs = async () => {
+  const fetchAuditLogs = useCallback(async () => {
     try {
       const data = await SuperAdminService.getAuditLogs(auditPagination.page);
       setAuditLogs(data.logs);
@@ -98,7 +116,17 @@ export default function SuperAdminSettings() {
       console.error('Error fetching audit logs:', err);
       error('Failed to load audit logs');
     }
-  };
+  }, [auditPagination.page, error]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  useEffect(() => {
+    if (activeTab === 'logs') {
+      fetchAuditLogs();
+    }
+  }, [activeTab, auditPagination.page, fetchAuditLogs]);
 
   const handleGrantSuperAdmin = async () => {
     if (!selectedUser) return;
@@ -110,8 +138,8 @@ export default function SuperAdminSettings() {
       setSelectedUser(null);
       setReason('');
       fetchData();
-    } catch (err: any) {
-      error(err.message || 'Failed to grant super admin privileges');
+    } catch (err: unknown) {
+      error(err instanceof Error ? err.message : 'Failed to grant super admin privileges');
     }
   };
 
@@ -125,8 +153,8 @@ export default function SuperAdminSettings() {
       setSelectedUser(null);
       setReason('');
       fetchData();
-    } catch (err: any) {
-      error(err.message || 'Failed to revoke super admin privileges');
+    } catch (err: unknown) {
+      error(err instanceof Error ? err.message : 'Failed to revoke super admin privileges');
     }
   };
 
@@ -165,7 +193,7 @@ export default function SuperAdminSettings() {
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-500">Super Admins</p>
-                <p className="text-2xl font-semibold text-gray-900">{stats.stats.superAdminCount}</p>
+                <p className="text-2xl font-semibold text-gray-900">{stats.superAdminCount}</p>
               </div>
             </div>
           </div>
@@ -179,7 +207,7 @@ export default function SuperAdminSettings() {
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-500">Total Users</p>
-                <p className="text-2xl font-semibold text-gray-900">{stats.stats.totalUsers}</p>
+                <p className="text-2xl font-semibold text-gray-900">{stats.totalUsers}</p>
               </div>
             </div>
           </div>
@@ -193,7 +221,7 @@ export default function SuperAdminSettings() {
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-500">Verified Users</p>
-                <p className="text-2xl font-semibold text-gray-900">{stats.stats.verifiedUsers}</p>
+                <p className="text-2xl font-semibold text-gray-900">{stats.verifiedUsers}</p>
               </div>
             </div>
           </div>
@@ -207,7 +235,7 @@ export default function SuperAdminSettings() {
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-500">Percentage</p>
-                <p className="text-2xl font-semibold text-gray-900">{stats.stats.percentageSuperAdmins}%</p>
+                <p className="text-2xl font-semibold text-gray-900">{stats.percentageSuperAdmins}%</p>
               </div>
             </div>
           </div>
@@ -320,7 +348,7 @@ export default function SuperAdminSettings() {
                           <p className="text-sm text-gray-500">{user.email}</p>
                           {user.organizations.length > 0 && (
                             <p className="text-xs text-gray-400 mt-1">
-                              {user.organizations[0].organization?.name || 'Unknown Organization'}
+                              {user.organizations[0].name || 'Unknown Organization'}
                             </p>
                           )}
                         </div>
@@ -382,7 +410,7 @@ export default function SuperAdminSettings() {
                               {log.userId?.name || 'Unknown'}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {log.metadata?.targetUserEmail || 'Unknown'}
+                              {(log.metadata?.targetUserEmail as string) || 'Unknown'}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                               {formatRelativeTime(new Date(log.createdAt))}
@@ -433,8 +461,8 @@ export default function SuperAdminSettings() {
         onConfirm={handleGrantSuperAdmin}
         title="Grant Super Admin Privileges"
         message="This will grant full system access to the selected user. This action will be logged."
-        confirmText="Grant Access"
-        type="warning"
+        confirmLabel="Grant Access"
+        confirmButtonColor="blue"
       >
         <div className="mt-4">
           <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -461,8 +489,8 @@ export default function SuperAdminSettings() {
         onConfirm={handleRevokeSuperAdmin}
         title="Revoke Super Admin Privileges"
         message="This will remove all super admin privileges from the selected user. This action will be logged."
-        confirmText="Revoke Access"
-        type="danger"
+        confirmLabel="Revoke Access"
+        confirmButtonColor="red"
       >
         <div className="mt-4">
           <label className="block text-sm font-medium text-gray-700 mb-2">

@@ -8,6 +8,7 @@ import Button from '@/components/Button';
 import RoleModal from '@/components/RoleModal';
 import ConfirmationModal from '@/components/ConfirmationModal';
 import { useToast } from '@/contexts/ToastContext';
+import { usePermissions } from '@/contexts/HierarchicalPermissionContext';
 import { rbacService } from '@/lib/rbac';
 import { Role } from '@/types/rbac';
 import { useRouter } from 'next/navigation';
@@ -31,6 +32,37 @@ export default function Roles() {
   const [searchQuery, setSearchQuery] = useState('');
   const toast = useToast();
   const router = useRouter();
+  const { user, hasPermission } = usePermissions();
+  const isSuperAdmin = hasPermission('*');
+
+  // Helper function to get user's hierarchy level based on their highest role
+  const getUserHierarchyLevel = (): number => {
+    if (isSuperAdmin) return 0; // Super admins can see all roles
+    
+    // Get the highest level (lowest number) from user's role assignments
+    let highestLevel = 2; // Default to church level (most restrictive)
+    
+    if (user?.unionAssignments && user.unionAssignments.length > 0) {
+      highestLevel = Math.min(highestLevel, 0); // Union level
+    }
+    if (user?.conferenceAssignments && user.conferenceAssignments.length > 0) {
+      highestLevel = Math.min(highestLevel, 1); // Conference level
+    }
+    if (user?.churchAssignments && user.churchAssignments.length > 0) {
+      highestLevel = Math.min(highestLevel, 2); // Church level
+    }
+    
+    return highestLevel;
+  };
+
+  const getRoleHierarchyLevel = (roleLevel: string): number => {
+    switch (roleLevel) {
+      case 'union': return 0;      // Highest level
+      case 'conference': return 1; // Middle level
+      case 'church': return 2;     // Lowest level
+      default: return 2;           // Default to most restrictive
+    }
+  };
 
   const fetchRoles = useCallback(async () => {
     try {
@@ -84,12 +116,23 @@ export default function Roles() {
     setSelectedRole(null);
   };
 
-  const filteredRoles = roles.filter(role =>
-    (role.displayName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (role.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (role.level || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (role.description || '').toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredRoles = roles.filter(role => {
+    // First check search query
+    const matchesSearch = (role.displayName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (role.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (role.level || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (role.description || '').toLowerCase().includes(searchQuery.toLowerCase());
+    
+    if (!matchesSearch) return false;
+    
+    // Then check hierarchy level - users can only see roles at their level or below
+    const userHierarchyLevel = getUserHierarchyLevel();
+    const roleHierarchyLevel = getRoleHierarchyLevel(role.level || 'church');
+    
+    // Lower hierarchy numbers are higher privilege (0=union, 1=conference, 2=church)
+    // Users can see roles at their level and below (higher hierarchy numbers)
+    return roleHierarchyLevel >= userHierarchyLevel;
+  });
 
   const getLevelColor = (level: string | undefined) => {
     switch (level) {

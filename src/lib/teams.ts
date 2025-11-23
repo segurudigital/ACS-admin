@@ -108,8 +108,8 @@ class TeamService {
       try {
         const error = await response.json();
         errorMessage = error.message || errorMessage;
-      } catch (parseError) {
-        const errorText = await response.text();
+      } catch {
+        await response.text();
       }
       throw new Error(errorMessage);
     }
@@ -145,8 +145,8 @@ class TeamService {
       try {
         const error = await response.json();
         errorMessage = error.message || errorMessage;
-      } catch (parseError) {
-        const errorText = await response.text();
+      } catch {
+        await response.text();
       }
       throw new Error(errorMessage);
     }

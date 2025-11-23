@@ -1,25 +1,27 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
+import Image from 'next/image';
 import Modal, { ModalBody, ModalFooter } from './Modal';
+import MediaLibraryModal from './MediaLibraryModal';
 import { UnionService } from '@/lib/unionService';
 import { Union } from '@/types/hierarchy';
+import { MediaFile } from '@/lib/mediaService';
 import { useToast } from '@/contexts/ToastContext';
+import { CloudArrowUpIcon, XMarkIcon, PhotoIcon } from '@heroicons/react/24/outline';
 
 interface UnionModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (savedUnion: Union, isEdit: boolean) => void;
   union?: Union | null;
-  unions: Union[];
 }
 
 export default function UnionModal({ 
   isOpen, 
   onClose, 
   onSave, 
-  union, 
-  unions 
+  union
 }: UnionModalProps) {
   const [formData, setFormData] = useState({
     name: union?.name || '',
@@ -40,7 +42,62 @@ export default function UnionModal({
     }
   });
   const [loading, setLoading] = useState(false);
+  const [bannerImage, setBannerImage] = useState<File | null>(null);
+  const [bannerPreview, setBannerPreview] = useState<string | null>(union?.primaryImage?.url || null);
+  const [bannerAlt, setBannerAlt] = useState(union?.primaryImage?.alt || '');
+  const [selectedMediaFile, setSelectedMediaFile] = useState<MediaFile | null>(null);
+  const [isMediaLibraryOpen, setIsMediaLibraryOpen] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const toast = useToast();
+
+  // Image handling functions
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        toast.error('Invalid file type', 'Please select an image file (JPEG, PNG, WebP).');
+        return;
+      }
+
+      // Validate file size (2MB limit)
+      if (file.size > 2 * 1024 * 1024) {
+        toast.error('File too large', 'Banner image must be smaller than 2MB.');
+        return;
+      }
+
+      setBannerImage(file);
+      
+      // Create preview
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setBannerPreview(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removeBannerImage = () => {
+    setBannerImage(null);
+    setSelectedMediaFile(null);
+    setBannerPreview(union?.primaryImage?.url || null);
+    setBannerAlt(union?.primaryImage?.alt || '');
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleMediaSelect = (mediaFile: MediaFile) => {
+    setSelectedMediaFile(mediaFile);
+    setBannerPreview(mediaFile.url);
+    setBannerAlt(mediaFile.alt);
+    setBannerImage(null); // Clear any previously selected file
+    setIsMediaLibraryOpen(false);
+  };
+
+  const openMediaLibrary = () => {
+    setIsMediaLibraryOpen(true);
+  };
 
   // Helper function to provide user-friendly error messages
   const getUserFriendlyErrorMessage = (errorMessage: string) => {
@@ -86,9 +143,47 @@ export default function UnionModal({
       if (union) {
         // Update existing union
         response = await UnionService.updateUnion(union._id, unionData);
+        
+        // Handle banner image update if changed
+        if ((bannerImage || selectedMediaFile) && response.success && response.data) {
+          try {
+            if (bannerImage) {
+              // Upload new file
+              await UnionService.updateUnionBanner(response.data._id, bannerImage, bannerAlt);
+            } else if (selectedMediaFile) {
+              // Update with selected media file
+              await UnionService.updateUnionBannerWithMediaFile(response.data._id, selectedMediaFile._id, bannerAlt);
+            }
+          } catch (bannerError) {
+            console.warn('Failed to update banner image:', bannerError);
+            toast.error('Banner upload failed', 'Union updated but banner image could not be uploaded.');
+          }
+        }
       } else {
         // Create new union
         response = await UnionService.createUnion(unionData);
+        
+        // Handle banner image upload for new union
+        if ((bannerImage || selectedMediaFile) && response.success && response.data) {
+          try {
+            let bannerResponse;
+            if (bannerImage) {
+              // Upload new file
+              bannerResponse = await UnionService.updateUnionBanner(response.data._id, bannerImage, bannerAlt);
+            } else if (selectedMediaFile) {
+              // Update with selected media file
+              bannerResponse = await UnionService.updateUnionBannerWithMediaFile(response.data._id, selectedMediaFile._id, bannerAlt);
+            }
+            
+            if (bannerResponse?.success && bannerResponse?.data) {
+              // Update the response data with the banner image
+              response.data.primaryImage = bannerResponse.data.image;
+            }
+          } catch (bannerError) {
+            console.warn('Failed to upload banner image:', bannerError);
+            toast.error('Banner upload failed', 'Union created but banner image could not be uploaded.');
+          }
+        }
       }
       
       if (response.success && response.data) {
@@ -144,10 +239,20 @@ export default function UnionModal({
           website: union?.contact?.website || ''
         }
       });
+      
+      // Reset image state
+      setBannerImage(null);
+      setSelectedMediaFile(null);
+      setBannerPreview(union?.primaryImage?.url || null);
+      setBannerAlt(union?.primaryImage?.alt || '');
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   }, [union, isOpen]);
 
   return (
+    <>
     <Modal
       isOpen={isOpen}
       onClose={onClose}
@@ -335,6 +440,69 @@ export default function UnionModal({
               </div>
             </div>
           </div>
+
+          {/* Banner Image Upload */}
+          <div>
+            <h4 className="text-sm font-medium text-gray-900 mb-4">Banner Image</h4>
+            
+            {bannerPreview ? (
+              <div className="relative">
+                <div className="w-full h-32 bg-gray-100 rounded-lg overflow-hidden">
+                  <Image
+                    src={bannerPreview}
+                    alt="Banner preview"
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 768px) 100vw, 50vw"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={removeBannerImage}
+                  className="absolute top-2 right-2 p-1 bg-red-600 text-white rounded-full hover:bg-red-700"
+                >
+                  <XMarkIcon className="h-4 w-4" />
+                </button>
+                <div className="mt-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Alt Text
+                  </label>
+                  <input
+                    type="text"
+                    value={bannerAlt}
+                    onChange={(e) => setBannerAlt(e.target.value)}
+                    placeholder="Describe the image for accessibility"
+                    className="mt-1 block w-full px-3 py-2 text-sm rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
+                <PhotoIcon className="mx-auto h-12 w-12 text-gray-400" />
+                <div className="mt-4">
+                  <button
+                    type="button"
+                    onClick={openMediaLibrary}
+                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                  >
+                    <CloudArrowUpIcon className="h-4 w-4 mr-2" />
+                    Select Banner Image
+                  </button>
+                </div>
+                <p className="text-xs text-gray-500 mt-2">
+                  Browse existing images or upload new ones. Recommended size: 1200x400px
+                </p>
+              </div>
+            )}
+            
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleImageUpload}
+              className="hidden"
+            />
+          </div>
         </ModalBody>
 
         <ModalFooter>
@@ -355,5 +523,16 @@ export default function UnionModal({
         </ModalFooter>
       </form>
     </Modal>
+
+    <MediaLibraryModal
+      isOpen={isMediaLibraryOpen}
+      onClose={() => setIsMediaLibraryOpen(false)}
+      onSelect={handleMediaSelect}
+      title="Select Banner Image"
+      allowedTypes={['banner', 'gallery']}
+      category="union"
+      type="banner"
+    />
+  </>
   );
 }

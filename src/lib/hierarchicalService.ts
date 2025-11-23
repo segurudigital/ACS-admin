@@ -4,17 +4,22 @@ import { UnionService } from './unionService';
 import { ConferenceService } from './conferenceService';
 import { ChurchService } from './churchService';
 import { AuthService } from './auth';
-import { Union, Conference, Church, OrganizationalEntity } from '../types/rbac';
+import { Union } from '../types/hierarchy';
+import { Conference, Church } from '../types/rbac';
 import { EntityType, HierarchyTreeNode, HierarchyPermissionContext } from '../types/hierarchy';
+
+// Combined hierarchical entity type
+type HierarchicalEntity = Union | Conference | Church;
+
 import { 
   buildEntityTree, 
   getEntityAncestors, 
   getEntityDescendants,
   filterEntitiesByAccess,
-  getEntityBreadcrumbs 
+  getEntityBreadcrumbs,
+  EntityTreeNode
 } from './hierarchicalUtils';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 export class HierarchicalService {
   
@@ -40,25 +45,38 @@ export class HierarchicalService {
       };
     } catch (error) {
       console.error('Error fetching user entities:', error);
-      throw new Error('Failed to fetch organizational entities');
+      throw new Error('Failed to fetch hierarchical entities');
     }
   }
 
   /**
-   * Build complete organizational tree
+   * Convert EntityTreeNode to HierarchyTreeNode
    */
-  static async getOrganizationalTree(): Promise<HierarchyTreeNode[]> {
+  private static convertToHierarchyTreeNode(entityNode: EntityTreeNode): HierarchyTreeNode {
+    const entityType = entityNode.entity.type as EntityType;
+    return {
+      entity: entityNode.entity,
+      children: entityNode.children.map((child: EntityTreeNode) => this.convertToHierarchyTreeNode(child)),
+      level: entityType
+    };
+  }
+
+  /**
+   * Build complete hierarchical tree
+   */
+  static async getHierarchicalTree(): Promise<HierarchyTreeNode[]> {
     try {
       const entities = await this.getAllUserEntities();
-      const allEntities: OrganizationalEntity[] = [
+      const allEntities: HierarchicalEntity[] = [
         ...entities.unions,
         ...entities.conferences,
         ...entities.churches
       ];
 
-      return buildEntityTree(allEntities);
+      const entityTree = buildEntityTree(allEntities);
+      return entityTree.map(node => this.convertToHierarchyTreeNode(node));
     } catch (error) {
-      console.error('Error building organizational tree:', error);
+      console.error('Error building hierarchical tree:', error);
       throw error;
     }
   }
@@ -66,7 +84,7 @@ export class HierarchicalService {
   /**
    * Get entity by ID and type
    */
-  static async getEntityById(id: string, type: EntityType): Promise<OrganizationalEntity> {
+  static async getEntityById(id: string, type: EntityType): Promise<HierarchicalEntity> {
     try {
       switch (type) {
         case 'union':
@@ -91,9 +109,9 @@ export class HierarchicalService {
    * Get entity hierarchy (ancestors and descendants)
    */
   static async getEntityHierarchy(id: string, type: EntityType): Promise<{
-    entity: OrganizationalEntity;
-    ancestors: OrganizationalEntity[];
-    descendants: OrganizationalEntity[];
+    entity: HierarchicalEntity;
+    ancestors: HierarchicalEntity[];
+    descendants: HierarchicalEntity[];
     breadcrumbs: Array<{ id: string; name: string; type: EntityType }>;
   }> {
     try {
@@ -102,7 +120,7 @@ export class HierarchicalService {
         this.getAllUserEntities()
       ]);
 
-      const allEntitiesArray: OrganizationalEntity[] = [
+      const allEntitiesArray: HierarchicalEntity[] = [
         ...allEntities.unions,
         ...allEntities.conferences,
         ...allEntities.churches
@@ -160,10 +178,14 @@ export class HierarchicalService {
         else churchIdx = 2;
       }
 
+      const unions: Union[] = (!entityType || entityType === 'union') ? (results[unionIdx]?.data || []) as Union[] : [];
+      const conferences: Conference[] = (!entityType || entityType === 'conference') ? (results[confIdx]?.data || []) as Conference[] : [];
+      const churches: Church[] = (!entityType || entityType === 'church') ? (results[churchIdx]?.data || []) as Church[] : [];
+
       return {
-        unions: (!entityType || entityType === 'union') ? results[unionIdx]?.data || [] : [],
-        conferences: (!entityType || entityType === 'conference') ? results[confIdx]?.data || [] : [],
-        churches: (!entityType || entityType === 'church') ? results[churchIdx]?.data || [] : []
+        unions,
+        conferences,
+        churches
       };
     } catch (error) {
       console.error('Error searching entities:', error);
@@ -172,7 +194,7 @@ export class HierarchicalService {
   }
 
   /**
-   * Get entities accessible to a user based on their organizational assignments
+   * Get entities accessible to a user based on their hierarchical assignments
    */
   static async getAccessibleEntities(userEntityId: string, userEntityType: EntityType): Promise<{
     unions: Union[];
@@ -201,9 +223,14 @@ export class HierarchicalService {
    */
   static async getUserPermissionContext(): Promise<HierarchyPermissionContext> {
     try {
-      const userInfo = AuthService.getUserInfo();
-      if (!userInfo) {
+      const token = AuthService.getToken();
+      if (!token) {
         throw new Error('User not authenticated');
+      }
+      
+      const userInfo = await AuthService.verifyAuthHierarchical(token);
+      if (!userInfo.success) {
+        throw new Error('User authentication verification failed');
       }
 
       // Get all entities user has access to
@@ -296,27 +323,37 @@ export class HierarchicalService {
     }
   }
 
+
   /**
-   * Legacy compatibility method - converts new hierarchical data to old organization format
+   * Legacy compatibility method - converts new hierarchical data to old entity format
    * @deprecated Use specific entity services instead
    */
-  static async getLegacyOrganizations(): Promise<Array<{
+  static async getLegacyEntities(): Promise<Array<{
     _id: string;
     name: string;
     type: 'union' | 'conference' | 'church';
-    parentOrganization?: { _id: string; name: string; type: string };
-    metadata: any;
+    parentEntity?: { _id: string; name: string; type: string };
+    metadata: Record<string, unknown>;
     isActive: boolean;
     createdAt: string;
     updatedAt: string;
   }>> {
     try {
       const entities = await this.getAllUserEntities();
-      const legacyOrgs: any[] = [];
+      const legacyEntities: Array<{
+        _id: string;
+        name: string;
+        type: 'union' | 'conference' | 'church';
+        parentEntity?: { _id: string; name: string; type: string };
+        metadata: Record<string, unknown>;
+        isActive: boolean;
+        createdAt: string;
+        updatedAt: string;
+      }> = [];
 
       // Convert unions
       entities.unions.forEach(union => {
-        legacyOrgs.push({
+        legacyEntities.push({
           _id: union._id,
           name: union.name,
           type: 'union' as const,
@@ -330,11 +367,11 @@ export class HierarchicalService {
       // Convert conferences
       entities.conferences.forEach(conference => {
         const parentUnion = entities.unions.find(u => u._id === conference.unionId);
-        legacyOrgs.push({
+        legacyEntities.push({
           _id: conference._id,
           name: conference.name,
           type: 'conference' as const,
-          parentOrganization: parentUnion ? {
+          parentEntity: parentUnion ? {
             _id: parentUnion._id,
             name: parentUnion.name,
             type: 'union'
@@ -349,11 +386,11 @@ export class HierarchicalService {
       // Convert churches
       entities.churches.forEach(church => {
         const parentConference = entities.conferences.find(c => c._id === church.conferenceId);
-        legacyOrgs.push({
+        legacyEntities.push({
           _id: church._id,
           name: church.name,
           type: 'church' as const,
-          parentOrganization: parentConference ? {
+          parentEntity: parentConference ? {
             _id: parentConference._id,
             name: parentConference.name,
             type: 'conference'
@@ -365,7 +402,7 @@ export class HierarchicalService {
         });
       });
 
-      return legacyOrgs;
+      return legacyEntities;
     } catch (error) {
       console.error('Error converting to legacy format:', error);
       throw error;

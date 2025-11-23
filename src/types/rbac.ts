@@ -19,13 +19,33 @@ interface BaseHierarchyLevel {
 // Union: Top-level administrative division (Level 0)
 export interface Union extends BaseHierarchyLevel {
   type: 'union';
+  hierarchyPath: string;
+  hierarchyLevel: number;
+  territory?: {
+    description?: string;
+  };
+  headquarters?: {
+    address?: string;
+    city?: string;
+    state?: string;
+    country?: string;
+    postalCode?: string;
+  };
+  contact?: {
+    email?: string;
+    phone?: string;
+    website?: string;
+  };
   parentEntity?: never; // Unions have no parent
 }
 
 // Conference: Regional division under union (Level 1)
 export interface Conference extends BaseHierarchyLevel {
   type: 'conference';
+  hierarchyPath: string;
+  hierarchyLevel: number;
   unionId: string; // Reference to parent union
+  union?: Union | string; // Reference to parent union
   parentEntity?: {
     _id: string;
     name: string;
@@ -36,8 +56,13 @@ export interface Conference extends BaseHierarchyLevel {
 // Church: Local church organization (Level 2)
 export interface Church extends BaseHierarchyLevel {
   type: 'church';
+  hierarchyPath: string;
+  hierarchyLevel: number;
   conferenceId: string; // Reference to parent conference
   unionId: string; // Reference to root union (for faster queries)
+  conference?: Conference | string; // Reference to parent conference
+  church?: Church | string; // Self-reference for consistency
+  user?: User | string; // User reference for consistency
   parentEntity?: {
     _id: string;
     name: string;
@@ -87,8 +112,17 @@ export interface ChurchAssignment {
   expiresAt?: string;
 }
 
+// Generic assignment type used in UI components
+export interface HierarchicalAssignment {
+  entity: HierarchicalEntity | string;
+  role: Role | string;
+  assignedAt: string;
+  assignedBy?: User | string;
+  expiresAt?: string;
+}
+
 // Union type for all assignment types
-export type HierarchicalAssignment = UnionAssignment | ConferenceAssignment | ChurchAssignment;
+export type SpecificAssignment = UnionAssignment | ConferenceAssignment | ChurchAssignment;
 
 
 export interface User {
@@ -103,6 +137,9 @@ export interface User {
   country?: string;
   verified: boolean;
   avatar?: string;
+  
+  // Generic hierarchical assignments used in UI components
+  hierarchicalAssignments?: HierarchicalAssignment[];
   
   // New hierarchical assignments
   unionAssignments?: UnionAssignment[];
@@ -128,11 +165,10 @@ export interface UserPermissions {
   };
   permissions: string[];
   
-  // New hierarchical organization references
+  // Hierarchical entity references
   union?: string;
   conference?: string;
   church?: string;
-  
 }
 
 // System role names

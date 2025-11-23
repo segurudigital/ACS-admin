@@ -14,16 +14,13 @@ interface Permission {
 interface Category {
   id: string;
   name: string;
-  icon: string;
   description: string;
   level: string;
-  color: string;
 }
 
 interface PermissionCategoryProps {
   category: Category;
   permissions: Permission[];
-  rolePermissions: string[];
   hasPermission: (permission: string) => boolean;
   togglePermission: (permission: string) => void;
   toggleCategoryPermissions: (category: string, enable: boolean) => void;
@@ -36,7 +33,6 @@ interface PermissionCategoryProps {
 export function PermissionCategory({
   category,
   permissions,
-  rolePermissions,
   hasPermission,
   togglePermission,
   toggleCategoryPermissions,
@@ -57,7 +53,7 @@ export function PermissionCategory({
 
   // Group permissions by action type
   const groupedPermissions = permissions.reduce((groups, permission) => {
-    const [resource, actionWithScope] = permission.key.split('.');
+    const [, actionWithScope] = permission.key.split('.');
     const [action, scope] = actionWithScope?.includes(':') 
       ? actionWithScope.split(':') 
       : [actionWithScope, null];
@@ -68,7 +64,7 @@ export function PermissionCategory({
     
     groups[action].push({
       ...permission,
-      scope
+      scope: scope || undefined
     });
     
     return groups;

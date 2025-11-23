@@ -1,4 +1,5 @@
-import { rbacService, UserWithRoles, Organization } from './rbac';
+import { rbacService, UserWithRoles } from './rbac';
+import { HierarchicalEntity } from '../types/rbac';
 import { api } from './api';
 
 /**
@@ -60,19 +61,19 @@ export class SecureRBACService {
    * Get only organizations the user has access to
    * Overrides parent method to ensure proper filtering
    */
-  static async getOrganizations(filters?: {
+  static async getHierarchicalEntitys(filters?: {
     type?: string;
-    parentOrganization?: string;
+    parentHierarchicalEntity?: string;
     isActive?: boolean;
-  }): Promise<Organization[]> {
+  }): Promise<HierarchicalEntity[]> {
     try {
       const queryParams = new URLSearchParams();
       
       if (filters?.type) {
         queryParams.append('type', filters.type);
       }
-      if (filters?.parentOrganization) {
-        queryParams.append('parentOrganization', filters.parentOrganization);
+      if (filters?.parentHierarchicalEntity) {
+        queryParams.append('parentHierarchicalEntity', filters.parentHierarchicalEntity);
       }
       if (filters?.isActive !== undefined) {
         queryParams.append('isActive', filters.isActive.toString());
@@ -97,10 +98,10 @@ export class SecureRBACService {
 
   /**
    * Get users for a specific organization only
-   * @param organizationId - Organization ID
+   * @param organizationId - HierarchicalEntity ID
    * @returns Promise<UserWithRoles[]> - Users in the organization
    */
-  static async getOrganizationUsers(organizationId: string): Promise<UserWithRoles[]> {
+  static async getHierarchicalEntityUsers(organizationId: string): Promise<UserWithRoles[]> {
     try {
       const response = await api.get(
         `/api/organizations/${organizationId}/users`
@@ -120,18 +121,20 @@ export class SecureRBACService {
   /**
    * Validate user has permission before role assignment
    * @param userId - User ID
-   * @param organizationId - Organization ID
+   * @param entityId - HierarchicalEntity ID (union, conference, or church)
    * @param roleId - Role ID
+   * @param entityType - Type of entity ('union' | 'conference' | 'church')
    * @returns Promise<void>
    */
   static async assignRoleSecure(
     userId: string,
-    organizationId: string,
-    roleId: string
+    entityId: string,
+    roleId: string,
+    entityType: 'union' | 'conference' | 'church'
   ): Promise<void> {
     try {
       // The backend will validate permissions
-      await rbacService.assignUserRole(userId, organizationId, roleId);
+      await rbacService.assignUserRole(userId, entityId, roleId, entityType);
     } catch (error) {
       console.error('Error assigning role:', error);
       throw new Error('Failed to assign role. You may not have permission.');
@@ -142,7 +145,7 @@ export class SecureRBACService {
    * Get permissions for current user in specific organization
    * Uses cached permissions if available and valid
    * @param userId - User ID
-   * @param organizationId - Organization ID
+   * @param organizationId - HierarchicalEntity ID
    * @returns Promise<string[]> - Array of permissions
    */
   static async getUserPermissionsSecure(

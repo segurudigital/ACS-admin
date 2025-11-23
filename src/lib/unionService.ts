@@ -171,8 +171,8 @@ export class UnionService {
     success: boolean;
     data: {
       union: Union;
-      conferences: any[];
-      churches: any[];
+      conferences: unknown[];
+      churches: unknown[];
     };
   }> {
     try {
@@ -199,7 +199,7 @@ export class UnionService {
    */
   static async getUnionConferences(id: string): Promise<{
     success: boolean;
-    data: any[];
+    data: unknown[];
   }> {
     try {
       const response = await fetch(`${API_BASE_URL}/api/unions/${id}/conferences`, {
@@ -219,4 +219,104 @@ export class UnionService {
       );
     }
   }
+
+  /**
+   * Update union banner image
+   */
+  static async updateUnionBanner(unionId: string, file: File, alt?: string): Promise<{
+    success: boolean;
+    data?: { image: { url: string; key: string; alt: string } };
+    message?: string;
+  }> {
+    try {
+      const formData = new FormData();
+      formData.append('banner', file);
+      if (alt) formData.append('alt', alt);
+
+      const response = await fetch(`${API_BASE_URL}/api/unions/${unionId}/banner`, {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${AuthService.getToken()}`,
+        },
+        body: formData,
+      });
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error updating union banner:', error);
+      throw new Error(
+        error instanceof Error ? error.message : 'Failed to update union banner'
+      );
+    }
+  }
+
+  /**
+   * Update union banner with existing media file
+   */
+  static async updateUnionBannerWithMediaFile(unionId: string, mediaFileId: string, alt?: string): Promise<{
+    success: boolean;
+    data?: { image: { url: string; key: string; alt: string } };
+    message?: string;
+  }> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/unions/${unionId}/banner/media`, {
+        method: 'PUT',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify({ 
+          mediaFileId,
+          alt: alt || ''
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error updating union banner with media file:', error);
+      throw new Error(
+        error instanceof Error ? error.message : 'Failed to update union banner'
+      );
+    }
+  }
+
+  /**
+   * Quick setup union with admin user
+   */
+  static async quickSetupUnion(data: {
+    union: {
+      name: string;
+      metadata?: Record<string, unknown>;
+    };
+    adminUser: {
+      firstName: string;
+      lastName: string;
+      email: string;
+      role?: string;
+    };
+    sendInvitation?: boolean;
+  }): Promise<UnionResponse> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/unions/quick-setup`, {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error in union quick setup:', error);
+      throw new Error(
+        error instanceof Error ? error.message : 'Failed to create union and admin user'
+      );
+    }
+  }
+
 }

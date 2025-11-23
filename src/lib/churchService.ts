@@ -1,7 +1,7 @@
 // Church Service - Handles API calls for church management
 
 import { AuthService } from './auth';
-import { Church } from '../types/rbac';
+import { Conference, User } from '../types/rbac';
 import { 
   ChurchListResponse, 
   ChurchResponse,
@@ -10,6 +10,8 @@ import {
   ChurchListParams,
   ChurchQuickSetupData
 } from '../types/hierarchy';
+import { Team } from '../lib/teams';
+import { Service } from '../lib/serviceManagement';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
@@ -195,7 +197,7 @@ export class ChurchService {
    */
   static async getChurchTeams(id: string): Promise<{
     success: boolean;
-    data: any[];
+    data: Team[];
   }> {
     try {
       const response = await fetch(`${API_BASE_URL}/api/churches/${id}/teams`, {
@@ -221,7 +223,7 @@ export class ChurchService {
    */
   static async getChurchServices(id: string): Promise<{
     success: boolean;
-    data: any[];
+    data: Service[];
   }> {
     try {
       const response = await fetch(`${API_BASE_URL}/api/churches/${id}/services`, {
@@ -247,7 +249,7 @@ export class ChurchService {
    */
   static async getSuggestedParentConferences(): Promise<{
     success: boolean;
-    data: any[];
+    data: Conference[];
   }> {
     try {
       const response = await fetch(`${API_BASE_URL}/api/churches/suggested-parents`, {
@@ -273,7 +275,7 @@ export class ChurchService {
    */
   static async getChurchUsers(id: string): Promise<{
     success: boolean;
-    data: any[];
+    data: User[];
   }> {
     try {
       const response = await fetch(`${API_BASE_URL}/api/churches/${id}/users`, {

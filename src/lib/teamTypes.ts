@@ -59,7 +59,7 @@ export const teamTypeService = {
       try {
         const error = await response.json();
         errorMessage = error.message || errorMessage;
-      } catch (parseError) {
+      } catch {
         await response.text();
       }
       throw new Error(errorMessage);

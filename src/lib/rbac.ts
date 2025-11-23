@@ -1,6 +1,6 @@
 // RBAC API Service for managing roles, permissions, and hierarchical entities
 
-import { Union, Conference, Church, Role, User, UnionAssignment, ConferenceAssignment, ChurchAssignment } from '../types/rbac';
+import { Union, Conference, Church, Role, UnionAssignment, ConferenceAssignment, ChurchAssignment } from '../types/rbac';
 
 export interface UserWithRoles {
   _id: string;
@@ -44,7 +44,6 @@ class RBACService {
     };
     
     // Note: Hierarchical entity context handled via endpoint selection
-    // No longer using organization ID headers
     
     return headers;
   }
@@ -695,6 +694,28 @@ class RBACService {
     localStorage.removeItem('currentUnionId');
     localStorage.removeItem('currentConferenceId');
     localStorage.removeItem('currentChurchId');
+  }
+
+  // Generic user role assignment - delegates to specific methods based on entity type
+  async assignUserRole(userId: string, entityId: string, roleId: string, entityType: 'union' | 'conference' | 'church'): Promise<{success: boolean; data?: unknown; error?: string}> {
+    try {
+      switch (entityType) {
+        case 'union':
+          return await this.assignUserToUnion(userId, entityId, roleId);
+        case 'conference':
+          return await this.assignUserToConference(userId, entityId, roleId);
+        case 'church':
+          return await this.assignUserToChurch(userId, entityId, roleId);
+        default:
+          throw new Error(`Invalid entity type: ${entityType}`);
+      }
+    } catch (error) {
+      console.error('Error in generic role assignment:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to assign role'
+      };
+    }
   }
 }
 

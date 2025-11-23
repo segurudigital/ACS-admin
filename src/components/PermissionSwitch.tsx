@@ -28,17 +28,14 @@ export function PermissionSwitch({
   saving = false
 }: PermissionSwitchProps) {
   
-  const getScopeDescription = (permissionKey: string): string => {
+  const getScopeDescription = (): string => {
     if (!scope && !permission.scopes) return '';
-    
-    const [resource, action] = permissionKey.split('.');
-    const actionWithScope = scope ? `${action}:${scope}` : action;
     
     const scopeDescriptions: Record<string, string> = {
       'self': 'Own record only',
-      'own': 'Own organization only',
-      'subordinate': 'Own organization + sub-organizations',
-      'all': 'All organizations (system-wide)',
+      'own': 'Own entity only',
+      'subordinate': 'Own entity + subordinate entities',
+      'all': 'All entities (system-wide)',
       'acs_team': 'ACS team members only',
       'acs': 'ACS service context',
       'public': 'Public access',
@@ -79,7 +76,7 @@ export function PermissionSwitch({
   };
 
   const formatActionName = (key: string): string => {
-    const [resource, action] = key.split('.');
+    const [, action] = key.split('.');
     
     const actionNames: Record<string, string> = {
       'create': 'Create',
@@ -107,14 +104,14 @@ export function PermissionSwitch({
       return permission.description;
     }
     
-    const [resource, action] = permission.key.split('.');
+    const [resource, ] = permission.key.split('.');
     const actionName = formatActionName(permission.key).toLowerCase();
     const resourceName = resource.replace('_', ' ');
     
     return `${actionName} ${resourceName}`;
   };
 
-  const scopeDescription = getScopeDescription(permission.key);
+  const scopeDescription = getScopeDescription();
   const isElevated = isPermissionElevated();
 
   return (

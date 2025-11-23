@@ -4,8 +4,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import Modal, { ModalBody, ModalFooter } from './Modal';
 import { useToast } from '@/contexts/ToastContext';
 import { usePermissions } from '@/contexts/HierarchicalPermissionContext';
-import { User, Role, Organization, OrganizationAssignment } from '@/types/rbac';
+import { User, Role, HierarchicalEntity, HierarchicalAssignment } from '@/types/rbac';
 import { rbacService } from '@/lib/rbac';
+import { HierarchicalService } from '@/lib/hierarchicalService';
 import { X, Plus } from 'lucide-react';
 
 interface UserModalProps {
@@ -33,9 +34,9 @@ export default function UserModal({
    });
    const [loading, setLoading] = useState(false);
    const [roles, setRoles] = useState<Role[]>([]);
-   const [organizations, setOrganizations] = useState<Organization[]>([]);
-   const [assignments, setAssignments] = useState<OrganizationAssignment[]>([]);
-   const [newAssignment, setNewAssignment] = useState({ organizationId: '', roleId: '' });
+   const [entities, setEntities] = useState<HierarchicalEntity[]>([]);
+   const [assignments, setAssignments] = useState<HierarchicalAssignment[]>([]);
+   const [newAssignment, setNewAssignment] = useState({ entityId: '', roleId: '' });
    const toast = useToast();
    const { hasPermission } = usePermissions();
 
@@ -54,27 +55,28 @@ export default function UserModal({
       }
    }, [isOpen]);
 
-   const fetchOrganizations = useCallback(async () => {
+   const fetchHierarchicalEntities = useCallback(async () => {
       if (!isOpen) return; // Fetch for both new and existing users
 
       try {
-         console.log('Fetching organizations...');
-         const orgs = await rbacService.getOrganizations();
-         console.log('Received organizations from API:', orgs);
-         setOrganizations(Array.isArray(orgs) ? orgs : []);
-         console.log('Organizations set in state:', Array.isArray(orgs) ? orgs : []);
+         console.log('Fetching hierarchical entities...');
+         const entityData = await HierarchicalService.getAllUserEntities();
+         const allEntities = [...entityData.unions, ...entityData.conferences, ...entityData.churches];
+         console.log('Received entities from API:', allEntities);
+         setEntities(Array.isArray(allEntities) ? allEntities : []);
+         console.log('Entities set in state:', Array.isArray(allEntities) ? allEntities : []);
       } catch (error) {
-         console.error('Error fetching organizations:', error);
-         setOrganizations([]);
+         console.error('Error fetching entities:', error);
+         setEntities([]);
       }
    }, [isOpen]);
 
    useEffect(() => {
       if (isOpen && hasPermission('users.assign_role')) {
          fetchRoles();
-         fetchOrganizations();
+         fetchHierarchicalEntities();
       }
-   }, [fetchRoles, fetchOrganizations, isOpen, hasPermission]);
+   }, [fetchRoles, fetchHierarchicalEntities, isOpen, hasPermission]);
 
 
    const handleSubmit = async (e: React.FormEvent) => {
@@ -82,7 +84,7 @@ export default function UserModal({
 
       // Validate assignments
       if (hasPermission('users.assign_role') && assignments.length === 0) {
-         toast.error('Validation Error', 'At least one organization assignment is required');
+         toast.error('Validation Error', 'At least one hierarchical entity assignment is required');
          return;
       }
 
@@ -98,11 +100,11 @@ export default function UserModal({
             state?: string;
             country?: string;
             verified: boolean;
-            organizations?: Array<{
-               organizationId: string;
+            hierarchicalAssignments?: Array<{
+               entityId: string;
                roleName: string;
             }>;
-            organizationId?: string;
+            entityId?: string;
             role?: string;
          } = {
             name: formData.name,
@@ -117,10 +119,10 @@ export default function UserModal({
 
          // Add assignments data
          if (assignments.length > 0) {
-            userData.organizations = assignments.map(assignment => ({
-               organizationId: typeof assignment.organization === 'string' 
-                  ? assignment.organization 
-                  : assignment.organization._id,
+            userData.hierarchicalAssignments = assignments.map(assignment => ({
+               entityId: typeof assignment.entity === 'string' 
+                  ? assignment.entity 
+                  : assignment.entity._id,
                roleName: typeof assignment.role === 'string' 
                   ? assignment.role 
                   : (assignment.role.name || '')
@@ -128,9 +130,9 @@ export default function UserModal({
             
             // For backward compatibility with single assignment
             const firstAssignment = assignments[0];
-            userData.organizationId = typeof firstAssignment.organization === 'string' 
-               ? firstAssignment.organization 
-               : firstAssignment.organization._id;
+            userData.entityId = typeof firstAssignment.entity === 'string' 
+               ? firstAssignment.entity 
+               : firstAssignment.entity._id;
             userData.role = typeof firstAssignment.role === 'string' 
                ? firstAssignment.role 
                : firstAssignment.role.name;
@@ -142,9 +144,9 @@ export default function UserModal({
             
             // First, update basic user information
             const basicUserData = { ...userData };
-            delete basicUserData.organizationId;
+            delete basicUserData.entityId;
             delete basicUserData.role;
-            delete basicUserData.organizations;
+            delete basicUserData.hierarchicalAssignments;
             
             response = await fetch(
                `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/users/${user._id}`,
@@ -164,23 +166,23 @@ export default function UserModal({
             }
 
             // Handle role assignments - remove existing ones not in new list, add new ones
-            if (user.organizations && user.organizations.length > 0) {
+            if (user.hierarchicalAssignments && user.hierarchicalAssignments.length > 0) {
                // Remove assignments that are no longer in the list
-               for (const existingAssignment of user.organizations) {
-                  const existingOrgId = typeof existingAssignment.organization === 'string' 
-                     ? existingAssignment.organization 
-                     : existingAssignment.organization._id;
+               for (const existingAssignment of user.hierarchicalAssignments) {
+                  const existingEntityId = typeof existingAssignment.entity === 'string' 
+                     ? existingAssignment.entity 
+                     : existingAssignment.entity._id;
                   
                   const stillAssigned = assignments.some(newAssignment => {
-                     const newOrgId = typeof newAssignment.organization === 'string' 
-                        ? newAssignment.organization 
-                        : newAssignment.organization._id;
-                     return newOrgId === existingOrgId;
+                     const newEntityId = typeof newAssignment.entity === 'string' 
+                        ? newAssignment.entity 
+                        : newAssignment.entity._id;
+                     return newEntityId === existingEntityId;
                   });
 
                   if (!stillAssigned) {
                      await fetch(
-                        `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/users/${user._id}/roles/${existingOrgId}`,
+                        `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/users/${user._id}/roles/${existingEntityId}`,
                         {
                            method: 'DELETE',
                            headers: {
@@ -195,22 +197,22 @@ export default function UserModal({
 
             // Add new assignments
             for (const assignment of assignments) {
-               const orgId = typeof assignment.organization === 'string' 
-                  ? assignment.organization 
-                  : assignment.organization._id;
+               const entityId = typeof assignment.entity === 'string' 
+                  ? assignment.entity 
+                  : assignment.entity._id;
                const roleName = typeof assignment.role === 'string' 
                   ? assignment.role 
                   : assignment.role.name;
 
                // Check if this assignment already exists
-               const alreadyExists = user.organizations?.some(existing => {
-                  const existingOrgId = typeof existing.organization === 'string' 
-                     ? existing.organization 
-                     : existing.organization._id;
+               const alreadyExists = user.hierarchicalAssignments?.some(existing => {
+                  const existingEntityId = typeof existing.entity === 'string' 
+                     ? existing.entity 
+                     : existing.entity._id;
                   const existingRoleName = typeof existing.role === 'string' 
                      ? existing.role 
                      : existing.role.name;
-                  return existingOrgId === orgId && existingRoleName === roleName;
+                  return existingEntityId === entityId && existingRoleName === roleName;
                });
 
                if (!alreadyExists) {
@@ -224,7 +226,7 @@ export default function UserModal({
                         },
                         credentials: 'include',
                         body: JSON.stringify({
-                           organizationId: orgId,
+                           entityId: entityId,
                            roleName: roleName,
                         }),
                      }
@@ -317,13 +319,13 @@ export default function UserModal({
    };
 
    // Helper functions for assignment management
-   const getOrganizationName = useCallback((org: string | Organization) => {
-      if (typeof org === 'object' && org.name) {
-         return `${org.name} (${org.type})`;
+   const getEntityName = useCallback((entity: string | HierarchicalEntity) => {
+      if (typeof entity === 'object' && entity.name) {
+         return `${entity.name} (${entity.type})`;
       }
-      const orgObj = organizations.find(o => o._id === org);
-      return orgObj ? `${orgObj.name} (${orgObj.type})` : 'Unknown Organization';
-   }, [organizations]);
+      const entityObj = entities.find(e => e._id === entity);
+      return entityObj ? `${entityObj.name} (${entityObj.type})` : 'Unknown Entity';
+   }, [entities]);
 
    const getRoleName = useCallback((role: string | Role) => {
       if (typeof role === 'object' && role.displayName) {
@@ -333,32 +335,32 @@ export default function UserModal({
       return roleObj ? roleObj.displayName : 'Unknown Role';
    }, [roles]);
 
-   const isOrganizationAssigned = useCallback((orgId: string) => {
+   const isEntityAssigned = useCallback((entityId: string) => {
       return assignments.some(assignment => {
-         const assignedOrgId = typeof assignment.organization === 'string' 
-            ? assignment.organization 
-            : assignment.organization._id;
-         return assignedOrgId === orgId;
+         const assignedEntityId = typeof assignment.entity === 'string' 
+            ? assignment.entity 
+            : assignment.entity._id;
+         return assignedEntityId === entityId;
       });
    }, [assignments]);
 
    const handleAddAssignment = () => {
-      if (!newAssignment.organizationId || !newAssignment.roleId) return;
-      if (isOrganizationAssigned(newAssignment.organizationId)) return;
+      if (!newAssignment.entityId || !newAssignment.roleId) return;
+      if (isEntityAssigned(newAssignment.entityId)) return;
 
-      const organization = organizations.find(org => org._id === newAssignment.organizationId);
+      const entity = entities.find(ent => ent._id === newAssignment.entityId);
       const role = roles.find(r => r._id === newAssignment.roleId || r.name === newAssignment.roleId);
       
-      if (!organization || !role) return;
+      if (!entity || !role) return;
 
-      const newAssignmentObj: OrganizationAssignment = {
-         organization: organization,
+      const newAssignmentObj: HierarchicalAssignment = {
+         entity: entity,
          role: role,
          assignedAt: new Date().toISOString()
       };
 
       setAssignments(prev => [...prev, newAssignmentObj]);
-      setNewAssignment({ organizationId: '', roleId: '' });
+      setNewAssignment({ entityId: '', roleId: '' });
    };
 
    const handleRemoveAssignment = (index: number) => {
@@ -380,12 +382,12 @@ export default function UserModal({
          });
          
          // Set assignments for editing
-         if (user && user.organizations && user.organizations.length > 0) {
-            setAssignments([...user.organizations]);
+         if (user && user.hierarchicalAssignments && user.hierarchicalAssignments.length > 0) {
+            setAssignments([...user.hierarchicalAssignments]);
          } else {
             setAssignments([]);
          }
-         setNewAssignment({ organizationId: '', roleId: '' });
+         setNewAssignment({ entityId: '', roleId: '' });
       }
    }, [user, isOpen]);
 
@@ -551,12 +553,12 @@ export default function UserModal({
                   </label>
                </div>
 
-               {/* Organization Assignments - Show for users with permission */}
+               {/* Entity Assignments - Show for users with permission */}
                {hasPermission('users.assign_role') && (
                   <div className="space-y-4">
                      <div className="flex items-center justify-between">
                         <h4 className="text-sm font-medium text-gray-900">
-                           Organization Assignments
+                           Entity Assignments
                         </h4>
                         {assignments.length > 1 && (
                            <span className="text-xs text-gray-500">
@@ -575,7 +577,7 @@ export default function UserModal({
                               >
                                  <div className="flex-1">
                                     <div className="text-sm font-medium text-gray-900">
-                                       {getOrganizationName(assignment.organization)}
+                                       {getEntityName(assignment.entity)}
                                     </div>
                                     <div className="text-sm text-gray-600">
                                        {getRoleName(assignment.role)}
@@ -604,23 +606,23 @@ export default function UserModal({
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
                            <div>
                               <label className="block text-sm font-medium text-gray-700 mb-1">
-                                 Organization
+                                 Entity
                               </label>
                               <select
-                                 value={newAssignment.organizationId}
+                                 value={newAssignment.entityId}
                                  onChange={(e) => setNewAssignment(prev => ({
                                     ...prev,
-                                    organizationId: e.target.value,
-                                    roleId: '' // Reset role when organization changes
+                                    entityId: e.target.value,
+                                    roleId: '' // Reset role when entity changes
                                  }))}
                                  className="block w-full px-3 py-2 text-sm rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
                               >
-                                 <option value="">Select organization...</option>
-                                 {organizations
-                                    .filter(org => !isOrganizationAssigned(org._id))
-                                    .map((org) => (
-                                       <option key={org._id} value={org._id}>
-                                          {org.name} ({org.type})
+                                 <option value="">Select entity...</option>
+                                 {entities
+                                    .filter(entity => !isEntityAssigned(entity._id))
+                                    .map((entity) => (
+                                       <option key={entity._id} value={entity._id}>
+                                          {entity.name} ({entity.type})
                                        </option>
                                     ))}
                               </select>
@@ -636,19 +638,19 @@ export default function UserModal({
                                     ...prev,
                                     roleId: e.target.value
                                  }))}
-                                 disabled={!newAssignment.organizationId}
+                                 disabled={!newAssignment.entityId}
                                  className="block w-full px-3 py-2 text-sm rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                               >
                                  <option value="">Select role...</option>
-                                 {newAssignment.organizationId && roles.filter(role => {
-                                    const selectedOrg = organizations.find(org => org._id === newAssignment.organizationId);
-                                    if (!selectedOrg) return false;
+                                 {newAssignment.entityId && roles.filter(role => {
+                                    const selectedEntity = entities.find(entity => entity._id === newAssignment.entityId);
+                                    if (!selectedEntity) return false;
                                     
-                                    // Apply same filtering logic as getFilteredRoles but for specific org
+                                    // Apply same filtering logic as getFilteredRoles but for specific entity
                                     if (role.name === 'super_admin' && !hasPermission('*')) return false;
-                                    if (selectedOrg.type === 'church') return role.level === 'church';
-                                    if (selectedOrg.type === 'conference') return role.level ? ['conference', 'union'].includes(role.level) : false;
-                                    if (selectedOrg.type === 'union') return role.level === 'union';
+                                    if (selectedEntity.type === 'church') return role.level === 'church';
+                                    if (selectedEntity.type === 'conference') return role.level ? ['conference', 'union'].includes(role.level) : false;
+                                    if (selectedEntity.type === 'union') return role.level === 'union';
                                     return false;
                                  }).map((role) => (
                                     <option key={role._id || role.name} value={role._id || role.name}>
@@ -667,9 +669,9 @@ export default function UserModal({
                               type="button"
                               onClick={handleAddAssignment}
                               disabled={
-                                 !newAssignment.organizationId || 
+                                 !newAssignment.entityId || 
                                  !newAssignment.roleId ||
-                                 isOrganizationAssigned(newAssignment.organizationId)
+                                 isEntityAssigned(newAssignment.entityId)
                               }
                               className="inline-flex items-center px-3 py-1 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed rounded-md transition-colors"
                            >
@@ -678,10 +680,10 @@ export default function UserModal({
                            </button>
                         </div>
 
-                        {newAssignment.organizationId && isOrganizationAssigned(newAssignment.organizationId) && (
+                        {newAssignment.entityId && isEntityAssigned(newAssignment.entityId) && (
                            <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded-md">
                               <div className="text-yellow-800 text-xs">
-                                 This organization is already assigned to the user
+                                 This entity is already assigned to the user
                               </div>
                            </div>
                         )}
@@ -689,7 +691,7 @@ export default function UserModal({
 
                      {assignments.length === 0 && (
                         <div className="text-center py-4 text-gray-500 text-sm">
-                           No organization assignments yet. Add one above.
+                           No entity assignments yet. Add one above.
                         </div>
                      )}
                   </div>

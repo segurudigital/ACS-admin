@@ -1,14 +1,15 @@
 // Conference Service - Handles API calls for conference management
 
 import { AuthService } from './auth';
-import { Conference } from '../types/rbac';
+import { Conference, Church } from '../types/rbac';
 import { 
   ConferenceListResponse, 
   ConferenceResponse,
   CreateConferenceData, 
   UpdateConferenceData,
   ConferenceListParams,
-  ConferenceQuickSetupData
+  ConferenceQuickSetupData,
+  Union
 } from '../types/hierarchy';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
@@ -194,7 +195,7 @@ export class ConferenceService {
     success: boolean;
     data: {
       conference: Conference;
-      churches: any[];
+      churches: Church[];
     };
   }> {
     try {
@@ -221,7 +222,7 @@ export class ConferenceService {
    */
   static async getConferenceChurches(id: string): Promise<{
     success: boolean;
-    data: any[];
+    data: Church[];
   }> {
     try {
       const response = await fetch(`${API_BASE_URL}/api/conferences/${id}/churches`, {
@@ -247,7 +248,7 @@ export class ConferenceService {
    */
   static async getSuggestedParentUnions(): Promise<{
     success: boolean;
-    data: any[];
+    data: Union[];
   }> {
     try {
       const response = await fetch(`${API_BASE_URL}/api/conferences/suggested-parents`, {

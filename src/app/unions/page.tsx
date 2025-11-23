@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import Image from 'next/image';
 import AdminLayout from '@/components/AdminLayout';
 import { PermissionGate } from '@/components/PermissionGate';
 import {
@@ -11,7 +12,6 @@ import {
 } from '@/components/DataTable';
 import Button from '@/components/Button';
 import UnionModal from '@/components/UnionModal';
-// import QuickSetupModal from '@/components/QuickSetupModal'; // Removed for unions page
 import ConfirmationModal from '@/components/ConfirmationModal';
 import { useToast } from '@/contexts/ToastContext';
 import { UnionService } from '@/lib/unionService';
@@ -23,7 +23,6 @@ import {
    MapPinIcon,
    PhoneIcon,
    EnvelopeIcon,
-   GlobeAmericasIcon,
 } from '@heroicons/react/24/outline';
 
 export default function Unions() {
@@ -163,11 +162,9 @@ export default function Unions() {
             return true;
          }
          
-         // Check territory countries with null safety
-         if (union.territory?.countries && Array.isArray(union.territory.countries)) {
-            return union.territory.countries.some(country => 
-               country?.name?.toLowerCase().includes(searchLower)
-            );
+         // Check territory description with null safety
+         if (union.territory?.description?.toLowerCase().includes(searchLower)) {
+            return true;
          }
          
          return false;
@@ -182,10 +179,28 @@ export default function Unions() {
          header: 'Union',
          accessor: (union) => (
             <div className="flex items-center">
-               <div className="shrink-0 h-10 w-10">
-                  <div className="h-10 w-10 rounded-full bg-purple-300 flex items-center justify-center">
-                     <BuildingOfficeIcon className="h-6 w-6 text-purple-600" />
-                  </div>
+               <div className="shrink-0 h-12 w-12">
+                  {union.primaryImage?.url ? (
+                     <div className="h-12 w-12 rounded-lg overflow-hidden bg-gray-100 shadow-sm">
+                        <Image
+                           src={union.primaryImage.thumbnailUrl || union.primaryImage.url}
+                           alt={union.primaryImage.alt || union.name}
+                           width={96}
+                           height={96}
+                           className="h-full w-full object-cover"
+                           style={{ imageRendering: 'auto' }}
+                           priority={false}
+                           quality={95}
+                           onError={() => {
+                              console.warn(`Failed to load image for union: ${union.name}`);
+                           }}
+                        />
+                     </div>
+                  ) : (
+                     <div className="h-12 w-12 rounded-lg bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center shadow-sm">
+                        <BuildingOfficeIcon className="h-7 w-7 text-white" />
+                     </div>
+                  )}
                </div>
                <div className="ml-4">
                   <div className="text-sm font-medium text-gray-900">
@@ -433,7 +448,6 @@ export default function Unions() {
                }}
                onSave={handleUnionSaved}
                union={showEditModal ? selectedUnion : null}
-               unions={unions}
             />
 
             {/* Quick Setup Modal removed for unions page */}

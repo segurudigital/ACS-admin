@@ -38,7 +38,7 @@ describe('hierarchyUtils', () => {
 
     it('should return empty array for empty path', () => {
       expect(parseHierarchyPath('')).toEqual([]);
-      expect(parseHierarchyPath(null as any)).toEqual([]);
+      expect(parseHierarchyPath(null as unknown as string)).toEqual([]);
     });
   });
 
@@ -76,7 +76,7 @@ describe('hierarchyUtils', () => {
 
     it('should throw error for missing entity ID', () => {
       expect(() => buildHierarchyPath('parent', '')).toThrow();
-      expect(() => buildHierarchyPath('parent', null as any)).toThrow();
+      expect(() => buildHierarchyPath('parent', null as unknown as string)).toThrow();
     });
   });
 
@@ -124,7 +124,7 @@ describe('hierarchyUtils', () => {
       expect(isValidPathFormat('union 123')).toBe(false);
       expect(isValidPathFormat('/union123')).toBe(false);
       expect(isValidPathFormat('union123/')).toBe(false);
-      expect(isValidPathFormat(null as any)).toBe(false);
+      expect(isValidPathFormat(null as unknown as string)).toBe(false);
     });
   });
 
@@ -142,7 +142,7 @@ describe('hierarchyUtils', () => {
       expect(getEntityIdFromPath('union1/conf2/church3')).toBe('church3');
       expect(getEntityIdFromPath('union1')).toBe('union1');
       expect(getEntityIdFromPath('')).toBeNull();
-      expect(getEntityIdFromPath(null as any)).toBeNull();
+      expect(getEntityIdFromPath(null as unknown as string)).toBeNull();
     });
   });
 
@@ -221,9 +221,9 @@ describe('hierarchyUtils', () => {
   describe('filterByHierarchyAccess', () => {
     it('should filter entities by hierarchy access', () => {
       const entities = [
-        { _id: '1', hierarchyPath: 'union1/conf2/church3' },
-        { _id: '2', hierarchyPath: 'union1/conf2/church4' },
-        { _id: '3', hierarchyPath: 'union2/conf5/church6' },
+        { _id: '1', hierarchyPath: 'union1/conf2/church3', hierarchyLevel: 2 },
+        { _id: '2', hierarchyPath: 'union1/conf2/church4', hierarchyLevel: 2 },
+        { _id: '3', hierarchyPath: 'union2/conf5/church6', hierarchyLevel: 2 },
       ];
 
       const filtered1 = filterByHierarchyAccess(entities, 'union1', 1);
@@ -244,9 +244,9 @@ describe('hierarchyUtils', () => {
   describe('sortByHierarchy', () => {
     it('should sort entities by hierarchy path', () => {
       const entities = [
-        { _id: '3', hierarchyPath: 'union2/conf5' },
-        { _id: '1', hierarchyPath: 'union1/conf2' },
-        { _id: '2', hierarchyPath: 'union1/conf3' },
+        { _id: '3', hierarchyPath: 'union2/conf5', hierarchyLevel: 1 },
+        { _id: '1', hierarchyPath: 'union1/conf2', hierarchyLevel: 1 },
+        { _id: '2', hierarchyPath: 'union1/conf3', hierarchyLevel: 1 },
       ];
 
       const sorted = sortByHierarchy(entities);
@@ -259,10 +259,10 @@ describe('hierarchyUtils', () => {
   describe('groupByParent', () => {
     it('should group entities by parent path', () => {
       const entities = [
-        { _id: '1', hierarchyPath: 'union1' },
-        { _id: '2', hierarchyPath: 'union1/conf2' },
-        { _id: '3', hierarchyPath: 'union1/conf3' },
-        { _id: '4', hierarchyPath: 'union1/conf2/church4' },
+        { _id: '1', hierarchyPath: 'union1', hierarchyLevel: 0 },
+        { _id: '2', hierarchyPath: 'union1/conf2', hierarchyLevel: 1 },
+        { _id: '3', hierarchyPath: 'union1/conf3', hierarchyLevel: 1 },
+        { _id: '4', hierarchyPath: 'union1/conf2/church4', hierarchyLevel: 2 },
       ];
 
       const grouped = groupByParent(entities);

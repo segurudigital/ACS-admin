@@ -44,11 +44,6 @@ export default function UserDetails() {
           avatar?: { url: string; key: string } | string;
           createdAt?: string;
           updatedAt?: string;
-          primaryOrganization?: string;
-          organizations: Array<{
-            organization: string;
-            role: string;
-          }>;
         }
         
         // Type the foundUser as ApiUser
@@ -66,12 +61,7 @@ export default function UserDetails() {
           country: apiUser.country || '',
           avatar: typeof apiUser.avatar === 'string' ? apiUser.avatar : apiUser.avatar?.url || '',
           createdAt: apiUser.createdAt || new Date().toISOString(),
-          updatedAt: apiUser.updatedAt || new Date().toISOString(),
-          primaryOrganization: apiUser.primaryOrganization || '',
-          organizations: (apiUser.organizations || []).map(org => ({
-            ...org,
-            assignedAt: new Date().toISOString()
-          }))
+          updatedAt: apiUser.updatedAt || new Date().toISOString()
         };
         setUser(mappedUser);
       } else {
@@ -277,24 +267,71 @@ export default function UserDetails() {
                 <h3 className="text-lg font-medium text-gray-900">Organization & Roles</h3>
               </div>
               <div className="px-6 py-4">
-                {user.organizations && user.organizations.length > 0 ? (
+                {(user.unionAssignments?.length || user.conferenceAssignments?.length || user.churchAssignments?.length) ? (
                   <div className="space-y-4">
-                    {user.organizations.map((orgAssignment, index) => (
-                      <div key={index} className="border border-gray-200 rounded-lg p-4">
+                    {/* Union Assignments */}
+                    {user.unionAssignments?.map((assignment, index) => (
+                      <div key={`union-${index}`} className="border border-gray-200 rounded-lg p-4">
                         <div className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2">
                           <div>
-                            <dt className="text-sm font-medium text-gray-500">Organization</dt>
+                            <dt className="text-sm font-medium text-gray-500">Union</dt>
                             <dd className="mt-1 text-sm text-gray-900">
-                              {typeof orgAssignment.organization === 'object' 
-                                ? orgAssignment.organization.name 
-                                : 'Unknown Organization'}
+                              {typeof assignment.union === 'object' 
+                                ? assignment.union.name 
+                                : 'Unknown Union'}
                             </dd>
                           </div>
                           <div>
                             <dt className="text-sm font-medium text-gray-500">Role</dt>
                             <dd className="mt-1 text-sm text-gray-900">
-                              {typeof orgAssignment.role === 'object'
-                                ? orgAssignment.role.displayName || orgAssignment.role.name
+                              {typeof assignment.role === 'object'
+                                ? assignment.role.displayName || assignment.role.name
+                                : 'Unknown Role'}
+                            </dd>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    {/* Conference Assignments */}
+                    {user.conferenceAssignments?.map((assignment, index) => (
+                      <div key={`conference-${index}`} className="border border-gray-200 rounded-lg p-4">
+                        <div className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2">
+                          <div>
+                            <dt className="text-sm font-medium text-gray-500">Conference</dt>
+                            <dd className="mt-1 text-sm text-gray-900">
+                              {typeof assignment.conference === 'object' 
+                                ? assignment.conference.name 
+                                : 'Unknown Conference'}
+                            </dd>
+                          </div>
+                          <div>
+                            <dt className="text-sm font-medium text-gray-500">Role</dt>
+                            <dd className="mt-1 text-sm text-gray-900">
+                              {typeof assignment.role === 'object'
+                                ? assignment.role.displayName || assignment.role.name
+                                : 'Unknown Role'}
+                            </dd>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    {/* Church Assignments */}
+                    {user.churchAssignments?.map((assignment, index) => (
+                      <div key={`church-${index}`} className="border border-gray-200 rounded-lg p-4">
+                        <div className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2">
+                          <div>
+                            <dt className="text-sm font-medium text-gray-500">Church</dt>
+                            <dd className="mt-1 text-sm text-gray-900">
+                              {typeof assignment.church === 'object' 
+                                ? assignment.church.name 
+                                : 'Unknown Church'}
+                            </dd>
+                          </div>
+                          <div>
+                            <dt className="text-sm font-medium text-gray-500">Role</dt>
+                            <dd className="mt-1 text-sm text-gray-900">
+                              {typeof assignment.role === 'object'
+                                ? assignment.role.displayName || assignment.role.name
                                 : 'Unknown Role'}
                             </dd>
                           </div>

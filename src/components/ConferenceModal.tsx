@@ -5,12 +5,17 @@ import Modal, { ModalBody, ModalFooter } from './Modal';
 import { ConferenceService } from '@/lib/conferenceService';
 import { Conference } from '@/types/rbac';
 import { Union } from '@/types/hierarchy';
+import { useToast } from '@/contexts/ToastContext';
+
+interface ConferenceWithUnion extends Omit<Conference, 'unionId'> {
+  unionId: Union | string;
+}
 
 interface ConferenceModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (savedConference: Conference, isEdit: boolean) => void;
-  conference?: Conference | null;
+  onSave: (savedConference: ConferenceWithUnion, isEdit: boolean) => void;
+  conference?: ConferenceWithUnion | null;
   unions: Union[];
 }
 
@@ -23,7 +28,6 @@ export default function ConferenceModal({
 }: ConferenceModalProps) {
   const [formData, setFormData] = useState({
     name: conference?.name || '',
-    code: '', // Will be auto-generated or set by user
     unionId: (typeof conference?.unionId === 'string' ? conference.unionId : conference?.unionId?._id) || '',
     territory: {
       description: conference?.metadata?.territory?.join(', ') || ''
@@ -39,16 +43,10 @@ export default function ConferenceModal({
       email: conference?.metadata?.email || '',
       phone: conference?.metadata?.phone || '',
       website: ''
-    },
-    leadership: {
-      president: '',
-      secretary: '',
-      treasurer: ''
-    },
-    establishedDate: conference?.createdAt ? new Date(conference.createdAt).toISOString().split('T')[0] : ''
+    }
   });
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const toast = useToast();
 
   // Helper function to provide user-friendly error messages
   const getUserFriendlyErrorMessage = (errorMessage: string) => {
@@ -58,13 +56,6 @@ export default function ConferenceModal({
       return 'Conference name is required. Please enter a name for the conference.';
     }
     
-    if (lowerMessage.includes('code') && lowerMessage.includes('required')) {
-      return 'Conference code is required. Please enter a unique code for the conference.';
-    }
-    
-    if (lowerMessage.includes('code') && lowerMessage.includes('exist')) {
-      return 'A conference with this code already exists. Please choose a different code.';
-    }
     
     if (lowerMessage.includes('union') && lowerMessage.includes('required')) {
       return 'Please select a parent union for this conference.';
@@ -86,12 +77,10 @@ export default function ConferenceModal({
     
     try {
       setLoading(true);
-      setError(null);
       
       // Prepare the data according to the backend Conference model schema
       const conferenceData = {
         name: formData.name,
-        ...(formData.code && { code: formData.code }),
         unionId: formData.unionId,
         territory: {
           description: formData.territory.description
@@ -107,13 +96,7 @@ export default function ConferenceModal({
           email: formData.contact.email,
           phone: formData.contact.phone,
           website: formData.contact.website
-        },
-        leadership: {
-          president: { name: formData.leadership.president },
-          secretaryTreasurer: { name: formData.leadership.secretary },
-          acsDirector: { name: formData.leadership.treasurer }
-        },
-        ...(formData.establishedDate && { establishedDate: formData.establishedDate })
+        }
       };
 
       let response;
@@ -126,12 +109,15 @@ export default function ConferenceModal({
       }
       
       if (response.success && response.data) {
-        onSave(response.data, !!conference);
-        onClose();
+        onSave(response.data as ConferenceWithUnion, !!conference);
       } else {
         const errorMessage = response.message || 'An unknown error occurred';
         const userFriendlyMessage = getUserFriendlyErrorMessage(errorMessage);
-        setError(userFriendlyMessage);
+        
+        toast.error(
+          conference ? 'Failed to update conference' : 'Failed to create conference',
+          userFriendlyMessage
+        );
       }
     } catch (error) {
       console.error('Error saving conference:', error);
@@ -144,7 +130,11 @@ export default function ConferenceModal({
       }
       
       const userFriendlyMessage = getUserFriendlyErrorMessage(errorMessage);
-      setError(userFriendlyMessage);
+      
+      toast.error(
+        conference ? 'Failed to update conference' : 'Failed to create conference',
+        userFriendlyMessage
+      );
     } finally {
       setLoading(false);
     }
@@ -155,7 +145,6 @@ export default function ConferenceModal({
     if (isOpen) {
       setFormData({
         name: conference?.name || '',
-        code: '',
         unionId: (typeof conference?.unionId === 'string' ? conference.unionId : conference?.unionId?._id) || '',
         territory: {
           description: conference?.metadata?.territory?.join(', ') || ''
@@ -171,15 +160,8 @@ export default function ConferenceModal({
           email: conference?.metadata?.email || '',
           phone: conference?.metadata?.phone || '',
           website: ''
-        },
-        leadership: {
-          president: '',
-          secretary: '',
-          treasurer: ''
-        },
-        establishedDate: conference?.createdAt ? new Date(conference.createdAt).toISOString().split('T')[0] : ''
+        }
       });
-      setError(null);
     }
   }, [conference, isOpen]);
 
@@ -192,55 +174,20 @@ export default function ConferenceModal({
     >
       <form onSubmit={handleSubmit}>
         <ModalBody className="space-y-6">
-          {error && (
-            <div className="rounded-md bg-red-50 p-4">
-              <div className="flex">
-                <div className="flex-shrink-0">
-                  <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                  </svg>
-                </div>
-                <div className="ml-3">
-                  <h3 className="text-sm font-medium text-red-800">
-                    {conference ? 'Failed to update conference' : 'Failed to create conference'}
-                  </h3>
-                  <div className="mt-2 text-sm text-red-700">
-                    {error}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* Basic Info */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Conference Name *
-              </label>
-              <input
-                type="text"
-                value={formData.name}
-                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                placeholder="Enter conference name"
-                required
-                className="mt-1 block w-full px-4 py-3 text-base rounded-md border-gray-300 shadow-sm focus:ring-orange-500 focus:border-orange-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Conference Code
-              </label>
-              <input
-                type="text"
-                value={formData.code}
-                onChange={(e) => setFormData(prev => ({ ...prev, code: e.target.value.toUpperCase() }))}
-                placeholder="AUTO"
-                className="mt-1 block w-full px-4 py-3 text-base rounded-md border-gray-300 shadow-sm focus:ring-orange-500 focus:border-orange-500"
-              />
-              <p className="mt-1 text-xs text-gray-500">Leave blank for auto-generation</p>
-            </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">
+              Conference Name *
+            </label>
+            <input
+              type="text"
+              value={formData.name}
+              onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+              placeholder="Enter conference name"
+              required
+              className="mt-1 block w-full px-4 py-3 text-base rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+            />
           </div>
 
           {/* Parent Union */}
@@ -278,7 +225,7 @@ export default function ConferenceModal({
                 }))}
                 placeholder="Brief description of the conference's territory or regions"
                 rows={2}
-                className="mt-1 block w-full px-4 py-3 text-base rounded-md border-gray-300 shadow-sm focus:ring-orange-500 focus:border-orange-500"
+                className="mt-1 block w-full px-4 py-3 text-base rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
               />
             </div>
           </div>
@@ -299,7 +246,7 @@ export default function ConferenceModal({
                     headquarters: { ...prev.headquarters, address: e.target.value }
                   }))}
                   placeholder="Street address"
-                  className="mt-1 block w-full px-4 py-3 text-base rounded-md border-gray-300 shadow-sm focus:ring-orange-500 focus:border-orange-500"
+                  className="mt-1 block w-full px-4 py-3 text-base rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
                 />
               </div>
 
@@ -315,7 +262,7 @@ export default function ConferenceModal({
                     headquarters: { ...prev.headquarters, city: e.target.value }
                   }))}
                   placeholder="City"
-                  className="mt-1 block w-full px-4 py-3 text-base rounded-md border-gray-300 shadow-sm focus:ring-orange-500 focus:border-orange-500"
+                  className="mt-1 block w-full px-4 py-3 text-base rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
                 />
               </div>
 
@@ -331,7 +278,7 @@ export default function ConferenceModal({
                     headquarters: { ...prev.headquarters, state: e.target.value }
                   }))}
                   placeholder="State or Province"
-                  className="mt-1 block w-full px-4 py-3 text-base rounded-md border-gray-300 shadow-sm focus:ring-orange-500 focus:border-orange-500"
+                  className="mt-1 block w-full px-4 py-3 text-base rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
                 />
               </div>
 
@@ -347,7 +294,7 @@ export default function ConferenceModal({
                     headquarters: { ...prev.headquarters, country: e.target.value }
                   }))}
                   placeholder="Country"
-                  className="mt-1 block w-full px-4 py-3 text-base rounded-md border-gray-300 shadow-sm focus:ring-orange-500 focus:border-orange-500"
+                  className="mt-1 block w-full px-4 py-3 text-base rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
                 />
               </div>
 
@@ -363,21 +310,10 @@ export default function ConferenceModal({
                     headquarters: { ...prev.headquarters, postalCode: e.target.value }
                   }))}
                   placeholder="Postal/ZIP code"
-                  className="mt-1 block w-full px-4 py-3 text-base rounded-md border-gray-300 shadow-sm focus:ring-orange-500 focus:border-orange-500"
+                  className="mt-1 block w-full px-4 py-3 text-base rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Established Date
-                </label>
-                <input
-                  type="date"
-                  value={formData.establishedDate}
-                  onChange={(e) => setFormData(prev => ({ ...prev, establishedDate: e.target.value }))}
-                  className="mt-1 block w-full px-4 py-3 text-base rounded-md border-gray-300 shadow-sm focus:ring-orange-500 focus:border-orange-500"
-                />
-              </div>
             </div>
           </div>
 
@@ -397,7 +333,7 @@ export default function ConferenceModal({
                     contact: { ...prev.contact, email: e.target.value }
                   }))}
                   placeholder="contact@conference.org"
-                  className="mt-1 block w-full px-4 py-3 text-base rounded-md border-gray-300 shadow-sm focus:ring-orange-500 focus:border-orange-500"
+                  className="mt-1 block w-full px-4 py-3 text-base rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
                 />
               </div>
 
@@ -413,7 +349,7 @@ export default function ConferenceModal({
                     contact: { ...prev.contact, phone: e.target.value }
                   }))}
                   placeholder="(123) 456-7890"
-                  className="mt-1 block w-full px-4 py-3 text-base rounded-md border-gray-300 shadow-sm focus:ring-orange-500 focus:border-orange-500"
+                  className="mt-1 block w-full px-4 py-3 text-base rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
                 />
               </div>
 
@@ -429,65 +365,12 @@ export default function ConferenceModal({
                     contact: { ...prev.contact, website: e.target.value }
                   }))}
                   placeholder="https://www.conference.org"
-                  className="mt-1 block w-full px-4 py-3 text-base rounded-md border-gray-300 shadow-sm focus:ring-orange-500 focus:border-orange-500"
+                  className="mt-1 block w-full px-4 py-3 text-base rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
                 />
               </div>
             </div>
           </div>
 
-          {/* Leadership */}
-          <div>
-            <h4 className="text-sm font-medium text-gray-900 mb-4">Leadership</h4>
-            <div className="grid grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  President
-                </label>
-                <input
-                  type="text"
-                  value={formData.leadership.president}
-                  onChange={(e) => setFormData(prev => ({ 
-                    ...prev, 
-                    leadership: { ...prev.leadership, president: e.target.value }
-                  }))}
-                  placeholder="Conference President"
-                  className="mt-1 block w-full px-4 py-3 text-base rounded-md border-gray-300 shadow-sm focus:ring-orange-500 focus:border-orange-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Secretary
-                </label>
-                <input
-                  type="text"
-                  value={formData.leadership.secretary}
-                  onChange={(e) => setFormData(prev => ({ 
-                    ...prev, 
-                    leadership: { ...prev.leadership, secretary: e.target.value }
-                  }))}
-                  placeholder="Conference Secretary"
-                  className="mt-1 block w-full px-4 py-3 text-base rounded-md border-gray-300 shadow-sm focus:ring-orange-500 focus:border-orange-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Treasurer
-                </label>
-                <input
-                  type="text"
-                  value={formData.leadership.treasurer}
-                  onChange={(e) => setFormData(prev => ({ 
-                    ...prev, 
-                    leadership: { ...prev.leadership, treasurer: e.target.value }
-                  }))}
-                  placeholder="Conference Treasurer"
-                  className="mt-1 block w-full px-4 py-3 text-base rounded-md border-gray-300 shadow-sm focus:ring-orange-500 focus:border-orange-500"
-                />
-              </div>
-            </div>
-          </div>
         </ModalBody>
 
         <ModalFooter>

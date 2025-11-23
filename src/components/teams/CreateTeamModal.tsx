@@ -23,7 +23,7 @@ interface CreateTeamModalProps {
 }
 
 export function CreateTeamModal({ open, onOpenChange, onSubmit }: CreateTeamModalProps) {
-  const { currentOrganization } = usePermissions();
+  const { currentUnion, currentConference, currentChurch } = usePermissions();
   const [formData, setFormData] = useState({
     name: '',
     type: '',
@@ -35,20 +35,21 @@ export function CreateTeamModal({ open, onOpenChange, onSubmit }: CreateTeamModa
   const [loadingTypes, setLoadingTypes] = useState(false);
 
   const loadTeamTypes = useCallback(async () => {
-    if (!currentOrganization?._id) {
+    const currentEntityId = currentChurch || currentConference || currentUnion;
+    if (!currentEntityId) {
       return;
     }
 
     try {
       setLoadingTypes(true);
-      const response = await teamTypeService.getOrganizationTeamTypes(currentOrganization._id);
+      const response = await teamTypeService.getOrganizationTeamTypes(currentEntityId);
       setTeamTypes(response.data || []);
       
       // If no team types exist, suggest initialization
       if (!response.data || response.data.length === 0) {
         toast({
           title: 'No Team Types Found',
-          description: 'Contact your administrator to set up team types for your organization.',
+          description: 'Contact your administrator to set up team types for your entity.',
           variant: 'destructive',
         });
       }
@@ -62,14 +63,15 @@ export function CreateTeamModal({ open, onOpenChange, onSubmit }: CreateTeamModa
     } finally {
       setLoadingTypes(false);
     }
-  }, [currentOrganization?._id]);
+  }, [currentChurch, currentConference, currentUnion]);
 
-  // Load team types when modal opens and organization is available
+  // Load team types when modal opens and entity is available
   useEffect(() => {
-    if (open && currentOrganization?._id) {
+    const currentEntityId = currentChurch || currentConference || currentUnion;
+    if (open && currentEntityId) {
       loadTeamTypes();
     }
-  }, [open, currentOrganization, loadTeamTypes]);
+  }, [open, currentChurch, currentConference, currentUnion, loadTeamTypes]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -108,8 +110,7 @@ export function CreateTeamModal({ open, onOpenChange, onSubmit }: CreateTeamModa
       });
       
       onOpenChange(false);
-    } catch (error: unknown) {
-      // Error is handled in parent
+    } catch {
       // Error is handled in parent
     } finally {
       setLoading(false);

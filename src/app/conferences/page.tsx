@@ -1,18 +1,31 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Conference } from '../../types/rbac';
-import { Union, ConferenceListResponse, ConferenceListParams } from '../../types/hierarchy';
-import DataTable, { Column } from '../../components/DataTable';
-import AdminLayout from '../../components/AdminLayout';
-import { PermissionGate } from '../../components/PermissionGate';
-import Button from '../../components/Button';
-import ConferenceModal from '../../components/ConferenceModal';
-import ConfirmationModal from '../../components/ConfirmationModal';
-import { conferenceService } from '../../lib/conferenceService';
-import { unionService } from '../../lib/unionService';
+import { useState, useEffect, useCallback } from 'react';
+import AdminLayout from '@/components/AdminLayout';
+import { PermissionGate } from '@/components/PermissionGate';
+import {
+  Column,
+  ActionCell,
+  IconButton,
+  StatusBadge,
+} from '@/components/DataTable';
+import Button from '@/components/Button';
+import ConferenceModal from '@/components/ConferenceModal';
+import ConfirmationModal from '@/components/ConfirmationModal';
+import { useToast } from '@/contexts/ToastContext';
+import { conferenceService } from '@/lib/conferenceService';
+import { UnionService } from '@/lib/unionService';
+import { Conference } from '@/types/rbac';
+import { Union, ConferenceListParams } from '@/types/hierarchy';
+import {
+  BuildingOffice2Icon,
+  PencilIcon,
+  TrashIcon,
+  PhoneIcon,
+  EnvelopeIcon,
+} from '@heroicons/react/24/outline';
 
-interface ConferenceWithUnion extends Conference {
+interface ConferenceWithUnion extends Omit<Conference, 'unionId'> {
   unionId: Union | string;
 }
 
@@ -20,21 +33,21 @@ export default function ConferencesPage() {
   const [conferences, setConferences] = useState<ConferenceWithUnion[]>([]);
   const [unions, setUnions] = useState<Union[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
   const [showInactive, setShowInactive] = useState(false);
   
   // Modal states
-  const [showModal, setShowModal] = useState(false);
-  const [editingConference, setEditingConference] = useState<ConferenceWithUnion | null>(null);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [deletingConference, setDeletingConference] = useState<ConferenceWithUnion | null>(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [selectedConference, setSelectedConference] = useState<ConferenceWithUnion | undefined>(undefined);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [conferenceToDelete, setConferenceToDelete] = useState<ConferenceWithUnion | undefined>(undefined);
+  
+  const toast = useToast();
 
-  // Fetch conferences and unions
-  const fetchData = async () => {
+  const fetchConferences = useCallback(async () => {
     try {
       setLoading(true);
-      setError(null);
       
       const params: ConferenceListParams = {
         includeInactive: showInactive,
@@ -42,60 +55,109 @@ export default function ConferencesPage() {
       
       const [conferencesResponse, unionsResponse] = await Promise.all([
         conferenceService.getConferences(params),
-        unionService.getUnions({ isActive: true })
+        UnionService.getAllUnions({ isActive: true })
       ]);
       
       setConferences(conferencesResponse.data);
       setUnions(unionsResponse.data);
-    } catch (err: any) {
-      setError(err.message || 'Failed to fetch conferences');
+    } catch (err) {
       console.error('Failed to fetch conferences:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch conferences';
+      toast.error('Failed to load conferences', errorMessage);
+      setConferences([]);
+      setUnions([]);
     } finally {
       setLoading(false);
     }
-  };
+  }, [showInactive, toast]);
 
   useEffect(() => {
-    fetchData();
-  }, [showInactive]);
+    fetchConferences();
+  }, [fetchConferences]);
 
-  // Filter conferences based on search term
-  const filteredConferences = conferences.filter(conference => {
-    if (!searchTerm) return true;
-    
-    const searchLower = searchTerm.toLowerCase();
-    const unionName = typeof conference.unionId === 'object' 
-      ? conference.unionId.name 
-      : unions.find(u => u._id === conference.unionId)?.name || '';
-    
-    return (
-      conference.name.toLowerCase().includes(searchLower) ||
-      conference.metadata?.email?.toLowerCase().includes(searchLower) ||
-      conference.metadata?.territory?.some(t => t.toLowerCase().includes(searchLower)) ||
-      unionName.toLowerCase().includes(searchLower)
-    );
-  });
-
-  // Handle conference creation/editing
-  const handleSaveConference = async () => {
-    await fetchData();
-    setShowModal(false);
-    setEditingConference(null);
-  };
-
-  // Handle conference deletion
-  const handleDeleteConference = async () => {
-    if (!deletingConference) return;
-    
-    try {
-      await conferenceService.deleteConference(deletingConference._id);
-      await fetchData();
-      setShowDeleteModal(false);
-      setDeletingConference(null);
-    } catch (err: any) {
-      setError(err.message || 'Failed to delete conference');
-      console.error('Failed to delete conference:', err);
+  const filteredConferences = (conferences || []).filter(
+    (conference) => {
+      if (!conference) return false;
+      
+      const searchLower = searchQuery.toLowerCase();
+      
+      // If no search query, return all conferences
+      if (!searchQuery.trim()) return true;
+      
+      // Check conference name
+      if (conference.name?.toLowerCase().includes(searchLower)) {
+        return true;
+      }
+      
+      // Check email
+      if (conference.metadata?.email?.toLowerCase().includes(searchLower)) {
+        return true;
+      }
+      
+      // Check territory
+      if (conference.metadata?.territory && Array.isArray(conference.metadata.territory)) {
+        const territoryMatch = conference.metadata.territory.some(t => 
+          t?.toLowerCase().includes(searchLower)
+        );
+        if (territoryMatch) return true;
+      }
+      
+      // Check union name
+      const unionName = typeof conference.unionId === 'object' 
+        ? conference.unionId.name 
+        : unions.find(u => u._id === conference.unionId)?.name || '';
+      if (unionName.toLowerCase().includes(searchLower)) {
+        return true;
+      }
+      
+      return false;
     }
+  );
+
+  const handleDeleteConference = async (conference: ConferenceWithUnion) => {
+    try {
+      await conferenceService.deleteConference(conference._id);
+      setConferences((prev) =>
+        prev.filter((c) => c._id !== conference._id)
+      );
+      toast.success(
+        'Conference deleted',
+        `${conference.name} has been successfully removed.`
+      );
+    } catch (error) {
+      console.error('Error deleting conference:', error);
+      toast.error(
+        'Failed to delete conference',
+        'An unexpected error occurred'
+      );
+    } finally {
+      setShowDeleteConfirm(false);
+      setConferenceToDelete(undefined);
+    }
+  };
+  
+  const handleConferenceSaved = (savedConference: ConferenceWithUnion, isEdit: boolean) => {
+    if (isEdit) {
+      setConferences((prev) =>
+        prev.map((conference) =>
+          conference._id === savedConference._id ? savedConference : conference
+        )
+      );
+      toast.success(
+        'Conference updated',
+        `${savedConference.name} has been successfully updated.`
+      );
+    } else {
+      setConferences((prev) => [...prev, savedConference]);
+      toast.success(
+        'Conference created',
+        `${savedConference.name} has been successfully created.`
+      );
+    }
+    
+    setShowCreateModal(false);
+    setShowEditModal(false);
+    setSelectedConference(undefined);
   };
 
   const getUnionName = (unionId: Union | string): string => {
@@ -108,192 +170,261 @@ export default function ConferencesPage() {
   // Define table columns
   const columns: Column<ConferenceWithUnion>[] = [
     {
-      header: 'Conference Name',
-      accessor: 'name',
-      className: 'font-medium text-gray-900',
+      key: 'name',
+      header: 'Conference',
+      accessor: (conference) => (
+        <div className="flex items-center">
+          <div className="shrink-0 h-10 w-10">
+            <div className="h-10 w-10 rounded-full bg-blue-300 flex items-center justify-center">
+              <BuildingOffice2Icon className="h-6 w-6 text-blue-600" />
+            </div>
+          </div>
+          <div className="ml-4">
+            <div className="text-sm font-medium text-gray-900">
+              {conference.name}
+            </div>
+          </div>
+        </div>
+      ),
     },
     {
+      key: 'union',
       header: 'Union',
-      accessor: (conference) => getUnionName(conference.unionId),
-      className: 'text-gray-600',
+      accessor: (conference) => (
+        <div className="text-sm text-gray-900">
+          {getUnionName(conference.unionId)}
+        </div>
+      ),
+      className: 'max-w-xs',
     },
     {
+      key: 'territory',
       header: 'Territory',
-      accessor: (conference) => conference.metadata?.territory?.join(', ') || 'Not specified',
-      className: 'text-gray-600',
+      accessor: (conference) => (
+        <div className="text-sm text-gray-900">
+          {conference.metadata?.territory?.join(', ') || 'Not specified'}
+        </div>
+      ),
+      className: 'max-w-xs',
     },
     {
+      key: 'contact',
       header: 'Contact',
       accessor: (conference) => (
-        <div className="space-y-1">
+        <div className="text-sm text-gray-900">
           {conference.metadata?.email && (
-            <div className="text-sm text-gray-600">
-              📧 {conference.metadata.email}
+            <div className="flex items-center mb-1">
+              <EnvelopeIcon className="h-4 w-4 text-gray-400 mr-2" />
+              {conference.metadata.email}
             </div>
           )}
           {conference.metadata?.phone && (
-            <div className="text-sm text-gray-600">
-              📞 {conference.metadata.phone}
+            <div className="flex items-center">
+              <PhoneIcon className="h-4 w-4 text-gray-400 mr-2" />
+              {conference.metadata.phone}
             </div>
           )}
         </div>
       ),
     },
     {
+      key: 'statistics',
       header: 'Statistics',
       accessor: (conference) => (
-        <div className="text-sm text-gray-600">
-          {conference.childCount ? `${conference.childCount} churches` : 'No data'}
-        </div>
-      ),
-    },
-    {
-      header: 'Status',
-      accessor: (conference) => (
-        <span
-          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-            conference.isActive
-              ? 'bg-green-100 text-green-800'
-              : 'bg-red-100 text-red-800'
-          }`}
-        >
-          {conference.isActive ? 'Active' : 'Inactive'}
-        </span>
-      ),
-    },
-  ];
-
-  const actions = [
-    {
-      label: 'Edit',
-      permission: 'conferences.update' as const,
-      onClick: (conference: ConferenceWithUnion) => {
-        setEditingConference(conference);
-        setShowModal(true);
-      },
-      className: 'text-blue-600 hover:text-blue-900',
-    },
-    {
-      label: 'Delete',
-      permission: 'conferences.delete' as const,
-      onClick: (conference: ConferenceWithUnion) => {
-        setDeletingConference(conference);
-        setShowDeleteModal(true);
-      },
-      className: 'text-red-600 hover:text-red-900',
-    },
-  ];
-
-  return (
-    <AdminLayout>
-      <div className="p-6">
-        <div className="sm:flex sm:items-center">
-          <div className="sm:flex-auto">
-            <h1 className="text-2xl font-semibold text-gray-900">Conferences</h1>
-            <p className="mt-2 text-sm text-gray-700">
-              Manage regional divisions within unions. Conferences oversee local church operations and administration.
-            </p>
-          </div>
-          <div className="mt-4 sm:ml-16 sm:mt-0 sm:flex-none">
-            <PermissionGate permission="conferences.create">
-              <Button
-                onClick={() => setShowModal(true)}
-                variant="primary"
-              >
-                Create Conference
-              </Button>
-            </PermissionGate>
-          </div>
-        </div>
-
-        {/* Search and Filter Controls */}
-        <div className="mt-6 flex flex-col sm:flex-row gap-4">
-          <div className="flex-1">
-            <input
-              type="text"
-              placeholder="Search conferences by name, email, territory, or union..."
-              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 sm:text-sm"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-          <div className="flex items-center">
-            <input
-              id="show-inactive"
-              type="checkbox"
-              className="h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300 rounded"
-              checked={showInactive}
-              onChange={(e) => setShowInactive(e.target.checked)}
-            />
-            <label htmlFor="show-inactive" className="ml-2 block text-sm text-gray-900">
-              Show inactive
-            </label>
-          </div>
-        </div>
-
-        {/* Conference Table */}
-        <div className="mt-6">
-          <DataTable
-            data={filteredConferences}
-            columns={columns}
-            actions={actions}
-            loading={loading}
-            emptyMessage="No conferences found"
-            searchValue={searchTerm}
-            onSearch={setSearchTerm}
-          />
-        </div>
-
-        {/* Error Display */}
-        {error && (
-          <div className="mt-4 rounded-md bg-red-50 p-4">
-            <div className="flex">
-              <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <div className="ml-3">
-                <h3 className="text-sm font-medium text-red-800">
-                  Error loading conferences
-                </h3>
-                <div className="mt-2 text-sm text-red-700">
-                  {error}
-                </div>
+        <div className="text-sm text-gray-900">
+          {conference.childCount ? (
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-gray-600">Churches:</span>
+                <span className="font-medium">{conference.childCount}</span>
               </div>
             </div>
-          </div>
-        )}
-      </div>
+          ) : (
+            <span className="text-gray-400">-</span>
+          )}
+        </div>
+      ),
+      className: 'max-w-xs',
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      accessor: (conference) => (
+        <StatusBadge
+          status={conference.isActive}
+          trueLabel="Active"
+          falseLabel="Inactive"
+          trueColor="green"
+          falseColor="red"
+        />
+      ),
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      headerClassName:
+        'px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider',
+      className:
+        'px-6 py-4 whitespace-nowrap text-right text-sm font-medium',
+      accessor: (conference) => (
+        <ActionCell>
+          <PermissionGate permission="conferences.update">
+            <IconButton
+              onClick={() => {
+                setSelectedConference(conference);
+                setShowEditModal(true);
+              }}
+              title="Edit Conference"
+              icon={<PencilIcon className="h-5 w-5" />}
+            />
+          </PermissionGate>
+          <PermissionGate permission="conferences.delete">
+            <IconButton
+              onClick={() => {
+                setConferenceToDelete(conference);
+                setShowDeleteConfirm(true);
+              }}
+              title="Delete Conference"
+              icon={<TrashIcon className="h-5 w-5" />}
+              variant="danger"
+            />
+          </PermissionGate>
+        </ActionCell>
+      ),
+    },
+  ];
 
-      {/* Create/Edit Modal */}
-      {showModal && (
+
+  return (
+    <AdminLayout
+      title="Conferences"
+      description="Manage regional divisions within unions"
+    >
+      <div className="space-y-6">
+        {/* Table with custom header */}
+        <div className="bg-white shadow overflow-hidden sm:rounded-lg">
+          {/* Custom header with search and button */}
+          <div className="px-6 py-4 border-b border-gray-200">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div className="max-w-xs">
+                  <input
+                    type="text"
+                    placeholder="Search conferences..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="block w-full px-4 py-2 rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white"
+                  />
+                </div>
+                <div className="flex items-center">
+                  <label className="inline-flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={showInactive}
+                      onChange={(e) => setShowInactive(e.target.checked)}
+                      className="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                    />
+                    <span className="ml-2 text-sm text-gray-700">Show inactive</span>
+                  </label>
+                </div>
+              </div>
+              <PermissionGate permission="conferences.create">
+                <Button
+                  onClick={() => setShowCreateModal(true)}
+                  className="whitespace-nowrap bg-orange-600 hover:bg-orange-700 text-white"
+                  size="sm"
+                >
+                  Add Conference
+                </Button>
+              </PermissionGate>
+            </div>
+          </div>
+
+          {/* Table content */}
+          <div className="overflow-x-auto">
+            {loading ? (
+              <div className="px-4 py-5 text-center">
+                <p className="text-gray-500">Loading...</p>
+              </div>
+            ) : filteredConferences.length === 0 ? (
+              <div className="px-4 py-8 text-center">
+                <div className="mx-auto h-12 w-12 text-gray-400 mb-4">
+                  <BuildingOffice2Icon />
+                </div>
+                <p className="text-sm text-gray-500">
+                  No conferences found
+                </p>
+              </div>
+            ) : (
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    {columns.map((column) => (
+                      <th
+                        key={column.key}
+                        scope="col"
+                        className={
+                          column.headerClassName ||
+                          'px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'
+                        }
+                      >
+                        {column.header}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {filteredConferences.map((item) => (
+                    <tr key={item?._id || Math.random()} className="hover:bg-gray-50">
+                      {columns.map((column) => (
+                        <td
+                          key={column.key}
+                          className={
+                            column.className ||
+                            'px-6 py-4 whitespace-nowrap text-sm'
+                          }
+                        >
+                          {item ? column.accessor(item) : '-'}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+
+        {/* Create/Edit Modal */}
         <ConferenceModal
-          isOpen={showModal}
+          isOpen={showCreateModal || showEditModal}
           onClose={() => {
-            setShowModal(false);
-            setEditingConference(null);
+            setShowCreateModal(false);
+            setShowEditModal(false);
+            setSelectedConference(undefined);
           }}
-          onSave={handleSaveConference}
-          conference={editingConference}
+          onSave={handleConferenceSaved}
+          conference={showEditModal ? selectedConference : null}
           unions={unions}
         />
-      )}
 
-      {/* Delete Confirmation Modal */}
-      {showDeleteModal && deletingConference && (
+        {/* Delete Confirmation Modal */}
         <ConfirmationModal
-          title="Delete Conference"
-          message={`Are you sure you want to delete "${deletingConference.name}"? This action cannot be undone.`}
-          confirmLabel="Delete"
-          onConfirm={handleDeleteConference}
-          onCancel={() => {
-            setShowDeleteModal(false);
-            setDeletingConference(null);
+          isOpen={showDeleteConfirm}
+          onClose={() => {
+            setShowDeleteConfirm(false);
+            setConferenceToDelete(undefined);
           }}
-          isDestructive
+          onConfirm={() =>
+            conferenceToDelete && handleDeleteConference(conferenceToDelete)
+          }
+          title="Delete Conference"
+          message={`Are you sure you want to delete "${conferenceToDelete?.name}"? This action cannot be undone.`}
+          confirmLabel="Delete Conference"
+          confirmButtonColor="red"
+          icon={<TrashIcon className="h-6 w-6 text-red-600" />}
         />
-      )}
+      </div>
     </AdminLayout>
   );
 }

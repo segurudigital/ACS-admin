@@ -40,7 +40,7 @@ export default function SystemRoleConfirmationModal({
             </h3>
             <div className="mt-2 text-sm text-gray-700 space-y-2">
               <p>
-                You are about to {action} the system role <strong>"{roleName}"</strong>.
+                You are about to {action} the system role <strong>&quot;{roleName}&quot;</strong>.
               </p>
               <p>
                 This action will affect <strong>{affectedUsersCount > 0 ? `${affectedUsersCount} users` : 'all users with this role'}</strong> across the entire system.

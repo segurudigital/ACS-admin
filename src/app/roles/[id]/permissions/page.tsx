@@ -1,13 +1,12 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import AdminLayout from '@/components/AdminLayout';
 import { rbacService } from '@/lib/rbac';
 import { useToast } from '@/contexts/ToastContext';
 import { Role } from '@/types/rbac';
-import { PermissionSwitch } from '@/components/PermissionSwitch';
 import { PermissionCategory } from '@/components/PermissionCategory';
 import { PermissionBreadcrumb } from '@/components/PermissionBreadcrumb';
 import { usePermissions } from '@/contexts/HierarchicalPermissionContext';
@@ -30,7 +29,6 @@ export default function RolePermissionsPage() {
   const { hasPermission } = usePermissions();
   const isSuperAdmin = hasPermission('*');
   
-  const roleId = params.id as string;
   const [role, setRole] = useState<Role | null>(null);
   const [permissions, setPermissions] = useState<PermissionStructure>({});
   const [rolePermissions, setRolePermissions] = useState<string[]>([]);
@@ -39,86 +37,18 @@ export default function RolePermissionsPage() {
   const [savingPermissions, setSavingPermissions] = useState<Set<string>>(new Set());
   const [selectedCategory, setSelectedCategory] = useState('overview');
   
-  // Permission categories with hierarchy levels matching backend
-  const permissionCategories = [
-    {
-      id: 'system',
-      name: 'System Administration',
-      description: 'Core system configuration and maintenance',
-      level: 'union',
-      hierarchyLevel: 0
-    },
-    {
-      id: 'organizations',
-      name: 'Organizations',
-      description: 'Organizational hierarchy management',
-      level: 'union',
-      hierarchyLevel: 0
-    },
-    {
-      id: 'users',
-      name: 'User Management',
-      description: 'User accounts and assignments',
-      level: 'conference',
-      hierarchyLevel: 1
-    },
-    {
-      id: 'roles',
-      name: 'Roles & Permissions',
-      description: 'Role definitions and access control',
-      level: 'conference',
-      hierarchyLevel: 1
-    },
-    {
-      id: 'teams',
-      name: 'Team Management',
-      description: 'Team creation and coordination',
-      level: 'church',
-      hierarchyLevel: 2
-    },
-    {
-      id: 'services',
-      name: 'Community Services',
-      description: 'Core ACS service management',
-      level: 'church',
-      hierarchyLevel: 2
-    },
-    {
-      id: 'stories',
-      name: 'Success Stories',
-      description: 'Testimonials and story management',
-      level: 'church',
-      hierarchyLevel: 2
-    },
-    {
-      id: 'dashboard',
-      name: 'Analytics & Reports',
-      description: 'Dashboard access and reporting',
-      level: 'church',
-      hierarchyLevel: 2
-    }
-  ];
-
-  const getRoleHierarchyLevel = (level: string): number => {
-    switch (level) {
-      case 'union': return 0;      // Highest level
-      case 'conference': return 1; // Middle level  
-      case 'church': return 2;     // Lowest level
-      default: return 2;           // Default to most restrictive
-    }
-  };
-
-  useEffect(() => {
-    fetchRoleData();
-  }, [roleId]);
-
-  const fetchRoleData = async () => {
+  const roleId = params?.id as string;
+  
+  const fetchRoleData = useCallback(async () => {
+    const id = params?.id as string;
+    if (!id) return;
+    
     try {
       setLoading(true);
       
       // Fetch all roles and find the specific one
       const allRoles = await rbacService.getRoles(true); // Include system roles
-      const roleData = allRoles.find(r => r._id === roleId);
+      const roleData = allRoles.find(r => r._id === id);
       
       if (!roleData) {
         throw new Error('Role not found');
@@ -137,6 +67,105 @@ export default function RolePermissionsPage() {
       router.push('/roles');
     } finally {
       setLoading(false);
+    }
+  }, [params?.id, router, toast]);
+
+  useEffect(() => {
+    fetchRoleData();
+  }, [fetchRoleData]);
+  
+  if (!roleId) {
+    router.push('/roles');
+    return null;
+  }
+  
+  // Permission categories with hierarchy requirements matching backend
+  const permissionCategories = [
+    {
+      id: 'system',
+      name: 'System Administration',
+      description: 'Core system configuration and maintenance',
+      level: 'super_admin',
+      requiredHierarchyLevel: -1  // Super admin only
+    },
+    {
+      id: 'unions',
+      name: 'Union Management',
+      description: 'Union-level administration and oversight',
+      level: 'union',
+      requiredHierarchyLevel: 0  // Union level only
+    },
+    {
+      id: 'conferences', 
+      name: 'Conference Management',
+      description: 'Conference-level administration and coordination',
+      level: 'union',  // Union can manage conferences
+      requiredHierarchyLevel: 0  // Union level and above
+    },
+    {
+      id: 'churches',
+      name: 'Church Management', 
+      description: 'Church-level administration and coordination',
+      level: 'union',  // Union can manage churches
+      requiredHierarchyLevel: 0  // Union level and above
+    },
+    {
+      id: 'users',
+      name: 'User Management',
+      description: 'User accounts and assignments',
+      level: 'conference',
+      requiredHierarchyLevel: 1  // Conference level and above
+    },
+    {
+      id: 'roles',
+      name: 'Roles & Permissions',
+      description: 'Role definitions and access control',
+      level: 'conference',
+      requiredHierarchyLevel: 1  // Conference level and above
+    },
+    {
+      id: 'teams',
+      name: 'Team Management',
+      description: 'Team creation and coordination',
+      level: 'church',
+      requiredHierarchyLevel: 2  // Church level and above (all levels)
+    },
+    {
+      id: 'services',
+      name: 'Community Services',
+      description: 'Core ACS service management',
+      level: 'church',
+      requiredHierarchyLevel: 2  // Church level and above (all levels)
+    },
+    {
+      id: 'stories',
+      name: 'Success Stories',
+      description: 'Testimonials and story management',
+      level: 'church',
+      requiredHierarchyLevel: 2  // Church level and above (all levels)
+    },
+    {
+      id: 'dashboard',
+      name: 'Analytics & Reports',
+      description: 'Dashboard access and reporting',
+      level: 'church',
+      requiredHierarchyLevel: 2  // Church level and above (all levels)
+    },
+    {
+      id: 'media',
+      name: 'Media & File Management',
+      description: 'Media library and file upload management',
+      level: 'church',
+      requiredHierarchyLevel: 2  // Church level and above (all levels)
+    }
+  ];
+
+  const getRoleHierarchyLevel = (level: string): number => {
+    switch (level) {
+      case 'union': return 0;      // Highest level
+      case 'conference': return 1; // Middle level  
+      case 'church': return 2;     // Lowest level
+      default: return 2;           // Default to most restrictive
     }
   };
 
@@ -313,21 +342,19 @@ export default function RolePermissionsPage() {
     // Must have permissions available from backend
     const hasPermissions = permissions[category.id] && permissions[category.id].length > 0;
     
+    // Special handling for system permissions - only super admin can see them
+    if (category.id === 'system' && !isSuperAdmin) {
+      return false;
+    }
+    
     // Must be at appropriate hierarchy level for this role
+    // Lower hierarchy numbers are higher privilege (0=union, 1=conference, 2=church)
     const roleHierarchyLevel = getRoleHierarchyLevel(role?.level || 'church');
-    const canAccessCategory = roleHierarchyLevel <= category.hierarchyLevel;
+    const canAccessCategory = roleHierarchyLevel <= category.requiredHierarchyLevel;
     
     return hasPermissions && canAccessCategory;
   });
 
-  const getLevelBadgeColor = (level: string) => {
-    switch (level) {
-      case 'union': return 'bg-purple-100 text-purple-800';
-      case 'conference': return 'bg-blue-100 text-blue-800';
-      case 'church': return 'bg-green-100 text-green-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
 
   const renderContent = () => {
     if (selectedCategory === 'overview') {
@@ -349,7 +376,7 @@ export default function RolePermissionsPage() {
               </div>
               <p className="text-gray-600 mt-1">{role.description}</p>
               <PermissionBreadcrumb 
-                roleLevel={role.level} 
+                roleLevel={role?.level || 'church'} 
                 permissionCount={rolePermissions.length}
                 totalAvailable={Object.values(permissions).flat().length}
               />
@@ -394,7 +421,7 @@ export default function RolePermissionsPage() {
                   </p>
                   {isSuperAdmin && (
                     <p className="mt-1 text-sm font-medium text-orange-700">
-                      Consider using "Reset to Default" if you need to restore original permissions.
+                      Consider using &ldquo;Reset to Default&rdquo; if you need to restore original permissions.
                     </p>
                   )}
                 </div>
@@ -462,7 +489,6 @@ export default function RolePermissionsPage() {
         <PermissionCategory
           category={category}
           permissions={categoryPermissions}
-          rolePermissions={rolePermissions}
           hasPermission={roleHasPermission}
           togglePermission={togglePermission}
           toggleCategoryPermissions={toggleCategoryPermissions}

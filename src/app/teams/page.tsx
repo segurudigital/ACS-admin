@@ -24,7 +24,7 @@ export default function TeamsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [teamTypes, setTeamTypes] = useState<TeamType[]>([]);
   const router = useRouter();
-  const { currentOrganization, organizations } = usePermissions();
+  const { currentUnion, currentConference, currentChurch } = usePermissions();
   const { isSuperAdmin } = useSuperAdmin();
 
   const loadTeams = useCallback(async () => {
@@ -33,15 +33,16 @@ export default function TeamsPage() {
       let response;
       
       if (isSuperAdmin) {
-        // Super admin views all teams from MongoDB collection across all organizations
+        // Super admin views all teams from MongoDB collection across all hierarchies
         response = await teamService.getAllTeams();
       } else {
-        // Regular user - view teams for their organization
-        if (!currentOrganization?._id) {
+        // Regular user - view teams for their current entity (church, conference, or union)
+        const currentEntityId = currentChurch || currentConference || currentUnion;
+        if (!currentEntityId) {
           setLoading(false);
           return;
         }
-        response = await teamService.getOrganizationTeams(currentOrganization._id);
+        response = await teamService.getOrganizationTeams(currentEntityId);
       }
       
       const teamsData = response.data || [];
@@ -57,28 +58,32 @@ export default function TeamsPage() {
     } finally {
       setLoading(false);
     }
-  }, [currentOrganization?._id, isSuperAdmin]);
+  }, [currentChurch, currentConference, currentUnion, isSuperAdmin]);
 
   const loadTeamTypes = useCallback(async () => {
-    if (!currentOrganization?._id) return;
+    const currentEntityId = currentChurch || currentConference || currentUnion;
+    if (!currentEntityId) return;
 
     try {
-      const response = await teamTypeService.getOrganizationTeamTypes(currentOrganization._id);
+      const response = await teamTypeService.getOrganizationTeamTypes(currentEntityId);
       setTeamTypes(response.data);
     } catch {
       // Don't show toast for team types error as it's not critical
     }
-  }, [currentOrganization?._id]);
+  }, [currentChurch, currentConference, currentUnion]);
 
 
   useEffect(() => {
     if (isSuperAdmin) {
       loadTeams();
-    } else if (currentOrganization?._id) {
-      loadTeams();
-      loadTeamTypes();
+    } else {
+      const currentEntityId = currentChurch || currentConference || currentUnion;
+      if (currentEntityId) {
+        loadTeams();
+        loadTeamTypes();
+      }
     }
-  }, [currentOrganization, loadTeams, loadTeamTypes, isSuperAdmin]);
+  }, [currentChurch, currentConference, currentUnion, loadTeams, loadTeamTypes, isSuperAdmin]);
 
   const handleCreateTeam = async (teamData: {
     name: string;
@@ -86,10 +91,11 @@ export default function TeamsPage() {
     description?: string;
     maxMembers: number;
   }) => {
-    if (!currentOrganization?._id) {
+    const currentEntityId = currentChurch || currentConference || currentUnion;
+    if (!currentEntityId) {
       toast({
         title: 'Error',
-        description: 'No organization selected',
+        description: 'No current entity selected',
         variant: 'destructive',
       });
       return;
@@ -99,7 +105,7 @@ export default function TeamsPage() {
       await teamService.createTeam({
         ...teamData,
         type: teamData.type as "communications" | "acs" | "general",
-        organizationId: currentOrganization._id
+        organizationId: currentEntityId
       });
       toast({
         title: 'Success',
@@ -289,22 +295,30 @@ export default function TeamsPage() {
   ];
 
 
-  if (!currentOrganization && !isSuperAdmin) {
+  const currentEntityId = currentChurch || currentConference || currentUnion;
+  if (!currentEntityId && !isSuperAdmin) {
     return (
-      <AdminLayout title="Teams" description="Manage teams for your organization">
+      <AdminLayout title="Teams" description="Manage teams for your entity">
         <div className="bg-white shadow overflow-hidden sm:rounded-lg">
           <div className="px-6 py-4">
-            <h3 className="text-lg leading-6 font-medium text-gray-900">No Organization Selected</h3>
-            <p className="mt-1 text-sm text-gray-500">Please select an organization to view teams.</p>
+            <h3 className="text-lg leading-6 font-medium text-gray-900">No Entity Selected</h3>
+            <p className="mt-1 text-sm text-gray-500">Please select a church, conference, or union to view teams.</p>
           </div>
         </div>
       </AdminLayout>
     );
   }
 
+  const getCurrentEntityName = () => {
+    if (currentChurch) return 'your church';
+    if (currentConference) return 'your conference';
+    if (currentUnion) return 'your union';
+    return 'your entity';
+  };
+
   const description = isSuperAdmin 
-    ? "Manage teams across all organizations"
-    : `Manage teams for ${currentOrganization?.name ? String(currentOrganization.name) : 'your organization'}`;
+    ? "Manage teams across all hierarchies"
+    : `Manage teams for ${getCurrentEntityName()}`;
 
   return (
     <AdminLayout 

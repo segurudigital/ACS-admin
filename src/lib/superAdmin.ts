@@ -8,7 +8,12 @@ interface SuperAdminUser {
   email: string;
   isSuperAdmin: boolean;
   avatar?: string;
-  organizations: any[];
+  organizations: Array<{
+    _id: string;
+    name: string;
+    type: 'union' | 'conference' | 'church';
+    role: string;
+  }>;
   createdAt: string;
   lastLogin?: string;
   isActive: boolean;
@@ -19,7 +24,12 @@ interface EligibleUser {
   name: string;
   email: string;
   avatar?: string;
-  organizations: any[];
+  organizations: Array<{
+    _id: string;
+    name: string;
+    type: 'union' | 'conference' | 'church';
+    role: string;
+  }>;
   verified: boolean;
 }
 
@@ -40,7 +50,7 @@ interface AuditLog {
     name: string;
     email: string;
   };
-  metadata: any;
+  metadata: Record<string, unknown>;
   createdAt: string;
   statusCode: number;
 }
@@ -81,7 +91,11 @@ export class SuperAdminService {
     }
   }
 
-  static async grantSuperAdmin(userId: string, reason?: string): Promise<any> {
+  static async grantSuperAdmin(userId: string, reason?: string): Promise<{
+    success: boolean;
+    message: string;
+    data?: SuperAdminUser;
+  }> {
     try {
       const response = await fetch(`${API_BASE_URL}/api/super-admin/grant`, {
         method: 'POST',
@@ -102,7 +116,11 @@ export class SuperAdminService {
     }
   }
 
-  static async revokeSuperAdmin(userId: string, reason?: string): Promise<any> {
+  static async revokeSuperAdmin(userId: string, reason?: string): Promise<{
+    success: boolean;
+    message: string;
+    data?: SuperAdminUser;
+  }> {
     try {
       const response = await fetch(`${API_BASE_URL}/api/super-admin/revoke`, {
         method: 'POST',

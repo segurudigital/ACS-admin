@@ -1,24 +1,25 @@
 export enum HierarchyLevel {
   SUPER_ADMIN = 0,
   UNION = 1,
-  CONFERENCE = 1,
-  CHURCH = 2,
-  TEAM = 3,
-  SERVICE = 4
+  CONFERENCE = 2,
+  CHURCH = 3,
+  TEAM = 4,
+  SERVICE = 5
 }
 
 export const HIERARCHY_LEVEL_NAMES: Record<number, string> = {
   0: 'super_admin',
-  1: 'conference', // Union and Conference share same level
-  2: 'church',
-  3: 'team',
-  4: 'service'
+  1: 'union',
+  2: 'conference',
+  3: 'church',
+  4: 'team',
+  5: 'service'
 };
 
 export const ENTITY_TYPE_LEVELS: Record<string, number> = {
-  'organization': 2, // Churches are at level 2
-  'team': 3,
-  'service': 4
+  'organization': 3, // Churches are at level 3
+  'team': 4,
+  'service': 5
 };
 
 export interface HierarchySegment {

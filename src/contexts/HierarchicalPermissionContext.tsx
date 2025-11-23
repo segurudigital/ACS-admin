@@ -83,6 +83,7 @@ interface TeamAssignment {
   };
 }
 
+
 interface AccessibleEntity {
   _id: string;
   name: string;
@@ -100,7 +101,6 @@ interface RawTeamData {
   _id: string;
   name: string;
   type: string;
-  // Legacy field removed
   churchId?: string;
   hierarchyPath?: string;
 }
@@ -110,40 +110,6 @@ interface RawTeamAssignment {
   role: 'leader' | 'member' | 'communications';
   assignedAt: string;
   team?: RawTeamData;
-}
-
-interface RawUnionData {
-  _id: string;
-  name: string;
-  hierarchyLevel?: string;
-  hierarchyPath?: string;
-}
-
-interface RawConferenceData {
-  _id: string;
-  name: string;
-  hierarchyLevel?: string;
-  hierarchyPath?: string;
-}
-
-interface RawChurchData {
-  _id: string;
-  name: string;
-  hierarchyLevel?: string;
-  hierarchyPath?: string;
-}
-
-interface RawUnionAssignment {
-  union: string;
-  role: {
-    _id: string;
-    name: string;
-    displayName: string;
-    level?: string;
-    hierarchyLevel?: number;
-    canManage?: number[];
-  };
-  assignedAt: string;
 }
 
 interface HierarchicalPermissionContextType {
@@ -167,16 +133,20 @@ interface HierarchicalPermissionContextType {
   currentPath: string;
   availableLevels: number[];
   
-  // Organization Context
-  currentOrganization: {_id: string; name: string; hierarchyLevel: string} | null;
-  organizations: Array<{_id: string; name: string; hierarchyLevel: string; hierarchyPath: string}>;
-  switchOrganization: (organizationId: string) => void;
+  // Legacy Hierarchical Properties (for backward compatibility)
+  currentUnion: string | null;
+  currentConference: string | null;
+  currentChurch: string | null;
+  role: string | null;
+  type: string | null;
+  
   
   // Team Context
   currentTeam: TeamAssignment['team'] | null;
   teams: TeamAssignment[];
   teamRole: TeamAssignment['role'] | null;
   switchTeam: (teamId: string) => void;
+  hasTeamPermission: (permission: string, teamId?: string) => boolean;
   
   // Entity Access
   getAccessibleEntities: (entityType: string) => Promise<AccessibleEntity[]>;
@@ -237,8 +207,6 @@ export const HierarchicalPermissionProvider: React.FC<HierarchicalPermissionProv
   const [user, setUser] = useState<HierarchicalUser | null>(null);
   const [permissions, setPermissions] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
-  const [currentOrganization, setCurrentOrganization] = useState<{_id: string; name: string; hierarchyLevel: string} | null>(null);
-  const [organizations, setOrganizations] = useState<Array<{_id: string; name: string; hierarchyLevel: string; hierarchyPath: string}>>([]);
   
   // Team state
   const [teams, setTeams] = useState<TeamAssignment[]>([]);
@@ -258,8 +226,6 @@ export const HierarchicalPermissionProvider: React.FC<HierarchicalPermissionProv
         console.log('[HierarchicalPermissionContext] No token found, clearing user state');
         setUser(null);
         setPermissions([]);
-        setOrganizations([]);
-        setCurrentOrganization(null);
         setLoading(false);
         return;
       }
@@ -279,18 +245,15 @@ export const HierarchicalPermissionProvider: React.FC<HierarchicalPermissionProv
       if (userData.teamAssignments) {
         transformedTeams = (userData.teamAssignments as RawTeamAssignment[])
           .map((ta: RawTeamAssignment) => {
-            // Ensure churchId is available - teams must be bound to churches
-            const churchId = ta.team?.organizationId || ta.team?.churchId;
-            
             return {
               teamId: ta.teamId,
               role: ta.role,
               assignedAt: ta.assignedAt,
-              team: ta.team && churchId ? {
+              team: ta.team ? {
                 _id: ta.team._id,
                 name: ta.team.name,
                 type: ta.team.type,
-                churchId: churchId, // Now guaranteed to be string
+                churchId: ta.team.churchId || '',
                 hierarchyPath: ta.team.hierarchyPath || ''
               } : undefined
             };
@@ -311,8 +274,6 @@ export const HierarchicalPermissionProvider: React.FC<HierarchicalPermissionProv
         city: userData.city,
         state: userData.state,
         country: userData.country,
-        organizations: userData.organizations as OrganizationAssignment[] | undefined,
-        primaryOrganization: userData.primaryOrganization,
         teamAssignments: transformedTeams,
         primaryTeam: userData.primaryTeam,
         hierarchyLevel: authResponse.data.hierarchyLevel || 4,
@@ -323,39 +284,7 @@ export const HierarchicalPermissionProvider: React.FC<HierarchicalPermissionProv
       setUser(hierarchicalUser);
       setPermissions(authResponse.data.permissions || []);
       
-      // Set organizations and current organization (simplified since we removed Organization model)
-      if (userData.organizations && userData.organizations.length > 0) {
-        console.log('🏢 [HIERARCHICAL CONTEXT] User organizations:', userData.organizations);
-        
-        // Create dummy organization entries based on roles since we no longer have Organization model
-        const extractedOrgs = userData.organizations.map((orgAssignment: any, index: number) => {
-          return {
-            _id: `role-org-${index}`, // Generate fake org ID based on role
-            name: `Organization ${index + 1}`, // Generic name since we don't have org data
-            hierarchyLevel: 'church', // Default level
-            hierarchyPath: '' // Empty path since we don't have org hierarchy
-          };
-        });
-        
-        setOrganizations(extractedOrgs);
-        
-        // Set current organization to first one
-        if (extractedOrgs.length > 0) {
-          setCurrentOrganization(extractedOrgs[0]);
-          localStorage.setItem('currentOrganizationId', extractedOrgs[0]._id);
-        }
-      } else {
-        // For super admins or users without organization assignments, create default org
-        const defaultOrg = {
-          _id: 'default-org',
-          name: 'System',
-          hierarchyLevel: 'system',
-          hierarchyPath: ''
-        };
-        setOrganizations([defaultOrg]);
-        setCurrentOrganization(defaultOrg);
-        localStorage.setItem('currentOrganizationId', defaultOrg._id);
-      }
+      // Entity assignments handled via hierarchical assignments
       
       // Set teams and current team (use already transformed teams)
       if (transformedTeams) {
@@ -400,8 +329,6 @@ export const HierarchicalPermissionProvider: React.FC<HierarchicalPermissionProv
       
       setUser(null);
       setPermissions([]);
-      setOrganizations([]);
-      setCurrentOrganization(null);
       setTeams([]);
       setCurrentTeam(null);
       setTeamRole(null);
@@ -444,7 +371,6 @@ export const HierarchicalPermissionProvider: React.FC<HierarchicalPermissionProv
         hierarchyPath: user.hierarchyPath,
         managedLevels: user.managedLevels,
         permissions,
-        organizations: user.organizations,
         teamAssignments: user.teamAssignments
       },
       'manage',
@@ -466,7 +392,6 @@ export const HierarchicalPermissionProvider: React.FC<HierarchicalPermissionProv
         hierarchyPath: user.hierarchyPath,
         managedLevels: user.managedLevels,
         permissions,
-        organizations: user.organizations,
         teamAssignments: user.teamAssignments
       },
       'create',
@@ -499,7 +424,6 @@ export const HierarchicalPermissionProvider: React.FC<HierarchicalPermissionProv
         hierarchyPath: user.hierarchyPath,
         managedLevels: user.managedLevels,
         permissions,
-        organizations: user.organizations,
         teamAssignments: user.teamAssignments
       },
       'view',
@@ -520,7 +444,6 @@ export const HierarchicalPermissionProvider: React.FC<HierarchicalPermissionProv
         hierarchyPath: user.hierarchyPath,
         managedLevels: user.managedLevels,
         permissions,
-        organizations: user.organizations,
         teamAssignments: user.teamAssignments
       },
       'edit',
@@ -541,7 +464,6 @@ export const HierarchicalPermissionProvider: React.FC<HierarchicalPermissionProv
         hierarchyPath: user.hierarchyPath,
         managedLevels: user.managedLevels,
         permissions,
-        organizations: user.organizations,
         teamAssignments: user.teamAssignments
       },
       'delete',
@@ -562,7 +484,6 @@ export const HierarchicalPermissionProvider: React.FC<HierarchicalPermissionProv
         hierarchyPath: user.hierarchyPath,
         managedLevels: user.managedLevels,
         permissions,
-        organizations: user.organizations,
         teamAssignments: user.teamAssignments
       },
       toEntity(entity),
@@ -596,25 +517,6 @@ export const HierarchicalPermissionProvider: React.FC<HierarchicalPermissionProv
     return [];
   }, [user]);
 
-  const switchOrganization = async (organizationId: string) => {
-    const org = organizations.find(o => o._id === organizationId);
-    if (org) {
-      // Validate organization switch is allowed
-      if (user && !isInSubtree(org.hierarchyPath, user.hierarchyPath) && user.hierarchyLevel !== 0) {
-        console.warn('Cannot switch to organization outside user hierarchy');
-        return;
-      }
-      
-      setCurrentOrganization(org);
-      localStorage.setItem('currentOrganizationId', org._id);
-      
-      // Clear permission cache when switching context
-      permissionResolver.clearUserCache(user?.id || '');
-      
-      // Reload permissions for new organization context
-      await loadUserAndPermissions();
-    }
-  };
 
   const switchTeam = (teamId: string) => {
     const teamAssignment = teams.find(ta => ta.teamId === teamId);
@@ -632,11 +534,6 @@ export const HierarchicalPermissionProvider: React.FC<HierarchicalPermissionProv
       
       // Clear permission cache when switching context
       permissionResolver.clearUserCache(user?.id || '');
-      
-      // Team switch might affect organization context
-      if (teamAssignment.team.churchId) {
-        switchOrganization(teamAssignment.team.churchId);
-      }
     }
   };
 
@@ -661,7 +558,7 @@ export const HierarchicalPermissionProvider: React.FC<HierarchicalPermissionProv
       return true;
     }
 
-    // Check for scoped permissions (e.g., 'organizations.create:subordinate' matches 'organizations.create')
+    // Check for scoped permissions (e.g., 'entities.create:subordinate' matches 'entities.create')
     const hasScoped = permissions.some(perm => {
       const [permResource, permActionWithScope] = perm.split('.');
       if (!permActionWithScope || !permActionWithScope.includes(':')) {
@@ -685,6 +582,20 @@ export const HierarchicalPermissionProvider: React.FC<HierarchicalPermissionProv
     return () => window.removeEventListener('logout', handleLogoutCache);
   }, []);
 
+  // Legacy hasTeamPermission implementation
+  const hasTeamPermissionImpl = useCallback((permission: string, teamId?: string): boolean => {
+    if (!user) return false;
+    
+    // If no specific team provided, use current team
+    const targetTeamId = teamId || currentTeam?._id;
+    if (!targetTeamId) return false;
+    
+    // Check hierarchical team access
+    return canManageEntity('team', targetTeamId);
+  }, [user, currentTeam, canManageEntity]);
+
+  // Current entity context based on primary assignments
+
   const contextValue: HierarchicalPermissionContextType = {
     user,
     permissions,
@@ -699,13 +610,17 @@ export const HierarchicalPermissionProvider: React.FC<HierarchicalPermissionProv
     currentLevel: user?.hierarchyLevel ?? -1,
     currentPath: user?.hierarchyPath ?? '',
     availableLevels: user?.managedLevels ?? [],
-    currentOrganization,
-    organizations,
-    switchOrganization,
+    // Legacy properties for backward compatibility
+    currentUnion: user?.primaryUnion || null,
+    currentConference: user?.primaryConference || null,
+    currentChurch: user?.primaryChurch || null,
+    role: user?.unionAssignments?.[0]?.role?.name || user?.conferenceAssignments?.[0]?.role?.name || user?.churchAssignments?.[0]?.role?.name || null,
+    type: null,
     currentTeam,
     teams,
     teamRole,
     switchTeam,
+    hasTeamPermission: hasTeamPermissionImpl,
     getAccessibleEntities,
     reloadPermissions: loadUserAndPermissions,
     permissionResolver,
