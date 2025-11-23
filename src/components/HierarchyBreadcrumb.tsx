@@ -27,7 +27,7 @@ export const HierarchyBreadcrumb: React.FC<HierarchyBreadcrumbProps> = ({
   compact = false,
   onNavigate
 }) => {
-  const { user, currentOrganization, currentTeam, currentPath } = useHierarchicalPermissions();
+  const { user, currentUnion, currentConference, currentChurch, currentTeam, currentPath } = useHierarchicalPermissions();
 
   const breadcrumbItems = useMemo((): BreadcrumbItem[] => {
     if (!user || !currentPath) return [];

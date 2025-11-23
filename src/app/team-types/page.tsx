@@ -21,14 +21,14 @@ export default function TeamTypesPage() {
   const { currentOrganization } = usePermissions();
 
   const loadTeamTypes = useCallback(async () => {
-    if (!currentOrganization?.organization?._id) {
+    if (!currentOrganization?._id) {
       setLoading(false);
       return;
     }
 
     try {
       setLoading(true);
-      const response = await teamTypeService.getOrganizationTeamTypes(currentOrganization.organization._id, true);
+      const response = await teamTypeService.getOrganizationTeamTypes(currentOrganization._id, true);
       const teamTypesData = response.data || [];
       setTeamTypes(teamTypesData);
     } catch (error: unknown) {
@@ -42,10 +42,10 @@ export default function TeamTypesPage() {
     } finally {
       setLoading(false);
     }
-  }, [currentOrganization?.organization?._id]);
+  }, [currentOrganization?._id]);
 
   useEffect(() => {
-    if (currentOrganization?.organization?._id) {
+    if (currentOrganization?._id) {
       loadTeamTypes();
     }
   }, [currentOrganization, loadTeamTypes]);
@@ -202,7 +202,7 @@ export default function TeamTypesPage() {
   }
 
   return (
-    <AdminLayout title="Team Types" description={`Manage team types for ${currentOrganization.organization.name}`}>
+    <AdminLayout title="Team Types" description={`Manage team types for ${currentOrganization.name}`}>
       <div className="space-y-6">
         {/* Table with custom header */}
         <div className="bg-white shadow overflow-hidden sm:rounded-lg">

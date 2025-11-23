@@ -20,8 +20,12 @@ interface HierarchicalUser {
   city?: string;
   state?: string;
   country?: string;
-  organizations?: Array<OrganizationAssignment>;
-  primaryOrganization?: string;
+  unionAssignments?: Array<UnionAssignment>;
+  conferenceAssignments?: Array<ConferenceAssignment>;
+  churchAssignments?: Array<ChurchAssignment>;
+  primaryUnion?: string;
+  primaryConference?: string;
+  primaryChurch?: string;
   teamAssignments?: TeamAssignment[];
   primaryTeam?: string;
   // Hierarchical Properties
@@ -30,7 +34,32 @@ interface HierarchicalUser {
   managedLevels: number[]; // Levels this user can manage
 }
 
-interface OrganizationAssignment {
+interface UnionAssignment {
+  union: string;
+  role: {
+    _id: string;
+    name: string;
+    displayName: string;
+    hierarchyLevel?: number;
+    canManage?: number[];
+  };
+  assignedAt: string;
+}
+
+interface ConferenceAssignment {
+  conference: string;
+  role: {
+    _id: string;
+    name: string;
+    displayName: string;
+    hierarchyLevel?: number;
+    canManage?: number[];
+  };
+  assignedAt: string;
+}
+
+interface ChurchAssignment {
+  church: string;
   role: {
     _id: string;
     name: string;
@@ -71,7 +100,7 @@ interface RawTeamData {
   _id: string;
   name: string;
   type: string;
-  organizationId?: string;
+  // Legacy field removed
   churchId?: string;
   hierarchyPath?: string;
 }
@@ -83,15 +112,29 @@ interface RawTeamAssignment {
   team?: RawTeamData;
 }
 
-interface RawOrganizationData {
+interface RawUnionData {
   _id: string;
   name: string;
-  type?: string;
   hierarchyLevel?: string;
   hierarchyPath?: string;
 }
 
-interface RawOrganizationAssignment {
+interface RawConferenceData {
+  _id: string;
+  name: string;
+  hierarchyLevel?: string;
+  hierarchyPath?: string;
+}
+
+interface RawChurchData {
+  _id: string;
+  name: string;
+  hierarchyLevel?: string;
+  hierarchyPath?: string;
+}
+
+interface RawUnionAssignment {
+  union: string;
   role: {
     _id: string;
     name: string;

@@ -1,6 +1,44 @@
-// Hierarchical Organization Service Types
+// Hierarchical Service Types
 
-import { Union, Conference, Church, OrganizationalEntity } from './rbac';
+// Proper Union interface that matches the backend model
+export interface Union {
+  _id: string;
+  name: string;
+  hierarchyPath: string;
+  hierarchyLevel: number;
+  territory: {
+    description?: string;
+  };
+  headquarters: {
+    address?: string;
+    city?: string;
+    state?: string;
+    country?: string;
+    postalCode?: string;
+  };
+  contact: {
+    email?: string;
+    phone?: string;
+    website?: string;
+  };
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  metadata: {
+    membershipCount?: number;
+    churchCount?: number;
+    lastUpdated: string;
+  };
+  statistics?: {
+    conferences: number;
+    churches: number;
+    teams: number;
+    services: number;
+  };
+}
+
+// Import other types from rbac (keeping Conference and Church)
+import { Conference, Church } from './rbac';
 
 // API Response Types for hierarchical endpoints
 export interface UnionListResponse {
@@ -42,23 +80,63 @@ export interface ChurchResponse {
 // Create/Update Types
 export interface CreateUnionData {
   name: string;
-  metadata?: {
+  territory?: {
+    description?: string;
+  };
+  headquarters?: {
     address?: string;
-    phone?: string;
-    territory?: string[];
+    city?: string;
+    state?: string;
+    country?: string;
+    postalCode?: string;
+  };
+  contact?: {
     email?: string;
+    phone?: string;
+    website?: string;
   };
 }
 
 export interface CreateConferenceData {
   name: string;
+  code?: string;
   unionId: string;
-  metadata?: {
-    address?: string;
-    phone?: string;
-    territory?: string[];
-    email?: string;
+  territory?: {
+    states?: string[];
+    regions?: string[];
+    description?: string;
   };
+  headquarters?: {
+    address?: string;
+    city?: string;
+    state?: string;
+    country?: string;
+    postalCode?: string;
+    timezone?: string;
+  };
+  contact?: {
+    email?: string;
+    phone?: string;
+    website?: string;
+  };
+  leadership?: {
+    president?: {
+      name?: string;
+      email?: string;
+      phone?: string;
+    };
+    secretaryTreasurer?: {
+      name?: string;
+      email?: string;
+      phone?: string;
+    };
+    acsDirector?: {
+      name?: string;
+      email?: string;
+      phone?: string;
+    };
+  };
+  establishedDate?: string;
 }
 
 export interface CreateChurchData {
@@ -96,6 +174,7 @@ export interface UnionListParams {
 export interface ConferenceListParams {
   unionId?: string;
   isActive?: boolean;
+  includeInactive?: boolean;
   search?: string;
   limit?: number;
   offset?: number;
@@ -118,7 +197,7 @@ export interface HierarchyPath {
 }
 
 export interface HierarchyTreeNode {
-  entity: OrganizationalEntity;
+  entity: Union | Conference | Church;
   children: HierarchyTreeNode[];
   level: 'union' | 'conference' | 'church';
 }

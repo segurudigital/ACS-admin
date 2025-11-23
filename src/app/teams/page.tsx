@@ -23,7 +23,6 @@ export default function TeamsPage() {
   const [selectedTeam] = useState<Team | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [teamTypes, setTeamTypes] = useState<TeamType[]>([]);
-  const [selectedOrgFilter, setSelectedOrgFilter] = useState<string>('all');
   const router = useRouter();
   const { currentOrganization, organizations } = usePermissions();
   const { isSuperAdmin } = useSuperAdmin();
@@ -33,17 +32,16 @@ export default function TeamsPage() {
       setLoading(true);
       let response;
       
-      if (isSuperAdmin && selectedOrgFilter === 'all') {
-        // Super admin viewing all teams
+      if (isSuperAdmin) {
+        // Super admin views all teams from MongoDB collection across all organizations
         response = await teamService.getAllTeams();
       } else {
-        // Specific organization or regular user
-        const orgId = isSuperAdmin && selectedOrgFilter !== 'all' ? selectedOrgFilter : currentOrganization?._id;
-        if (!orgId) {
+        // Regular user - view teams for their organization
+        if (!currentOrganization?._id) {
           setLoading(false);
           return;
         }
-        response = await teamService.getOrganizationTeams(orgId);
+        response = await teamService.getOrganizationTeams(currentOrganization._id);
       }
       
       const teamsData = response.data || [];
@@ -59,7 +57,7 @@ export default function TeamsPage() {
     } finally {
       setLoading(false);
     }
-  }, [currentOrganization?._id, isSuperAdmin, selectedOrgFilter]);
+  }, [currentOrganization?._id, isSuperAdmin]);
 
   const loadTeamTypes = useCallback(async () => {
     if (!currentOrganization?._id) return;
@@ -71,6 +69,7 @@ export default function TeamsPage() {
       // Don't show toast for team types error as it's not critical
     }
   }, [currentOrganization?._id]);
+
 
   useEffect(() => {
     if (isSuperAdmin) {
@@ -197,7 +196,7 @@ export default function TeamsPage() {
       }
     },
     // Add Organization column for super admin viewing all teams
-    ...(isSuperAdmin && selectedOrgFilter === 'all' ? [{
+    ...(isSuperAdmin ? [{
       key: 'organization' as keyof Team,
       header: 'Organization',
       accessor: (team: Team) => (
@@ -303,7 +302,7 @@ export default function TeamsPage() {
     );
   }
 
-  const description = isSuperAdmin && selectedOrgFilter === 'all'
+  const description = isSuperAdmin 
     ? "Manage teams across all organizations"
     : `Manage teams for ${currentOrganization?.name ? String(currentOrganization.name) : 'your organization'}`;
 
@@ -328,21 +327,6 @@ export default function TeamsPage() {
                     className="block w-full px-4 py-2 rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white"
                   />
                 </div>
-                {/* Organization filter for super admins */}
-                {isSuperAdmin && (
-                  <div>
-                    <select
-                      value={selectedOrgFilter}
-                      onChange={(e) => setSelectedOrgFilter(e.target.value)}
-                      className="block w-64 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-                    >
-                      <option value="all">All Organizations</option>
-                      {organizations.filter(org => org && org._id && org.name).map((org) => (
-                        <option key={org._id} value={org._id}>{String(org.name)}</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
               </div>
               <PermissionGate permission="teams.create">
                 <Button onClick={() => setCreateModalOpen(true)} className="whitespace-nowrap" size="sm">

@@ -1,7 +1,7 @@
 // RBAC Type Definitions
 
-// Base interface for all organizational levels
-interface BaseOrganization {
+// Base interface for all hierarchical levels
+interface BaseHierarchyLevel {
   _id: string;
   name: string;
   metadata: {
@@ -17,16 +17,16 @@ interface BaseOrganization {
 }
 
 // Union: Top-level administrative division (Level 0)
-export interface Union extends BaseOrganization {
+export interface Union extends BaseHierarchyLevel {
   type: 'union';
-  parentOrganization?: never; // Unions have no parent
+  parentEntity?: never; // Unions have no parent
 }
 
 // Conference: Regional division under union (Level 1)
-export interface Conference extends BaseOrganization {
+export interface Conference extends BaseHierarchyLevel {
   type: 'conference';
   unionId: string; // Reference to parent union
-  parentOrganization?: {
+  parentEntity?: {
     _id: string;
     name: string;
     type: 'union';
@@ -34,42 +34,20 @@ export interface Conference extends BaseOrganization {
 }
 
 // Church: Local church organization (Level 2)
-export interface Church extends BaseOrganization {
+export interface Church extends BaseHierarchyLevel {
   type: 'church';
   conferenceId: string; // Reference to parent conference
   unionId: string; // Reference to root union (for faster queries)
-  parentOrganization?: {
+  parentEntity?: {
     _id: string;
     name: string;
     type: 'conference';
   };
 }
 
-// Union type for all organizational entities
-export type OrganizationalEntity = Union | Conference | Church;
+// Union type for all hierarchical entities
+export type HierarchicalEntity = Union | Conference | Church;
 
-// Legacy Organization interface - deprecated, use specific types above
-/** @deprecated Use Union, Conference, or Church types instead */
-export interface Organization {
-  _id: string;
-  name: string;
-  type: 'union' | 'conference' | 'church';
-  parentOrganization?: {
-    _id: string;
-    name: string;
-    type: string;
-  };
-  metadata: {
-    address?: string;
-    phone?: string;
-    territory?: string[];
-    email?: string;
-  };
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
-  childCount?: number;
-}
 
 export interface Role {
   _id: string;
@@ -112,15 +90,6 @@ export interface ChurchAssignment {
 // Union type for all assignment types
 export type HierarchicalAssignment = UnionAssignment | ConferenceAssignment | ChurchAssignment;
 
-// Legacy assignment type - deprecated
-/** @deprecated Use UnionAssignment, ConferenceAssignment, or ChurchAssignment instead */
-export interface OrganizationAssignment {
-  organization: Organization | string;
-  role: Role | string;
-  assignedAt: string;
-  assignedBy?: User | string;
-  expiresAt?: string;
-}
 
 export interface User {
   _id: string;
@@ -145,11 +114,6 @@ export interface User {
   primaryConference?: Conference | string;
   primaryChurch?: Church | string;
   
-  // Legacy fields - deprecated
-  /** @deprecated Use unionAssignments, conferenceAssignments, churchAssignments instead */
-  organizations: OrganizationAssignment[];
-  /** @deprecated Use primaryUnion, primaryConference, or primaryChurch instead */
-  primaryOrganization?: Organization | string;
   
   createdAt: string;
   updatedAt: string;
@@ -169,9 +133,6 @@ export interface UserPermissions {
   conference?: string;
   church?: string;
   
-  // Legacy field - deprecated
-  /** @deprecated Use union, conference, or church instead */
-  organization: string;
 }
 
 // System role names
@@ -202,9 +163,6 @@ export const PERMISSION_RESOURCES = {
   AUDIT: 'audit',
   NOTIFICATIONS: 'notifications',
   
-  // Legacy resource - deprecated
-  /** @deprecated Use UNIONS, CONFERENCES, or CHURCHES instead */
-  ORGANIZATIONS: 'organizations'
 } as const;
 
 export type PermissionResource = typeof PERMISSION_RESOURCES[keyof typeof PERMISSION_RESOURCES];

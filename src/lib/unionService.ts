@@ -1,14 +1,13 @@
 // Union Service - Handles API calls for union management
 
 import { AuthService } from './auth';
-import { Union } from '../types/rbac';
 import { 
+  Union,
   UnionListResponse, 
   UnionResponse,
   CreateUnionData, 
   UpdateUnionData,
-  UnionListParams,
-  UnionQuickSetupData
+  UnionListParams
 } from '../types/hierarchy';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
@@ -29,9 +28,12 @@ export class UnionService {
     try {
       const queryParams = new URLSearchParams();
       
-      if (params?.isActive !== undefined) {
-        queryParams.append('isActive', params.isActive.toString());
+      // Convert isActive to includeInactive for backend compatibility
+      if (params?.isActive !== undefined && params.isActive === false) {
+        // Only add includeInactive=true when we want to show inactive unions
+        queryParams.append('includeInactive', 'true');
       }
+      // Default behavior (no param) shows only active unions
       if (params?.search) {
         queryParams.append('search', params.search);
       }
@@ -50,6 +52,8 @@ export class UnionService {
       });
 
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Union API Error:', response.status, errorText);
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
@@ -159,30 +163,6 @@ export class UnionService {
     }
   }
 
-  /**
-   * Quick setup union with admin user
-   */
-  static async quickSetupUnion(data: UnionQuickSetupData): Promise<UnionResponse> {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/unions/quick-setup`, {
-        method: 'POST',
-        headers: this.getAuthHeaders(),
-        body: JSON.stringify(data),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      return await response.json();
-    } catch (error) {
-      console.error('Error in union quick setup:', error);
-      throw new Error(
-        error instanceof Error ? error.message : 'Failed to setup union'
-      );
-    }
-  }
 
   /**
    * Get union hierarchy (with conferences and churches)

@@ -268,3 +268,14 @@ export class ConferenceService {
     }
   }
 }
+
+// Create instance-based API for easier use in components
+export const conferenceService = {
+  getConferences: (params?: ConferenceListParams) => ConferenceService.getAllConferences(params),
+  getConference: (id: string) => ConferenceService.getConferenceById(id),
+  createConference: (data: CreateConferenceData) => ConferenceService.createConference(data),
+  updateConference: (id: string, data: UpdateConferenceData) => ConferenceService.updateConference(id, data),
+  deleteConference: (id: string) => ConferenceService.deleteConference(id),
+  getConferenceStatistics: (id: string) => ConferenceService.getConferenceHierarchy(id),
+  getConferenceHierarchy: (id: string) => ConferenceService.getConferenceHierarchy(id),
+};

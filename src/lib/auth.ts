@@ -20,8 +20,12 @@ interface AuthResponse {
       city?: string;
       state?: string;
       country?: string;
-      organizations?: Array<{_id: string; name: string; type: string}>;
-      primaryOrganization?: string;
+      unionAssignments?: Array<{union: string; role: string; assignedAt: string}>;
+      conferenceAssignments?: Array<{conference: string; role: string; assignedAt: string}>;
+      churchAssignments?: Array<{church: string; role: string; assignedAt: string}>;
+      primaryUnion?: string;
+      primaryConference?: string;
+      primaryChurch?: string;
       teamAssignments?: Array<{
         teamId: string;
         role: 'leader' | 'member' | 'communications';
@@ -30,7 +34,7 @@ interface AuthResponse {
           _id: string;
           name: string;
           type: string;
-          organizationId: string;
+          churchId: string;
         };
       }>;
       primaryTeam?: string;

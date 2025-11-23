@@ -1,50 +1,17 @@
-// RBAC API Service for managing roles, permissions, and organizations
+// RBAC API Service for managing roles, permissions, and hierarchical entities
 
-export interface Organization {
-  _id: string;
-  name: string;
-  type: 'union' | 'conference' | 'church';
-  parentOrganization?: {
-    _id: string;
-    name: string;
-    type: string;
-  };
-  metadata: {
-    address?: string;
-    phone?: string;
-    territory?: string[];
-    email?: string;
-  };
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface Role {
-  _id: string;
-  name: string;
-  displayName: string;
-  level: 'union' | 'conference' | 'church';
-  permissions: string[];
-  description: string;
-  isSystem: boolean;
-  isActive: boolean;
-}
-
-export interface OrganizationAssignment {
-  organization: Organization | string;
-  role: Role | string;
-  assignedAt: string;
-  assignedBy?: string;
-  expiresAt?: string;
-}
+import { Union, Conference, Church, Role, User, UnionAssignment, ConferenceAssignment, ChurchAssignment } from '../types/rbac';
 
 export interface UserWithRoles {
   _id: string;
   name: string;
   email: string;
-  organizations: OrganizationAssignment[];
-  primaryOrganization?: string;
+  unionAssignments?: UnionAssignment[];
+  conferenceAssignments?: ConferenceAssignment[];
+  churchAssignments?: ChurchAssignment[];
+  primaryUnion?: string;
+  primaryConference?: string;
+  primaryChurch?: string;
 }
 
 export interface UserPermissions {
@@ -55,7 +22,9 @@ export interface UserPermissions {
     level: string;
   };
   permissions: string[];
-  organization: string;
+  union?: string;
+  conference?: string;
+  church?: string;
 }
 
 class RBACService {
@@ -67,43 +36,88 @@ class RBACService {
 
   private getAuthHeaders(): HeadersInit {
     const token = localStorage.getItem('token');
-    const organizationId = localStorage.getItem('currentOrganizationId');
+    // Context handled via separate storage for each entity type
     
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
       'Authorization': token ? `Bearer ${token}` : '',
     };
     
-    if (organizationId) {
-      headers['X-Organization-Id'] = organizationId;
-    }
+    // Note: Hierarchical entity context handled via endpoint selection
+    // No longer using organization ID headers
     
     return headers;
   }
 
-  // Organization Management
-  async getOrganizations(): Promise<Organization[]> {
+  // Hierarchical Entity Management
+  async getUnions(): Promise<Union[]> {
     try {
-      const response = await fetch(`${this.apiBaseUrl}/api/organizations`, {
+      const response = await fetch(`${this.apiBaseUrl}/api/unions`, {
         headers: this.getAuthHeaders(),
         credentials: 'include',
       });
 
       if (!response.ok) {
-        throw new Error('Failed to fetch organizations');
+        throw new Error('Failed to fetch unions');
       }
 
       const result = await response.json();
       return result.data || result;
     } catch (error) {
-      console.error('Error fetching organizations:', error);
+      console.error('Error fetching unions:', error);
       throw error;
     }
   }
 
-  async createOrganization(data: Partial<Organization>): Promise<Organization> {
+  async getConferences(unionId?: string): Promise<Conference[]> {
     try {
-      const response = await fetch(`${this.apiBaseUrl}/api/organizations`, {
+      const url = unionId 
+        ? `${this.apiBaseUrl}/api/conferences?unionId=${unionId}`
+        : `${this.apiBaseUrl}/api/conferences`;
+      
+      const response = await fetch(url, {
+        headers: this.getAuthHeaders(),
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch conferences');
+      }
+
+      const result = await response.json();
+      return result.data || result;
+    } catch (error) {
+      console.error('Error fetching conferences:', error);
+      throw error;
+    }
+  }
+
+  async getChurches(conferenceId?: string): Promise<Church[]> {
+    try {
+      const url = conferenceId 
+        ? `${this.apiBaseUrl}/api/churches?conferenceId=${conferenceId}`
+        : `${this.apiBaseUrl}/api/churches`;
+      
+      const response = await fetch(url, {
+        headers: this.getAuthHeaders(),
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch churches');
+      }
+
+      const result = await response.json();
+      return result.data || result;
+    } catch (error) {
+      console.error('Error fetching churches:', error);
+      throw error;
+    }
+  }
+
+  async createUnion(data: Partial<Union>): Promise<Union> {
+    try {
+      const response = await fetch(`${this.apiBaseUrl}/api/unions`, {
         method: 'POST',
         headers: this.getAuthHeaders(),
         body: JSON.stringify(data),
@@ -112,19 +126,61 @@ class RBACService {
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || 'Failed to create organization');
+        throw new Error(error.error || 'Failed to create union');
       }
 
       return response.json();
     } catch (error) {
-      console.error('Error creating organization:', error);
+      console.error('Error creating union:', error);
       throw error;
     }
   }
 
-  async updateOrganization(id: string, data: Partial<Organization>): Promise<Organization> {
+  async createConference(data: Partial<Conference>): Promise<Conference> {
     try {
-      const response = await fetch(`${this.apiBaseUrl}/api/organizations/${id}`, {
+      const response = await fetch(`${this.apiBaseUrl}/api/conferences`, {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify(data),
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to create conference');
+      }
+
+      return response.json();
+    } catch (error) {
+      console.error('Error creating conference:', error);
+      throw error;
+    }
+  }
+
+  async createChurch(data: Partial<Church>): Promise<Church> {
+    try {
+      const response = await fetch(`${this.apiBaseUrl}/api/churches`, {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify(data),
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to create church');
+      }
+
+      return response.json();
+    } catch (error) {
+      console.error('Error creating church:', error);
+      throw error;
+    }
+  }
+
+  async updateUnion(id: string, data: Partial<Union>): Promise<Union> {
+    try {
+      const response = await fetch(`${this.apiBaseUrl}/api/unions/${id}`, {
         method: 'PUT',
         headers: this.getAuthHeaders(),
         body: JSON.stringify(data),
@@ -132,19 +188,59 @@ class RBACService {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to update organization');
+        throw new Error('Failed to update union');
       }
 
       return response.json();
     } catch (error) {
-      console.error('Error updating organization:', error);
+      console.error('Error updating union:', error);
       throw error;
     }
   }
 
-  async deleteOrganization(id: string): Promise<void> {
+  async updateConference(id: string, data: Partial<Conference>): Promise<Conference> {
     try {
-      const response = await fetch(`${this.apiBaseUrl}/api/organizations/${id}`, {
+      const response = await fetch(`${this.apiBaseUrl}/api/conferences/${id}`, {
+        method: 'PUT',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify(data),
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update conference');
+      }
+
+      return response.json();
+    } catch (error) {
+      console.error('Error updating conference:', error);
+      throw error;
+    }
+  }
+
+  async updateChurch(id: string, data: Partial<Church>): Promise<Church> {
+    try {
+      const response = await fetch(`${this.apiBaseUrl}/api/churches/${id}`, {
+        method: 'PUT',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify(data),
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update church');
+      }
+
+      return response.json();
+    } catch (error) {
+      console.error('Error updating church:', error);
+      throw error;
+    }
+  }
+
+  async deleteUnion(id: string): Promise<void> {
+    try {
+      const response = await fetch(`${this.apiBaseUrl}/api/unions/${id}`, {
         method: 'DELETE',
         headers: this.getAuthHeaders(),
         credentials: 'include',
@@ -152,10 +248,46 @@ class RBACService {
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || 'Failed to delete organization');
+        throw new Error(error.error || 'Failed to delete union');
       }
     } catch (error) {
-      console.error('Error deleting organization:', error);
+      console.error('Error deleting union:', error);
+      throw error;
+    }
+  }
+
+  async deleteConference(id: string): Promise<void> {
+    try {
+      const response = await fetch(`${this.apiBaseUrl}/api/conferences/${id}`, {
+        method: 'DELETE',
+        headers: this.getAuthHeaders(),
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to delete conference');
+      }
+    } catch (error) {
+      console.error('Error deleting conference:', error);
+      throw error;
+    }
+  }
+
+  async deleteChurch(id: string): Promise<void> {
+    try {
+      const response = await fetch(`${this.apiBaseUrl}/api/churches/${id}`, {
+        method: 'DELETE',
+        headers: this.getAuthHeaders(),
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to delete church');
+      }
+    } catch (error) {
+      console.error('Error deleting church:', error);
       throw error;
     }
   }
@@ -298,7 +430,7 @@ class RBACService {
   }
 
   // User Role Management
-  async getUserRoles(userId: string): Promise<OrganizationAssignment[]> {
+  async getUserRoles(userId: string): Promise<{unionAssignments?: UnionAssignment[], conferenceAssignments?: ConferenceAssignment[], churchAssignments?: ChurchAssignment[]}> {
     try {
       const response = await fetch(`${this.apiBaseUrl}/api/users/${userId}/roles`, {
         headers: this.getAuthHeaders(),
@@ -316,31 +448,73 @@ class RBACService {
     }
   }
 
-  async assignUserRole(userId: string, organizationId: string, roleName: string): Promise<{success: boolean; data?: {organizations: Array<{organization: string; role: string}>}; error?: string}> {
+  async assignUserToUnion(userId: string, unionId: string, roleName: string): Promise<{success: boolean; data?: {unionAssignments: Array<{union: string; role: string}>}; error?: string}> {
     try {
-      const response = await fetch(`${this.apiBaseUrl}/api/users/${userId}/roles`, {
+      const response = await fetch(`${this.apiBaseUrl}/api/users/${userId}/union-roles`, {
         method: 'POST',
         headers: this.getAuthHeaders(),
-        body: JSON.stringify({ organizationId, roleName }),
+        body: JSON.stringify({ unionId, roleName }),
         credentials: 'include',
       });
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || 'Failed to assign role');
+        throw new Error(error.error || 'Failed to assign union role');
       }
 
       return response.json();
     } catch (error) {
-      console.error('Error assigning role:', error);
+      console.error('Error assigning union role:', error);
       throw error;
     }
   }
 
-  async revokeUserRole(userId: string, organizationId: string): Promise<{success: boolean; data?: {organizations: Array<{organization: string; role: string}>}; error?: string}> {
+  async assignUserToConference(userId: string, conferenceId: string, roleName: string): Promise<{success: boolean; data?: {conferenceAssignments: Array<{conference: string; role: string}>}; error?: string}> {
+    try {
+      const response = await fetch(`${this.apiBaseUrl}/api/users/${userId}/conference-roles`, {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify({ conferenceId, roleName }),
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to assign conference role');
+      }
+
+      return response.json();
+    } catch (error) {
+      console.error('Error assigning conference role:', error);
+      throw error;
+    }
+  }
+
+  async assignUserToChurch(userId: string, churchId: string, roleName: string): Promise<{success: boolean; data?: {churchAssignments: Array<{church: string; role: string}>}; error?: string}> {
+    try {
+      const response = await fetch(`${this.apiBaseUrl}/api/users/${userId}/church-roles`, {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify({ churchId, roleName }),
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to assign church role');
+      }
+
+      return response.json();
+    } catch (error) {
+      console.error('Error assigning church role:', error);
+      throw error;
+    }
+  }
+
+  async revokeUserFromUnion(userId: string, unionId: string): Promise<{success: boolean}> {
     try {
       const response = await fetch(
-        `${this.apiBaseUrl}/api/users/${userId}/roles/${organizationId}`,
+        `${this.apiBaseUrl}/api/users/${userId}/union-roles/${unionId}`,
         {
           method: 'DELETE',
           headers: this.getAuthHeaders(),
@@ -349,19 +523,67 @@ class RBACService {
       );
 
       if (!response.ok) {
-        throw new Error('Failed to revoke role');
+        throw new Error('Failed to revoke union role');
       }
 
       return response.json();
     } catch (error) {
-      console.error('Error revoking role:', error);
+      console.error('Error revoking union role:', error);
       throw error;
     }
   }
 
-  async getUserPermissions(userId: string, organizationId?: string): Promise<UserPermissions> {
+  async revokeUserFromConference(userId: string, conferenceId: string): Promise<{success: boolean}> {
     try {
-      const params = organizationId ? `?organizationId=${organizationId}` : '';
+      const response = await fetch(
+        `${this.apiBaseUrl}/api/users/${userId}/conference-roles/${conferenceId}`,
+        {
+          method: 'DELETE',
+          headers: this.getAuthHeaders(),
+          credentials: 'include',
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to revoke conference role');
+      }
+
+      return response.json();
+    } catch (error) {
+      console.error('Error revoking conference role:', error);
+      throw error;
+    }
+  }
+
+  async revokeUserFromChurch(userId: string, churchId: string): Promise<{success: boolean}> {
+    try {
+      const response = await fetch(
+        `${this.apiBaseUrl}/api/users/${userId}/church-roles/${churchId}`,
+        {
+          method: 'DELETE',
+          headers: this.getAuthHeaders(),
+          credentials: 'include',
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to revoke church role');
+      }
+
+      return response.json();
+    } catch (error) {
+      console.error('Error revoking church role:', error);
+      throw error;
+    }
+  }
+
+  async getUserPermissions(userId: string, entityId?: string, entityType?: 'union' | 'conference' | 'church'): Promise<UserPermissions> {
+    try {
+      let params = '';
+      if (entityId && entityType) {
+        params = `?${entityType}Id=${entityId}`;
+      }
+      
       const response = await fetch(
         `${this.apiBaseUrl}/api/users/${userId}/permissions${params}`,
         {
@@ -382,7 +604,7 @@ class RBACService {
   }
 
   // User Management
-  async getUsers(): Promise<Array<{_id: string; name: string; email: string; organizations: Array<{organization: string; role: string}>}>> {
+  async getUsers(): Promise<Array<{_id: string; name: string; email: string; unionAssignments?: UnionAssignment[]; conferenceAssignments?: ConferenceAssignment[]; churchAssignments?: ChurchAssignment[]}>> {
     try {
       const response = await fetch(`${this.apiBaseUrl}/api/users?limit=100`, {
         headers: this.getAuthHeaders(),
@@ -444,17 +666,35 @@ class RBACService {
     }
   }
 
-  // Organization Context
-  setCurrentOrganization(organizationId: string) {
-    localStorage.setItem('currentOrganizationId', organizationId);
+  // Hierarchical Entity Context
+  setCurrentUnion(unionId: string) {
+    localStorage.setItem('currentUnionId', unionId);
   }
 
-  getCurrentOrganization(): string | null {
-    return localStorage.getItem('currentOrganizationId');
+  setCurrentConference(conferenceId: string) {
+    localStorage.setItem('currentConferenceId', conferenceId);
   }
 
-  clearOrganizationContext() {
-    localStorage.removeItem('currentOrganizationId');
+  setCurrentChurch(churchId: string) {
+    localStorage.setItem('currentChurchId', churchId);
+  }
+
+  getCurrentUnion(): string | null {
+    return localStorage.getItem('currentUnionId');
+  }
+
+  getCurrentConference(): string | null {
+    return localStorage.getItem('currentConferenceId');
+  }
+
+  getCurrentChurch(): string | null {
+    return localStorage.getItem('currentChurchId');
+  }
+
+  clearHierarchicalContext() {
+    localStorage.removeItem('currentUnionId');
+    localStorage.removeItem('currentConferenceId');
+    localStorage.removeItem('currentChurchId');
   }
 }
 

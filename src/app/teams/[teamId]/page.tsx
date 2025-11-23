@@ -26,7 +26,8 @@ import {
   UserX, 
   User,
   Trash,
-  Edit3
+  Edit3,
+  Info
 } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { teamService, Team, TeamStatistics, TeamMember } from '@/lib/teams';
@@ -45,13 +46,12 @@ export default function TeamDetailPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [addMemberOpen, setAddMemberOpen] = useState(false);
+  const [activeSection, setActiveSection] = useState('overview');
   const [formData, setFormData] = useState({
     name: '',
     description: '',
     maxMembers: 50,
     settings: {
-      allowSelfJoin: false,
-      requireApproval: true,
       visibility: 'organization' as 'organization' | 'private' | 'public',
     },
   });
@@ -75,7 +75,9 @@ export default function TeamDetailPage() {
         name: teamData.name,
         description: teamData.description || '',
         maxMembers: teamData.maxMembers,
-        settings: teamData.settings,
+        settings: {
+          visibility: teamData.settings.visibility,
+        },
       });
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to load team details';
@@ -222,6 +224,239 @@ export default function TeamDetailPage() {
     }
   };
 
+  const teamNavigation = [
+    {
+      id: 'overview',
+      title: 'Overview',
+      description: 'Team statistics and quick info',
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+        </svg>
+      )
+    },
+    {
+      id: 'details',
+      title: 'Team Details',
+      description: 'Basic information and settings',
+      icon: <Info className="w-5 h-5" />
+    },
+    {
+      id: 'members',
+      title: 'Team Members',
+      description: 'Manage team membership',
+      icon: <Users className="w-5 h-5" />
+    }
+  ];
+
+  const renderContent = () => {
+    switch (activeSection) {
+      case 'overview':
+        return (
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">{team.name}</h2>
+              <div className="flex items-center gap-2 mb-4">
+                {getTeamTypeIcon(team.type)}
+                <Badge variant={team.isActive ? 'default' : 'secondary'}>
+                  {team.isActive ? 'Active' : 'Inactive'}
+                </Badge>
+              </div>
+              {team.description && (
+                <p className="text-gray-600 mb-6">{team.description}</p>
+              )}
+            </div>
+
+            <div className="grid gap-6 md:grid-cols-3">
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base">Members</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{statistics.memberCount}</div>
+                  <p className="text-sm text-muted-foreground">of {statistics.maxMembers} max</p>
+                  <Progress value={statistics.capacity} className="mt-2" />
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base">Services</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{statistics.serviceCount}</div>
+                  <p className="text-sm text-muted-foreground">Active services</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base">Role Distribution</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-1 text-sm">
+                    <div className="flex justify-between">
+                      <span>Leaders</span>
+                      <span className="font-medium">{statistics.roleDistribution.leader}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Members</span>
+                      <span className="font-medium">{statistics.roleDistribution.member}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Communications</span>
+                      <span className="font-medium">{statistics.roleDistribution.communications}</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        );
+
+      case 'details':
+        return (
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Team Details</h2>
+              <p className="text-gray-600">Manage team information and settings</p>
+            </div>
+
+            <Card>
+              <CardContent className="space-y-4 pt-6">
+                <div className="grid gap-2">
+                  <Label htmlFor="name">Team Name</Label>
+                  <Input
+                    id="name"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    disabled={!hasPermission('teams.update')}
+                  />
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="description">Description</Label>
+                  <Textarea
+                    id="description"
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    rows={3}
+                    disabled={!hasPermission('teams.update')}
+                  />
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="maxMembers">Maximum Members</Label>
+                  <Input
+                    id="maxMembers"
+                    type="number"
+                    min="1"
+                    max="500"
+                    value={formData.maxMembers}
+                    onChange={(e) => setFormData({ ...formData, maxMembers: parseInt(e.target.value) || 50 })}
+                    disabled={!hasPermission('teams.update')}
+                  />
+                </div>
+
+              </CardContent>
+            </Card>
+          </div>
+        );
+
+      case 'members':
+        return (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">Team Members</h2>
+                <p className="text-gray-600">
+                  {members.length} of {team.maxMembers || 'unlimited'} members
+                </p>
+              </div>
+              <PermissionGate permission="teams.manage_members">
+                <Button
+                  onClick={() => setAddMemberOpen(true)}
+                  disabled={team.maxMembers > 0 && members.length >= team.maxMembers}
+                >
+                  <UserPlus className="w-4 h-4 mr-2" />
+                  Add Member
+                </Button>
+              </PermissionGate>
+            </div>
+
+            <Card>
+              <CardContent className="pt-6">
+                {members.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-500">No members in this team yet</p>
+                  </div>
+                ) : (
+                  <div className="grid gap-4">
+                    {members.map((member) => (
+                      <div key={member._id} className="border rounded-lg p-4">
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-center gap-4">
+                            <Avatar className="w-12 h-12">
+                              <AvatarImage src={member.avatar} />
+                              <AvatarFallback>
+                                {member.name.split(' ').map((n) => n[0]).join('').toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <h4 className="font-semibold">{member.name}</h4>
+                              <p className="text-sm text-gray-500">{member.email}</p>
+                              <Badge 
+                                variant={getRoleBadgeVariant(member.teamRole)}
+                                className="mt-2"
+                              >
+                                {getRoleIcon(member.teamRole)}
+                                <span className="ml-1">{member.teamRole}</span>
+                              </Badge>
+                            </div>
+                          </div>
+                          
+                          <PermissionGate permission="teams.manage_members">
+                            <div className="flex items-center gap-2">
+                              <Select
+                                value={member.teamRole}
+                                onValueChange={(value) => handleUpdateRole(member._id, value as any)}
+                              >
+                                <SelectTrigger className="w-40">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="leader">Leader</SelectItem>
+                                  <SelectItem value="member">Member</SelectItem>
+                                  <SelectItem value="communications">Communications</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleRemoveMember(member._id)}
+                                className="text-red-600 hover:text-red-700"
+                              >
+                                <UserX className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </PermissionGate>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  };
+
   if (loading || !team || !statistics) {
     return (
       <AdminLayout title="Loading..." description="Loading team details...">
@@ -238,25 +473,23 @@ export default function TeamDetailPage() {
       title={team.name} 
       description={`Team details and member management for ${team.name}`}
     >
-      <div className="space-y-6">
+      <div className="mb-6">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              onClick={() => router.push('/teams')}
-            >
-              <ArrowLeft className="w-4 h-4 mr-1" />
-              Back to Teams
-            </Button>
-            <div className="flex items-center gap-2">
-              {getTeamTypeIcon(team.type)}
-              <Badge variant={team.isActive ? 'default' : 'secondary'}>
-                {team.isActive ? 'Active' : 'Inactive'}
-              </Badge>
-            </div>
-          </div>
+          <Button
+            variant="ghost"
+            onClick={() => router.push('/teams')}
+          >
+            <ArrowLeft className="w-4 h-4 mr-1" />
+            Back to Teams
+          </Button>
           
           <div className="flex items-center gap-2">
+            <PermissionGate permission="teams.update">
+              <Button onClick={handleSave} disabled={saving} size="sm">
+                <Save className="w-4 h-4 mr-1" />
+                {saving ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </PermissionGate>
             <PermissionGate permission="teams.delete">
               <Button 
                 variant="destructive" 
@@ -269,232 +502,47 @@ export default function TeamDetailPage() {
             </PermissionGate>
           </div>
         </div>
-
-      <div className="grid gap-6 md:grid-cols-3">
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Members</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{statistics.memberCount}</div>
-            <p className="text-sm text-muted-foreground">of {statistics.maxMembers} max</p>
-            <Progress value={statistics.capacity} className="mt-2" />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Services</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{statistics.serviceCount}</div>
-            <p className="text-sm text-muted-foreground">Active services</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Role Distribution</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-1 text-sm">
-              <div className="flex justify-between">
-                <span>Leaders</span>
-                <span className="font-medium">{statistics.roleDistribution.leader}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Members</span>
-                <span className="font-medium">{statistics.roleDistribution.member}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Communications</span>
-                <span className="font-medium">{statistics.roleDistribution.communications}</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
       </div>
 
-        {/* Team Details Section */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Team Details</CardTitle>
-            <CardDescription>
-              Manage team information and settings
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-2">
-              <Label htmlFor="name">Team Name</Label>
-              <Input
-                id="name"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                disabled={!hasPermission('teams.update')}
-              />
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="description">Description</Label>
-              <Textarea
-                id="description"
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                rows={3}
-                disabled={!hasPermission('teams.update')}
-              />
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="maxMembers">Maximum Members</Label>
-              <Input
-                id="maxMembers"
-                type="number"
-                min="1"
-                max="500"
-                value={formData.maxMembers}
-                onChange={(e) => setFormData({ ...formData, maxMembers: parseInt(e.target.value) || 50 })}
-                disabled={!hasPermission('teams.update')}
-              />
-            </div>
-
-            <div className="space-y-4">
-              <h3 className="text-sm font-medium">Team Settings</h3>
-              
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>Allow Self Join</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Allow users to join the team without approval
-                  </p>
-                </div>
-                <Switch
-                  checked={formData.settings.allowSelfJoin}
-                  onCheckedChange={(checked: boolean) =>
-                    setFormData({
-                      ...formData,
-                      settings: { ...formData.settings, allowSelfJoin: checked },
-                    })
-                  }
-                  disabled={!hasPermission('teams.update')}
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>Require Approval</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Require team leader approval for new members
-                  </p>
-                </div>
-                <Switch
-                  checked={formData.settings.requireApproval}
-                  onCheckedChange={(checked: boolean) =>
-                    setFormData({
-                      ...formData,
-                      settings: { ...formData.settings, requireApproval: checked },
-                    })
-                  }
-                  disabled={!hasPermission('teams.update')}
-                />
-              </div>
-            </div>
-
-            <PermissionGate permission="teams.update">
-              <Button onClick={handleSave} disabled={saving}>
-                <Save className="w-4 h-4 mr-1" />
-                {saving ? 'Saving...' : 'Save Changes'}
-              </Button>
-            </PermissionGate>
-          </CardContent>
-        </Card>
-
-        {/* Team Members Section */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>Team Members</CardTitle>
-                <CardDescription>
-                  {members.length} of {team.maxMembers || 'unlimited'} members
-                </CardDescription>
-              </div>
-              <PermissionGate permission="teams.manage_members">
-                <Button
-                  onClick={() => setAddMemberOpen(true)}
-                  disabled={team.maxMembers > 0 && members.length >= team.maxMembers}
+      <div className="flex h-[calc(100vh-200px)] bg-gray-50">
+        {/* Team Sidebar */}
+        <div className="w-80 bg-white border-r border-gray-200 overflow-y-auto">
+          <div className="p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-6">Team Management</h2>
+            
+            <nav className="space-y-2">
+              {teamNavigation.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => setActiveSection(item.id)}
+                  className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-md text-left transition-colors ${
+                    activeSection === item.id
+                      ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-700'
+                      : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
+                  }`}
                 >
-                  <UserPlus className="w-4 h-4 mr-2" />
-                  Add Member
-                </Button>
-              </PermissionGate>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {/* Members List */}
-            {members.length === 0 ? (
-              <div className="text-center py-8">
-                <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-500">No members in this team yet</p>
-              </div>
-            ) : (
-              <div className="grid gap-4">
-                {members.map((member) => (
-                  <div key={member._id} className="border rounded-lg p-4">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-4">
-                        <Avatar className="w-12 h-12">
-                          <AvatarImage src={member.avatar} />
-                          <AvatarFallback>
-                            {member.name.split(' ').map((n) => n[0]).join('').toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <h4 className="font-semibold">{member.name}</h4>
-                          <p className="text-sm text-gray-500">{member.email}</p>
-                          <Badge 
-                            variant={getRoleBadgeVariant(member.teamRole)}
-                            className="mt-2"
-                          >
-                            {getRoleIcon(member.teamRole)}
-                            <span className="ml-1">{member.teamRole}</span>
-                          </Badge>
-                        </div>
-                      </div>
-                      
-                      <PermissionGate permission="teams.manage_members">
-                        <div className="flex items-center gap-2">
-                          <Select
-                            value={member.teamRole}
-                            onValueChange={(value) => handleUpdateRole(member._id, value as any)}
-                          >
-                            <SelectTrigger className="w-40">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="leader">Leader</SelectItem>
-                              <SelectItem value="member">Member</SelectItem>
-                              <SelectItem value="communications">Communications</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleRemoveMember(member._id)}
-                            className="text-red-600 hover:text-red-700"
-                          >
-                            <UserX className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </PermissionGate>
-                    </div>
+                  <div className={`mr-3 flex-shrink-0 ${
+                    activeSection === item.id ? 'text-blue-700' : 'text-gray-400'
+                  }`}>
+                    {item.icon}
                   </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                  <div className="flex-1">
+                    <div className="font-medium">{item.title}</div>
+                    <div className="text-xs text-gray-500 mt-0.5">{item.description}</div>
+                  </div>
+                </button>
+              ))}
+            </nav>
+          </div>
+        </div>
+
+        {/* Team Content */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="p-8">
+            {renderContent()}
+          </div>
+        </div>
+      </div>
 
       {/* Add Team Member Modal */}
       <AddTeamMemberModal
@@ -503,7 +551,6 @@ export default function TeamDetailPage() {
         onSubmit={handleAddMember}
         currentMembers={members.map(m => m._id)}
       />
-      </div>
     </AdminLayout>
   );
 }
