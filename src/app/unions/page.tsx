@@ -16,6 +16,7 @@ import ConfirmationModal from '@/components/ConfirmationModal';
 import { useToast } from '@/contexts/ToastContext';
 import { UnionService } from '@/lib/unionService';
 import { Union } from '@/types/hierarchy';
+import { Conference } from '@/types/rbac';
 import {
    BuildingOfficeIcon,
    PencilIcon,
@@ -27,6 +28,7 @@ import {
 
 export default function Unions() {
    const [unions, setUnions] = useState<Union[]>([]);
+   const [unionConferences, setUnionConferences] = useState<Record<string, Conference[]>>({});
    const [loading, setLoading] = useState(true);
    const [selectedUnion, setSelectedUnion] = useState<Union | undefined>(
       undefined
@@ -51,7 +53,25 @@ export default function Unions() {
          if (response && response.success) {
             // Handle successful response with data
             const unions = response.data || [];
-            setUnions(Array.isArray(unions) ? unions : []);
+            const unionsArray = Array.isArray(unions) ? unions : [];
+            setUnions(unionsArray);
+            
+            // Fetch conferences for each union
+            const conferencesData: Record<string, Conference[]> = {};
+            for (const union of unionsArray) {
+               try {
+                  const conferenceResponse = await UnionService.getUnionConferences(union._id);
+                  if (conferenceResponse.success && conferenceResponse.data) {
+                     conferencesData[union._id] = conferenceResponse.data as Conference[];
+                  } else {
+                     conferencesData[union._id] = [];
+                  }
+               } catch (error) {
+                  console.error(`Error fetching conferences for union ${union._id}:`, error);
+                  conferencesData[union._id] = [];
+               }
+            }
+            setUnionConferences(conferencesData);
          } else if (response && response.success === false) {
             // Handle API error response
             console.error('API error fetching unions:', response.message);
@@ -60,10 +80,12 @@ export default function Unions() {
                toast.error('Failed to load unions', errorMsg);
             }
             setUnions([]);
+            setUnionConferences({});
          } else {
             // Handle unexpected response format
             console.error('Unexpected response format:', response);
             setUnions([]);
+            setUnionConferences({});
          }
       } catch (error) {
          console.error('Error fetching unions:', error);
@@ -73,6 +95,7 @@ export default function Unions() {
             toast.error('Failed to load unions', errorMessage);
          }
          setUnions([]);
+         setUnionConferences({});
       } finally {
          setLoading(false);
       }
@@ -203,9 +226,12 @@ export default function Unions() {
                   )}
                </div>
                <div className="ml-4">
-                  <div className="text-sm font-medium text-gray-900">
+                  <button
+                     onClick={() => window.location.href = `/unions/${union._id}`}
+                     className="text-sm font-medium text-indigo-600 hover:text-indigo-900 text-left cursor-pointer"
+                  >
                      {union.name}
-                  </div>
+                  </button>
                </div>
             </div>
          ),
@@ -265,26 +291,36 @@ export default function Unions() {
          className: 'max-w-xs',
       },
       {
-         key: 'statistics',
-         header: 'Statistics',
-         accessor: (union) => (
-            <div className="text-sm text-gray-900">
-               {union.statistics ? (
-                  <div className="space-y-1">
-                     <div className="flex items-center justify-between">
-                        <span className="text-gray-600">Conferences:</span>
-                        <span className="font-medium">{union.statistics.conferences || 0}</span>
+         key: 'conferences',
+         header: 'Conferences',
+         accessor: (union) => {
+            const conferences = unionConferences[union._id] || [];
+            return (
+               <div className="text-sm text-gray-900">
+                  {conferences.length > 0 ? (
+                     <div className="space-y-1">
+                        {conferences.slice(0, 3).map((conference) => (
+                           <div key={conference._id} className="flex items-center">
+                              <span className="text-gray-900">{conference.name}</span>
+                              {!conference.isActive && (
+                                 <span className="ml-2 px-1.5 py-0.5 text-xs rounded-full bg-red-100 text-red-800">
+                                    Inactive
+                                 </span>
+                              )}
+                           </div>
+                        ))}
+                        {conferences.length > 3 && (
+                           <div className="text-xs text-gray-500">
+                              +{conferences.length - 3} more
+                           </div>
+                        )}
                      </div>
-                     <div className="flex items-center justify-between">
-                        <span className="text-gray-600">Churches:</span>
-                        <span className="font-medium">{union.statistics.churches || 0}</span>
-                     </div>
-                  </div>
-               ) : (
-                  <span className="text-gray-400">-</span>
-               )}
-            </div>
-         ),
+                  ) : (
+                     <span className="text-gray-400">No conferences</span>
+                  )}
+               </div>
+            );
+         },
          className: 'max-w-xs',
       },
       {

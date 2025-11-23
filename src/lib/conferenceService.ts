@@ -268,6 +268,68 @@ export class ConferenceService {
       );
     }
   }
+
+  /**
+   * Update conference banner image
+   */
+  static async updateConferenceBanner(conferenceId: string, file: File, alt?: string): Promise<{
+    success: boolean;
+    data?: { image: { url: string; key: string; alt: string } };
+    message?: string;
+  }> {
+    try {
+      const formData = new FormData();
+      formData.append('banner', file);
+      if (alt) formData.append('alt', alt);
+
+      const response = await fetch(`${API_BASE_URL}/api/conferences/${conferenceId}/banner`, {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${AuthService.getToken()}`,
+        },
+        body: formData,
+      });
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error updating conference banner:', error);
+      throw new Error(
+        error instanceof Error ? error.message : 'Failed to update conference banner'
+      );
+    }
+  }
+
+  /**
+   * Update conference banner with existing media file
+   */
+  static async updateConferenceBannerWithMediaFile(conferenceId: string, mediaFileId: string, alt?: string): Promise<{
+    success: boolean;
+    data?: { image: { url: string; key: string; alt: string } };
+    message?: string;
+  }> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/conferences/${conferenceId}/banner/media`, {
+        method: 'PUT',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify({ 
+          mediaFileId,
+          alt: alt || ''
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error updating conference banner with media file:', error);
+      throw new Error(
+        error instanceof Error ? error.message : 'Failed to update conference banner'
+      );
+    }
+  }
 }
 
 // Create instance-based API for easier use in components

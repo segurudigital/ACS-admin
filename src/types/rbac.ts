@@ -36,6 +36,13 @@ export interface Union extends BaseHierarchyLevel {
     phone?: string;
     website?: string;
   };
+  primaryImage?: {
+    url: string;
+    thumbnailUrl?: string;
+    key: string;
+    alt: string;
+    mediaFileId?: string;
+  };
   parentEntity?: never; // Unions have no parent
 }
 
@@ -46,6 +53,45 @@ export interface Conference extends BaseHierarchyLevel {
   hierarchyLevel: number;
   unionId: string; // Reference to parent union
   union?: Union | string; // Reference to parent union
+  territory?: {
+    description?: string;
+  };
+  headquarters?: {
+    address?: string;
+    city?: string;
+    state?: string;
+    country?: string;
+    postalCode?: string;
+  };
+  contact?: {
+    email?: string;
+    phone?: string;
+    website?: string;
+  };
+  primaryImage?: {
+    url: string;
+    thumbnailUrl?: string;
+    key: string;
+    alt: string;
+    mediaFileId?: string;
+  };
+  programs?: {
+    name: string;
+    type?: string;
+    director?: string;
+    contact?: string;
+    description?: string;
+  }[];
+  metadata: {
+    address?: string;
+    phone?: string;
+    territory?: string[];
+    email?: string;
+    churchCount?: number;
+    membershipCount?: number;
+    lastReportDate?: string;
+    lastUpdated?: string;
+  };
   parentEntity?: {
     _id: string;
     name: string;

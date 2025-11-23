@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import Image from 'next/image';
 import AdminLayout from '@/components/AdminLayout';
 import { PermissionGate } from '@/components/PermissionGate';
 import {
@@ -90,16 +91,13 @@ export default function ConferencesPage() {
       }
       
       // Check email
-      if (conference.metadata?.email?.toLowerCase().includes(searchLower)) {
+      if (conference.contact?.email?.toLowerCase().includes(searchLower)) {
         return true;
       }
       
       // Check territory
-      if (conference.metadata?.territory && Array.isArray(conference.metadata.territory)) {
-        const territoryMatch = conference.metadata.territory.some(t => 
-          t?.toLowerCase().includes(searchLower)
-        );
-        if (territoryMatch) return true;
+      if (conference.territory?.description?.toLowerCase().includes(searchLower)) {
+        return true;
       }
       
       // Check union name
@@ -174,15 +172,36 @@ export default function ConferencesPage() {
       header: 'Conference',
       accessor: (conference) => (
         <div className="flex items-center">
-          <div className="shrink-0 h-10 w-10">
-            <div className="h-10 w-10 rounded-full bg-blue-300 flex items-center justify-center">
-              <BuildingOffice2Icon className="h-6 w-6 text-blue-600" />
-            </div>
+          <div className="shrink-0 h-12 w-12">
+            {conference.primaryImage?.url ? (
+              <div className="h-12 w-12 rounded-lg overflow-hidden bg-gray-100 shadow-sm">
+                <Image
+                  src={conference.primaryImage.thumbnailUrl || conference.primaryImage.url}
+                  alt={conference.primaryImage.alt || conference.name}
+                  width={96}
+                  height={96}
+                  className="h-full w-full object-cover"
+                  style={{ imageRendering: 'auto' }}
+                  priority={false}
+                  quality={95}
+                  onError={() => {
+                    console.warn(`Failed to load image for conference: ${conference.name}`);
+                  }}
+                />
+              </div>
+            ) : (
+              <div className="h-12 w-12 rounded-lg bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center shadow-sm">
+                <BuildingOffice2Icon className="h-7 w-7 text-white" />
+              </div>
+            )}
           </div>
           <div className="ml-4">
-            <div className="text-sm font-medium text-gray-900">
+            <button
+              onClick={() => window.location.href = `/conferences/${conference._id}`}
+              className="text-sm font-medium text-indigo-600 hover:text-indigo-900 text-left cursor-pointer"
+            >
               {conference.name}
-            </div>
+            </button>
           </div>
         </div>
       ),
@@ -202,7 +221,7 @@ export default function ConferencesPage() {
       header: 'Territory',
       accessor: (conference) => (
         <div className="text-sm text-gray-900">
-          {conference.metadata?.territory?.join(', ') || 'Not specified'}
+          {conference.territory?.description || 'Not specified'}
         </div>
       ),
       className: 'max-w-xs',
@@ -212,39 +231,20 @@ export default function ConferencesPage() {
       header: 'Contact',
       accessor: (conference) => (
         <div className="text-sm text-gray-900">
-          {conference.metadata?.email && (
+          {conference.contact?.email && (
             <div className="flex items-center mb-1">
               <EnvelopeIcon className="h-4 w-4 text-gray-400 mr-2" />
-              {conference.metadata.email}
+              {conference.contact.email}
             </div>
           )}
-          {conference.metadata?.phone && (
+          {conference.contact?.phone && (
             <div className="flex items-center">
               <PhoneIcon className="h-4 w-4 text-gray-400 mr-2" />
-              {conference.metadata.phone}
+              {conference.contact.phone}
             </div>
           )}
         </div>
       ),
-    },
-    {
-      key: 'statistics',
-      header: 'Statistics',
-      accessor: (conference) => (
-        <div className="text-sm text-gray-900">
-          {conference.childCount ? (
-            <div className="space-y-1">
-              <div className="flex items-center justify-between">
-                <span className="text-gray-600">Churches:</span>
-                <span className="font-medium">{conference.childCount}</span>
-              </div>
-            </div>
-          ) : (
-            <span className="text-gray-400">-</span>
-          )}
-        </div>
-      ),
-      className: 'max-w-xs',
     },
     {
       key: 'status',
