@@ -98,24 +98,31 @@ class TeamService {
     const url = `${API_BASE_URL}/api/teams/organization/${organizationId}?${params}`;
     const headers = this.getHeaders();
 
-    const response = await fetch(url, {
-      headers,
-      credentials: 'include',
-    });
+    try {
+      const response = await fetch(url, {
+        headers,
+        credentials: 'include',
+      });
 
-    if (!response.ok) {
-      let errorMessage = 'Failed to fetch teams';
-      try {
-        const error = await response.json();
-        errorMessage = error.message || errorMessage;
-      } catch {
-        await response.text();
+      if (!response.ok) {
+        let errorMessage = `Failed to fetch teams (${response.status}: ${response.statusText})`;
+        try {
+          const error = await response.json();
+          errorMessage = error.message || errorMessage;
+        } catch {
+          // Keep the HTTP status error message
+        }
+        throw new Error(errorMessage);
       }
-      throw new Error(errorMessage);
-    }
 
-    const data = await response.json();
-    return data;
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        throw new Error('Network error: Unable to connect to server. Please check if the backend is running.');
+      }
+      throw error;
+    }
   }
 
   // Get user's teams
@@ -135,23 +142,30 @@ class TeamService {
 
   // Get all teams for super admins
   async getAllTeams() {
-    const response = await fetch(`${API_BASE_URL}/api/teams/all`, {
-      headers: this.getHeaders(),
-      credentials: 'include',
-    });
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/teams/all`, {
+        headers: this.getHeaders(),
+        credentials: 'include',
+      });
 
-    if (!response.ok) {
-      let errorMessage = 'Failed to fetch all teams';
-      try {
-        const error = await response.json();
-        errorMessage = error.message || errorMessage;
-      } catch {
-        await response.text();
+      if (!response.ok) {
+        let errorMessage = `Failed to fetch all teams (${response.status}: ${response.statusText})`;
+        try {
+          const error = await response.json();
+          errorMessage = error.message || errorMessage;
+        } catch {
+          // Keep the HTTP status error message
+        }
+        throw new Error(errorMessage);
       }
-      throw new Error(errorMessage);
-    }
 
-    return response.json();
+      return response.json();
+    } catch (error) {
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        throw new Error('Network error: Unable to connect to server. Please check if the backend is running.');
+      }
+      throw error;
+    }
   }
 
   // Search teams

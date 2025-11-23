@@ -10,9 +10,10 @@ interface SidebarItemProps {
   label: string;
   badge?: string | number;
   onClick?: () => void;
+  collapsed?: boolean;
 }
 
-export default function SidebarItem({ href, icon, label, badge, onClick }: SidebarItemProps) {
+export default function SidebarItem({ href, icon, label, badge, onClick, collapsed = false }: SidebarItemProps) {
   const pathname = usePathname();
   const isActive = pathname === href || (href !== '/dashboard' && pathname?.startsWith(href));
 
@@ -37,16 +38,20 @@ export default function SidebarItem({ href, icon, label, badge, onClick }: Sideb
       className={`${baseClasses} ${activeClasses}`}
       onClick={handleClick}
     >
-      <span className={`mr-3 flex-shrink-0 w-5 h-5 ${iconClasses}`}>
-        {icon}
-      </span>
-      
-      <span className="flex-1 truncate">{label}</span>
-      
-      {badge && (
-        <span className="ml-3 inline-flex items-center justify-center px-2 py-1 text-xs font-medium rounded-full bg-white/20 text-white">
-          {badge}
+      {collapsed ? (
+        <span className={`w-5 h-5 ${iconClasses} mx-auto`}>
+          {icon}
         </span>
+      ) : (
+        <>
+          <span className="flex-1 truncate">{label}</span>
+          
+          {badge && (
+            <span className="ml-3 inline-flex items-center justify-center px-2 py-1 text-xs font-medium rounded-full bg-white/20 text-white">
+              {badge}
+            </span>
+          )}
+        </>
       )}
     </Link>
   );

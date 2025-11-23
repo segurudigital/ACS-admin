@@ -1,4 +1,169 @@
-// RBAC Type Definitions
+// RBAC Type Definitions - TEAM-CENTRIC APPROACH
+
+// ENHANCED TEAM-CENTRIC INTERFACES
+export interface TeamAssignment {
+  teamId: string | Team;
+  role: 'leader' | 'coordinator' | 'member';
+  status: 'active' | 'inactive' | 'pending';
+  joinedAt: string;
+  invitedBy?: string | User;
+  permissions?: string[];
+}
+
+export interface Team {
+  _id: string;
+  name: string;
+  description?: string;
+  category?: string;
+  tags: string[];
+  churchId: string | Church;
+  hierarchyPath: string;
+  hierarchyDepth: number;
+  leaderId?: string | User;
+  createdBy: string | User;
+  memberCount: number;
+  maxMembers: number;
+  settings: {
+    allowSelfJoin: boolean;
+    requireApproval: boolean;
+    visibility: 'public' | 'private' | 'church';
+    isPubliclyVisible: boolean;
+    allowCrossChurchMembers: boolean;
+    collaborationEnabled: boolean;
+  };
+  metadata: {
+    ministry?: string;
+    focus?: string[];
+    targetAudience?: string[];
+    serviceArea?: string;
+    meetingSchedule?: string;
+    customFields?: Record<string, any>;
+  };
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface EnhancedUser {
+  _id: string;
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  verified: boolean;
+  avatar?: {
+    url?: string;
+    key?: string;
+  };
+  isSuperAdmin: boolean;
+  
+  // TEAM-CENTRIC ASSIGNMENTS
+  teamAssignments: TeamAssignment[];
+  primaryTeam?: string | Team;
+  
+  // DYNAMIC ORGANIZATIONAL CONTEXT (calculated from teams)
+  accessibleChurches?: Church[];
+  accessibleConferences?: Conference[];
+  accessibleUnions?: Union[];
+  
+  // COMPUTED SCOPE
+  organizationalScope?: {
+    teams: string[];
+    churches: string[];
+    conferences: string[];
+    unions: string[];
+    hierarchyPaths: string[];
+  };
+  
+  // INVITATION SYSTEM (preserved)
+  invitationStatus: 'pending' | 'accepted' | 'expired';
+  invitedBy?: string | User;
+  invitedAt?: string;
+  lastLoginAt?: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AssignmentResult {
+  success: boolean;
+  assignment?: {
+    userId: string;
+    teamId: string;
+    role: string;
+    teamName: string;
+    churchName?: string;
+    status: string;
+  };
+  error?: string;
+}
+
+export interface BulkAssignmentResult {
+  success: boolean;
+  message: string;
+  results: {
+    successful: Array<{
+      userId: string;
+      assignment: AssignmentResult['assignment'];
+    }>;
+    failed: Array<{
+      userId: string;
+      error: string;
+    }>;
+  };
+}
+
+export interface TeamSuggestion {
+  teamId: string;
+  teamName: string;
+  category?: string;
+  tags: string[];
+  description?: string;
+  church?: string;
+  memberCount: number;
+  maxMembers: number;
+  canJoin: boolean;
+  leader?: string;
+}
+
+export interface UserAssignments {
+  userId: string;
+  primaryTeam?: string;
+  assignments: Array<{
+    teamId: string;
+    teamName: string;
+    teamCategory?: string;
+    teamTags: string[];
+    role: string;
+    status: string;
+    joinedAt: string;
+    church: {
+      id: string;
+      name: string;
+    };
+    conference: {
+      id: string;
+      name: string;
+    };
+    union: {
+      id: string;
+      name: string;
+    };
+  }>;
+  organizationalScope: {
+    teams: string[];
+    churches: string[];
+    conferences: string[];
+    unions: string[];
+    hierarchyPaths: string[];
+  };
+}
+
+// LEGACY INTERFACES (maintained for compatibility)
 
 // Base interface for all hierarchical levels
 interface BaseHierarchyLevel {

@@ -7,7 +7,7 @@ import { PermissionGate } from '@/components/PermissionGate';
 import { Column, ActionCell, IconButton, StatusBadge } from '@/components/DataTable';
 import Button from '@/components/Button';
 import { Users, UserPlus, Settings, Trash } from 'lucide-react';
-import { toast } from '@/components/ui/use-toast';
+import { useToast } from '@/contexts/ToastContext';
 import { teamService, Team } from '@/lib/teams';
 import { teamTypeService, TeamType } from '@/lib/teamTypes';
 import { usePermissions } from '@/contexts/HierarchicalPermissionContext';
@@ -26,6 +26,7 @@ export default function TeamsPage() {
   const router = useRouter();
   const { currentUnion, currentConference, currentChurch } = usePermissions();
   const { isSuperAdmin } = useSuperAdmin();
+  const { error: showErrorToast, success: showSuccessToast } = useToast();
 
   const loadTeams = useCallback(async () => {
     try {
@@ -39,6 +40,7 @@ export default function TeamsPage() {
         // Regular user - view teams for their current entity (church, conference, or union)
         const currentEntityId = currentChurch || currentConference || currentUnion;
         if (!currentEntityId) {
+          console.warn('No current entity selected');
           setLoading(false);
           return;
         }
@@ -50,15 +52,17 @@ export default function TeamsPage() {
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to load teams';
       setTeams([]);
-      toast({
-        title: 'Error Loading Teams',
-        description: errorMessage,
-        variant: 'destructive',
-      });
+      
+      // Provide more specific error handling for hierarchy access issues
+      if (errorMessage.includes('No hierarchy access found')) {
+        showErrorToast('Access Denied', 'You do not have proper hierarchy access to view teams. Please contact your administrator to assign you to an organization.');
+      } else {
+        showErrorToast('Error Loading Teams', errorMessage);
+      }
     } finally {
       setLoading(false);
     }
-  }, [currentChurch, currentConference, currentUnion, isSuperAdmin]);
+  }, [currentChurch, currentConference, currentUnion, isSuperAdmin, showErrorToast]);
 
   const loadTeamTypes = useCallback(async () => {
     const currentEntityId = currentChurch || currentConference || currentUnion;
@@ -93,11 +97,7 @@ export default function TeamsPage() {
   }) => {
     const currentEntityId = currentChurch || currentConference || currentUnion;
     if (!currentEntityId) {
-      toast({
-        title: 'Error',
-        description: 'No current entity selected',
-        variant: 'destructive',
-      });
+      showErrorToast('Error', 'No current entity selected');
       return;
     }
 
@@ -107,19 +107,12 @@ export default function TeamsPage() {
         type: teamData.type as "communications" | "acs" | "general",
         organizationId: currentEntityId
       });
-      toast({
-        title: 'Success',
-        description: 'Team created successfully',
-      });
+      showSuccessToast('Success', 'Team created successfully');
       loadTeams();
       setCreateModalOpen(false);
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to create team';
-      toast({
-        title: 'Error',
-        description: errorMessage,
-        variant: 'destructive',
-      });
+      showErrorToast('Error', errorMessage);
     }
   };
 
@@ -128,18 +121,11 @@ export default function TeamsPage() {
 
     try {
       await teamService.deleteTeam(teamId);
-      toast({
-        title: 'Success',
-        description: 'Team deleted successfully',
-      });
+      showSuccessToast('Success', 'Team deleted successfully');
       loadTeams();
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to delete team';
-      toast({
-        title: 'Error',
-        description: errorMessage,
-        variant: 'destructive',
-      });
+      showErrorToast('Error', errorMessage);
     }
   };
 
