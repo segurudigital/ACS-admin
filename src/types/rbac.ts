@@ -14,6 +14,13 @@ interface BaseHierarchyLevel {
   createdAt: string;
   updatedAt: string;
   childCount?: number;
+  primaryImage?: {
+    url: string;
+    thumbnailUrl?: string;
+    key: string;
+    alt: string;
+    mediaFileId?: string;
+  };
 }
 
 // Union: Top-level administrative division (Level 0)
@@ -109,6 +116,101 @@ export interface Church extends BaseHierarchyLevel {
   conference?: Conference | string; // Reference to parent conference
   church?: Church | string; // Self-reference for consistency
   user?: User | string; // User reference for consistency
+  
+  // Church-specific properties
+  code?: string; // Church code unique within conference
+  establishedDate?: Date | string;
+  
+  location?: {
+    address?: {
+      address?: string;
+      city?: string;
+      state?: string;
+      country?: string;
+      postalCode?: string;
+    };
+    coordinates?: {
+      latitude?: number;
+      longitude?: number;
+    };
+  };
+  
+  contact?: {
+    email?: string;
+    phone?: string;
+    website?: string;
+  };
+  
+  leadership?: {
+    pastor?: {
+      name?: string;
+      email?: string;
+      phone?: string;
+    };
+    elders?: Array<{
+      name: string;
+      role?: string;
+      email?: string;
+      phone?: string;
+    }>;
+    coordinators?: Array<{
+      name: string;
+      department?: string;
+      email?: string;
+      phone?: string;
+    }>;
+  };
+  
+  demographics?: {
+    membership?: {
+      total?: number;
+      baptized?: number;
+      visiting?: number;
+    };
+    averageAttendance?: number;
+    ageGroups?: {
+      children?: number;
+      youth?: number;
+      adults?: number;
+      seniors?: number;
+    };
+  };
+  
+  facilities?: {
+    sanctuary?: {
+      capacity?: number;
+      hasAV?: boolean;
+    };
+    classrooms?: {
+      count?: number;
+      capacity?: number;
+    };
+    kitchen?: {
+      capacity?: string;
+      hasEquipment?: boolean;
+    };
+    other?: string[];
+  };
+  
+  serviceSchedule?: {
+    worship?: {
+      day: string;
+      time: string;
+      description?: string;
+    };
+    prayerMeeting?: {
+      day: string;
+      time: string;
+      description?: string;
+    };
+    other?: Array<{
+      name: string;
+      day: string;
+      time: string;
+      description?: string;
+    }>;
+  };
+  
   parentEntity?: {
     _id: string;
     name: string;

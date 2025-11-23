@@ -53,6 +53,9 @@ export interface Union {
 // Import other types from rbac (keeping Conference and Church)
 import { Conference, Church } from './rbac';
 
+// Re-export for convenience
+export type { Conference, Church };
+
 // API Response Types for hierarchical endpoints
 export interface UnionListResponse {
   success: boolean;
