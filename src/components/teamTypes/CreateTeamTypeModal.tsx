@@ -14,7 +14,6 @@ interface CreateTeamTypeModalProps {
   onSubmit: (teamTypeData: {
     name: string;
     description?: string;
-    permissions: string[];
   }) => Promise<void>;
 }
 
@@ -22,7 +21,6 @@ export function CreateTeamTypeModal({ open, onOpenChange, onSubmit }: CreateTeam
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    permissions: [] as string[],
   });
   const [loading, setLoading] = useState(false);
 
@@ -49,7 +47,6 @@ export function CreateTeamTypeModal({ open, onOpenChange, onSubmit }: CreateTeam
       setFormData({
         name: '',
         description: '',
-        permissions: [],
       });
       onOpenChange(false);
     } catch (error: unknown) {
@@ -64,7 +61,6 @@ export function CreateTeamTypeModal({ open, onOpenChange, onSubmit }: CreateTeam
     setFormData({
       name: '',
       description: '',
-      permissions: [],
     });
     onOpenChange(false);
   };

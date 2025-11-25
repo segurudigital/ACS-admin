@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import Image from 'next/image';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,6 +11,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from '@/components/ui/use-toast';
 import { teamTypeService, TeamType } from '@/lib/teamTypes';
 import { usePermissions } from '@/contexts/HierarchicalPermissionContext';
+import { ChurchService } from '@/lib/churchService';
+import MediaLibraryModal from '../MediaLibraryModal';
+import { MediaFile } from '@/lib/mediaService';
+import { PhotoIcon, CloudArrowUpIcon, XMarkIcon } from '@heroicons/react/24/outline';
 
 interface CreateTeamModalProps {
   open: boolean;
@@ -18,38 +23,97 @@ interface CreateTeamModalProps {
     name: string;
     type: string;
     description?: string;
-    maxMembers: number;
+    location?: string;
+    churchId?: string;
+    bannerImage?: File | null;
+    bannerMediaFile?: MediaFile | null;
+    bannerAlt?: string;
+    profileImage?: File | null;
+    profileMediaFile?: MediaFile | null;
+    profileAlt?: string;
   }) => Promise<void>;
+  editTeam?: {
+    _id: string;
+    name: string;
+    type?: string; // Legacy field
+    category?: string; // New field
+    description?: string;
+    location?: string;
+    churchId?: string | { _id: string; name: string; };
+    banner?: {
+      url: string | null;
+      key: string | null;
+      alt: string | null;
+    };
+    profilePhoto?: {
+      url: string | null;
+      key: string | null;
+      alt: string | null;
+    };
+  } | null;
+  mode?: 'create' | 'edit';
 }
 
-export function CreateTeamModal({ open, onOpenChange, onSubmit }: CreateTeamModalProps) {
-  const { currentUnion, currentConference, currentChurch } = usePermissions();
+export function CreateTeamModal({ open, onOpenChange, onSubmit, editTeam, mode = 'create' }: CreateTeamModalProps) {
+  const {} = usePermissions();
   const [formData, setFormData] = useState({
     name: '',
     type: '',
     description: '',
-    maxMembers: 50,
+    location: '',
+    churchId: '',
   });
+  
+  // Banner image state - following church pattern
+  const [bannerImage, setBannerImage] = useState<File | null>(null);
+  const [bannerPreview, setBannerPreview] = useState<string | null>(null);
+  const [bannerAlt, setBannerAlt] = useState('');
+  const [selectedBannerMediaFile, setSelectedBannerMediaFile] = useState<MediaFile | null>(null);
+  const [isBannerMediaLibraryOpen, setIsBannerMediaLibraryOpen] = useState(false);
+  
+  // Profile photo state - following church pattern
+  const [profileImage, setProfileImage] = useState<File | null>(null);
+  const [profilePreview, setProfilePreview] = useState<string | null>(null);
+  const [profileAlt, setProfileAlt] = useState('');
+  const [selectedProfileMediaFile, setSelectedProfileMediaFile] = useState<MediaFile | null>(null);
+  const [isProfileMediaLibraryOpen, setIsProfileMediaLibraryOpen] = useState(false);
+  
   const [loading, setLoading] = useState(false);
   const [teamTypes, setTeamTypes] = useState<TeamType[]>([]);
   const [loadingTypes, setLoadingTypes] = useState(false);
+  const [churches, setChurches] = useState<Array<{_id: string, name: string}>>([]);
+  const [loadingChurches, setLoadingChurches] = useState(false);
+  
+  const bannerFileInputRef = useRef<HTMLInputElement>(null);
+  const profileFileInputRef = useRef<HTMLInputElement>(null);
 
   const loadTeamTypes = useCallback(async () => {
-    const currentEntityId = currentChurch || currentConference || currentUnion;
-    if (!currentEntityId) {
-      return;
-    }
-
     try {
       setLoadingTypes(true);
-      const response = await teamTypeService.getOrganizationTeamTypes(currentEntityId);
+      
+      // Get current user from auth token to use user-based endpoint
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('Authentication required');
+      }
+      
+      // Decode token to get user ID (simple JWT decode)
+      const tokenParts = token.split('.');
+      if (tokenParts.length !== 3) {
+        throw new Error('Invalid token format');
+      }
+      
+      const payload = JSON.parse(atob(tokenParts[1]));
+      const userId = payload.userId;
+      
+      const response = await teamTypeService.getUserTeamTypes(userId, true);
       setTeamTypes(response.data || []);
       
       // If no team types exist, suggest initialization
       if (!response.data || response.data.length === 0) {
         toast({
           title: 'No Team Types Found',
-          description: 'Contact your administrator to set up team types for your entity.',
+          description: 'Contact your administrator to initialize default team types.',
           variant: 'destructive',
         });
       }
@@ -63,15 +127,91 @@ export function CreateTeamModal({ open, onOpenChange, onSubmit }: CreateTeamModa
     } finally {
       setLoadingTypes(false);
     }
-  }, [currentChurch, currentConference, currentUnion]);
+  }, []);
 
-  // Load team types when modal opens and entity is available
-  useEffect(() => {
-    const currentEntityId = currentChurch || currentConference || currentUnion;
-    if (open && currentEntityId) {
-      loadTeamTypes();
+  const loadChurches = useCallback(async () => {
+    try {
+      setLoadingChurches(true);
+      const response = await ChurchService.getAllChurches();
+      const churchesData = response.data?.map(church => ({
+        _id: church._id,
+        name: church.name
+      })) || [];
+      
+      console.log('Loaded churches:', churchesData);
+      setChurches(churchesData);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to load churches';
+      console.error('Failed to load churches:', error);
+      toast({
+        title: 'Error Loading Churches',
+        description: errorMessage,
+        variant: 'destructive',
+      });
+      setChurches([]);
+    } finally {
+      setLoadingChurches(false);
     }
-  }, [open, currentChurch, currentConference, currentUnion, loadTeamTypes]);
+  }, []);
+
+  // Load team types and churches when modal opens
+  useEffect(() => {
+    if (open) {
+      loadTeamTypes();
+      loadChurches();
+    }
+  }, [open, loadTeamTypes, loadChurches]);
+
+  // Populate form for edit mode after data is loaded
+  useEffect(() => {
+    if (open && mode === 'edit' && editTeam && !loadingTypes && !loadingChurches) {
+      const teamType = editTeam.category || editTeam.type || '';
+      
+      // Handle churchId - it could be a string ID or an object with _id
+      let churchIdString = '';
+      if (editTeam.churchId) {
+        churchIdString = typeof editTeam.churchId === 'string' 
+          ? editTeam.churchId 
+          : editTeam.churchId._id;
+      }
+      
+      console.log('Populating form for edit mode:', {
+        name: editTeam.name,
+        teamType,
+        churchId: editTeam.churchId,
+        churchIdString,
+        editTeam,
+        availableTeamTypes: teamTypes.map(t => ({ id: t._id, name: t.name })),
+        availableChurches: churches.map(c => ({ id: c._id, name: c.name })),
+        churchMatch: churches.find(c => c._id === churchIdString),
+        selectedChurchId: churches.find(c => c._id === churchIdString)?._id || '',
+        selectedChurchName: churches.find(c => c._id === churchIdString)?.name || 'Not found',
+      });
+      
+      // Ensure exact string match for church selection
+      const selectedChurchId = churches.find(c => c._id === churchIdString)?._id || '';
+      
+      setFormData({
+        name: editTeam.name,
+        type: teamType,
+        description: editTeam.description || '',
+        location: editTeam.location || '',
+        churchId: selectedChurchId,
+      });
+      
+      // Set banner preview if exists
+      if (editTeam.banner?.url) {
+        setBannerPreview(editTeam.banner.url);
+        setBannerAlt(editTeam.banner.alt || '');
+      }
+      
+      // Set profile photo preview if exists
+      if (editTeam.profilePhoto?.url) {
+        setProfilePreview(editTeam.profilePhoto.url);
+        setProfileAlt(editTeam.profilePhoto.alt || '');
+      }
+    }
+  }, [open, mode, editTeam, loadingTypes, loadingChurches, teamTypes, churches]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -94,11 +234,28 @@ export function CreateTeamModal({ open, onOpenChange, onSubmit }: CreateTeamModa
       return;
     }
 
+    if (!formData.churchId) {
+      toast({
+        title: 'Error',
+        description: 'Church is required',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     try {
       setLoading(true);
       await onSubmit({
         ...formData,
         description: formData.description.trim() || undefined,
+        location: formData.location.trim() || undefined,
+        churchId: formData.churchId,
+        bannerImage,
+        bannerMediaFile: selectedBannerMediaFile,
+        bannerAlt,
+        profileImage,
+        profileMediaFile: selectedProfileMediaFile,
+        profileAlt,
       });
       
       // Reset form
@@ -106,8 +263,23 @@ export function CreateTeamModal({ open, onOpenChange, onSubmit }: CreateTeamModa
         name: '',
         type: '',
         description: '',
-        maxMembers: 50,
+        location: '',
+        churchId: '',
       });
+      
+      // Reset banner state
+      setBannerImage(null);
+      setBannerPreview(null);
+      setBannerAlt('');
+      setSelectedBannerMediaFile(null);
+      setIsBannerMediaLibraryOpen(false);
+      
+      // Reset profile state
+      setProfileImage(null);
+      setProfilePreview(null);
+      setProfileAlt('');
+      setSelectedProfileMediaFile(null);
+      setIsProfileMediaLibraryOpen(false);
       
       onOpenChange(false);
     } catch {
@@ -118,27 +290,161 @@ export function CreateTeamModal({ open, onOpenChange, onSubmit }: CreateTeamModa
   };
 
   const handleClose = () => {
+    // Reset form to empty state (will be repopulated by useEffect if editing)
     setFormData({
       name: '',
       type: '',
       description: '',
-      maxMembers: 50,
+      location: '',
+      churchId: '',
     });
+    
+    // Reset banner state
+    setBannerImage(null);
+    setBannerPreview(null);
+    setBannerAlt('');
+    setSelectedBannerMediaFile(null);
+    setIsBannerMediaLibraryOpen(false);
+    
+    // Reset profile state
+    setProfileImage(null);
+    setProfilePreview(null);
+    setProfileAlt('');
+    setSelectedProfileMediaFile(null);
+    setIsProfileMediaLibraryOpen(false);
+    
     onOpenChange(false);
   };
 
+  // Banner image handling functions - following church pattern
+  const handleBannerImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        toast({
+          title: 'Error',
+          description: 'Please select an image file (JPEG, PNG, WebP).',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      // Validate file size (2MB limit)
+      if (file.size > 2 * 1024 * 1024) {
+        toast({
+          title: 'Error',
+          description: 'Banner image must be smaller than 2MB.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      setBannerImage(file);
+      
+      // Create preview
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setBannerPreview(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removeBannerImage = () => {
+    setBannerImage(null);
+    setSelectedBannerMediaFile(null);
+    setBannerPreview(null);
+    setBannerAlt('');
+    if (bannerFileInputRef.current) {
+      bannerFileInputRef.current.value = '';
+    }
+  };
+
+  const handleBannerMediaSelect = (mediaFile: MediaFile) => {
+    setSelectedBannerMediaFile(mediaFile);
+    setBannerPreview(mediaFile.url);
+    setBannerAlt(mediaFile.alt);
+    setBannerImage(null); // Clear any previously selected file
+    setIsBannerMediaLibraryOpen(false);
+  };
+
+  const openBannerMediaLibrary = () => {
+    setIsBannerMediaLibraryOpen(true);
+  };
+
+  // Profile photo handling functions - following church pattern
+  const handleProfileImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        toast({
+          title: 'Error',
+          description: 'Please select an image file (JPEG, PNG, WebP).',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      // Validate file size (2MB limit)
+      if (file.size > 2 * 1024 * 1024) {
+        toast({
+          title: 'Error',
+          description: 'Profile photo must be smaller than 2MB.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      setProfileImage(file);
+      
+      // Create preview
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setProfilePreview(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removeProfileImage = () => {
+    setProfileImage(null);
+    setSelectedProfileMediaFile(null);
+    setProfilePreview(null);
+    setProfileAlt('');
+    if (profileFileInputRef.current) {
+      profileFileInputRef.current.value = '';
+    }
+  };
+
+  const handleProfileMediaSelect = (mediaFile: MediaFile) => {
+    setSelectedProfileMediaFile(mediaFile);
+    setProfilePreview(mediaFile.url);
+    setProfileAlt(mediaFile.alt);
+    setProfileImage(null); // Clear any previously selected file
+    setIsProfileMediaLibraryOpen(false);
+  };
+
+  const openProfileMediaLibrary = () => {
+    setIsProfileMediaLibraryOpen(true);
+  };
+
   return (
+    <>
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[500px]">
-        <form onSubmit={handleSubmit}>
-          <DialogHeader>
-            <DialogTitle>Create New Team</DialogTitle>
-            <DialogDescription>
-              Create a new team for your organization
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="grid gap-4 py-4">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden">
+        <DialogHeader>
+          <DialogTitle>{mode === 'edit' ? 'Edit Team' : 'Create New Team'}</DialogTitle>
+          <DialogDescription>
+            {mode === 'edit' ? 'Edit the team details below' : 'Create a new team for your organization'}
+          </DialogDescription>
+        </DialogHeader>
+        
+        <form onSubmit={handleSubmit} className="flex flex-col">
+          <div className="max-h-[60vh] overflow-y-auto pr-2">
+            <div className="grid gap-4 py-4">
+            
             <div className="grid gap-2">
               <Label htmlFor="name">Team Name*</Label>
               <Input
@@ -199,6 +505,47 @@ export function CreateTeamModal({ open, onOpenChange, onSubmit }: CreateTeamModa
             </div>
             
             <div className="grid gap-2">
+              <Label htmlFor="church">Church*</Label>
+              <Select
+                key={`church-select-${formData.churchId}-${churches.length}`}
+                value={formData.churchId}
+                onValueChange={(value: string) => {
+                  console.log('Church selected:', value, churches.find(c => c._id === value)?.name);
+                  setFormData({ ...formData, churchId: value });
+                }}
+              >
+                <SelectTrigger className="w-full">
+                  <span className="block truncate">
+                    {formData.churchId && churches.length > 0 
+                      ? churches.find(c => c._id === formData.churchId)?.name 
+                      : loadingChurches 
+                        ? "Loading churches..." 
+                        : churches.length === 0 
+                          ? "No churches available" 
+                          : "Select church"
+                    }
+                  </span>
+                </SelectTrigger>
+                <SelectContent>
+                  {churches.length === 0 && !loadingChurches ? (
+                    <SelectItem value="" disabled>
+                      <div className="flex items-center gap-2 text-gray-500">
+                        <span>⚠️</span>
+                        <div>No churches found. Contact your administrator.</div>
+                      </div>
+                    </SelectItem>
+                  ) : (
+                    churches.map((church) => (
+                      <SelectItem key={church._id} value={church._id}>
+                        {church.name}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="grid gap-2">
               <Label htmlFor="description">Description</Label>
               <Textarea
                 id="description"
@@ -209,25 +556,153 @@ export function CreateTeamModal({ open, onOpenChange, onSubmit }: CreateTeamModa
                 disabled={loading}
               />
             </div>
-            
+
             <div className="grid gap-2">
-              <Label htmlFor="maxMembers">Max Members*</Label>
+              <Label htmlFor="location">Location</Label>
               <Input
-                id="maxMembers"
-                type="number"
-                min="1"
-                max="500"
-                value={formData.maxMembers}
-                onChange={(e) => setFormData({ ...formData, maxMembers: parseInt(e.target.value) || 50 })}
+                id="location"
+                value={formData.location}
+                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                placeholder="Enter team location (optional)"
                 disabled={loading}
               />
-              <p className="text-sm text-muted-foreground">
-                Maximum number of members allowed in this team
+              <p className="text-xs text-muted-foreground">
+                Where does your team operate or meet?
               </p>
             </div>
+            
+
+            {/* Banner Upload - Church Style */}
+            <div className="grid gap-2">
+              <Label className="text-sm font-medium text-gray-900">Team Banner</Label>
+              
+              {bannerPreview ? (
+                <div className="relative">
+                  <div className="w-full h-32 bg-gray-100 rounded-lg overflow-hidden">
+                    <Image
+                      src={bannerPreview}
+                      alt="Banner preview"
+                      fill
+                      className="object-cover"
+                      sizes="(max-width: 768px) 100vw, 50vw"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={removeBannerImage}
+                    className="absolute top-2 right-2 p-1 bg-red-600 text-white rounded-full hover:bg-red-700"
+                  >
+                    <XMarkIcon className="h-4 w-4" />
+                  </button>
+                  <div className="mt-2">
+                    <Label className="block text-sm font-medium text-gray-700">
+                      Alt Text
+                    </Label>
+                    <Input
+                      type="text"
+                      value={bannerAlt}
+                      onChange={(e) => setBannerAlt(e.target.value)}
+                      placeholder="Describe the banner image for accessibility"
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
+                  <PhotoIcon className="mx-auto h-12 w-12 text-gray-400" />
+                  <div className="mt-4">
+                    <Button
+                      type="button"
+                      onClick={openBannerMediaLibrary}
+                      variant="outline"
+                      className="inline-flex items-center"
+                    >
+                      <CloudArrowUpIcon className="h-4 w-4 mr-2" />
+                      Select Banner Image
+                    </Button>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2">
+                    Browse existing images or upload new ones. Recommended size: 1200x400px
+                  </p>
+                </div>
+              )}
+              
+              <input
+                ref={bannerFileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleBannerImageUpload}
+                className="hidden"
+              />
+            </div>
+
+            {/* Profile Photo Upload - Church Style */}
+            <div className="grid gap-2">
+              <Label className="text-sm font-medium text-gray-900">Team Profile Photo</Label>
+              
+              {profilePreview ? (
+                <div className="relative">
+                  <div className="w-32 h-32 bg-gray-100 rounded-full overflow-hidden mx-auto">
+                    <Image
+                      src={profilePreview}
+                      alt="Profile preview"
+                      fill
+                      className="object-cover"
+                      sizes="128px"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={removeProfileImage}
+                    className="absolute top-2 right-2 p-1 bg-red-600 text-white rounded-full hover:bg-red-700"
+                  >
+                    <XMarkIcon className="h-4 w-4" />
+                  </button>
+                  <div className="mt-2">
+                    <Label className="block text-sm font-medium text-gray-700">
+                      Alt Text
+                    </Label>
+                    <Input
+                      type="text"
+                      value={profileAlt}
+                      onChange={(e) => setProfileAlt(e.target.value)}
+                      placeholder="Describe the profile photo for accessibility"
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
+                  <PhotoIcon className="mx-auto h-12 w-12 text-gray-400" />
+                  <div className="mt-4">
+                    <Button
+                      type="button"
+                      onClick={openProfileMediaLibrary}
+                      variant="outline"
+                      className="inline-flex items-center"
+                    >
+                      <CloudArrowUpIcon className="h-4 w-4 mr-2" />
+                      Select Profile Photo
+                    </Button>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2">
+                    Browse existing images or upload new ones. Recommended size: 400x400px
+                  </p>
+                </div>
+              )}
+              
+              <input
+                ref={profileFileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleProfileImageUpload}
+                className="hidden"
+              />
+            </div>
+          </div>
           </div>
           
-          <DialogFooter>
+          <DialogFooter className="mt-4">
             <Button
               type="button"
               variant="outline"
@@ -237,11 +712,34 @@ export function CreateTeamModal({ open, onOpenChange, onSubmit }: CreateTeamModa
               Cancel
             </Button>
             <Button type="submit" disabled={loading}>
-              {loading ? 'Creating...' : 'Create Team'}
+              {loading ? (mode === 'edit' ? 'Updating...' : 'Creating...') : (mode === 'edit' ? 'Update Team' : 'Create Team')}
             </Button>
           </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
+
+    {/* Banner Media Library Modal */}
+    <MediaLibraryModal
+      isOpen={isBannerMediaLibraryOpen}
+      onClose={() => setIsBannerMediaLibraryOpen(false)}
+      onSelect={handleBannerMediaSelect}
+      title="Select Banner Image"
+      allowedTypes={['banner', 'gallery']}
+      category="team"
+      type="banner"
+    />
+
+    {/* Profile Photo Media Library Modal */}
+    <MediaLibraryModal
+      isOpen={isProfileMediaLibraryOpen}
+      onClose={() => setIsProfileMediaLibraryOpen(false)}
+      onSelect={handleProfileMediaSelect}
+      title="Select Profile Photo"
+      allowedTypes={['banner', 'gallery', 'avatar']}
+      category="team"
+      type="avatar"
+    />
+  </>
   );
 }

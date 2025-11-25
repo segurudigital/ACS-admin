@@ -22,7 +22,6 @@ export interface Team {
   leaderId?: string | User;
   createdBy: string | User;
   memberCount: number;
-  maxMembers: number;
   settings: {
     allowSelfJoin: boolean;
     requireApproval: boolean;
@@ -37,7 +36,7 @@ export interface Team {
     targetAudience?: string[];
     serviceArea?: string;
     meetingSchedule?: string;
-    customFields?: Record<string, any>;
+    customFields?: Record<string, unknown>;
   };
   isActive: boolean;
   createdAt: string;
@@ -125,7 +124,6 @@ export interface TeamSuggestion {
   description?: string;
   church?: string;
   memberCount: number;
-  maxMembers: number;
   canJoin: boolean;
   leader?: string;
 }

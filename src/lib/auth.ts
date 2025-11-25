@@ -207,8 +207,6 @@ export class AuthService {
       console.log('[AuthService] Removing tokens');
       // Remove the old token first (silently)
       localStorage.removeItem('auth_token');
-      // Also clear organization context
-      localStorage.removeItem('currentOrganizationId');
       // Remove the main token last - this will trigger the storage event
       localStorage.removeItem('token');
       console.log('[AuthService] Tokens removed');
@@ -239,19 +237,6 @@ export class AuthService {
     }
   }
 
-  // RBAC-related methods
-  static setOrganizationContext(organizationId: string): void {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('currentOrganizationId', organizationId);
-    }
-  }
-
-  static getOrganizationContext(): string | null {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('currentOrganizationId');
-    }
-    return null;
-  }
 
   static hasPermission(permission: string, userPermissions?: string[]): boolean {
     if (!userPermissions) {

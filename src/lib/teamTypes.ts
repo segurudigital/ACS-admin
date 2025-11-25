@@ -5,10 +5,8 @@ export interface TeamType {
   _id: string;
   name: string;
   description?: string;
-  organizationId: string;
   isActive: boolean;
   isDefault: boolean;
-  permissions: string[];
   teamCount?: number;
   createdAt: string;
   updatedAt: string;
@@ -17,13 +15,11 @@ export interface TeamType {
 export interface CreateTeamTypeData {
   name: string;
   description?: string;
-  permissions?: string[];
 }
 
 export interface UpdateTeamTypeData {
   name?: string;
   description?: string;
-  permissions?: string[];
   isActive?: boolean;
 }
 
@@ -36,17 +32,17 @@ const getAuthHeaders = () => {
 };
 
 export const teamTypeService = {
-  // Get all team types for an organization
-  async getOrganizationTeamTypes(
-    organizationId: string, 
-    includeInactive = false
+  // Get team types for current user
+  async getUserTeamTypes(
+    userId: string, 
+    includeInactive = true
   ): Promise<{ success: boolean; data: TeamType[] }> {
     const params = new URLSearchParams();
     if (includeInactive) {
       params.append('includeInactive', 'true');
     }
     
-    const url = `${API_BASE_URL}/api/team-types/organization/${organizationId}?${params}`;
+    const url = `${API_BASE_URL}/api/team-types/user/${userId}?${params}`;
     const headers = getAuthHeaders();
     
     const response = await fetch(url, {
@@ -68,6 +64,7 @@ export const teamTypeService = {
     const data = await response.json();
     return data;
   },
+
 
   // Get a specific team type
   async getTeamType(id: string): Promise<{ success: boolean; data: TeamType }> {
@@ -136,9 +133,9 @@ export const teamTypeService = {
     return response.json();
   },
 
-  // Initialize default team types for an organization
-  async initializeDefaultTypes(organizationId: string): Promise<{ success: boolean }> {
-    const response = await fetch(`${API_BASE_URL}/api/team-types/initialize/${organizationId}`, {
+  // Initialize default team types
+  async initializeDefaultTypes(): Promise<{ success: boolean }> {
+    const response = await fetch(`${API_BASE_URL}/api/team-types/initialize`, {
       method: 'POST',
       headers: getAuthHeaders(),
       credentials: 'include',

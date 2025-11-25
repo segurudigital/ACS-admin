@@ -30,7 +30,7 @@ export default function VolunteerOpportunities() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [opportunityToDelete, setOpportunityToDelete] = useState<VolunteerOpportunityListItem | null>(null);
-  const [services, setServices] = useState<Array<{ _id: string; name: string; type: string; organization: { name: string } }>>([]);
+  const [services, setServices] = useState<Array<{ _id: string; name: string; type: string }>>([]);
   const { error: showErrorToast, success: showSuccessToast } = useToast();
 
   const fetchOpportunities = useCallback(async () => {
@@ -154,7 +154,7 @@ export default function VolunteerOpportunities() {
       accessor: (opportunity: VolunteerOpportunityListItem) => (
         <div>
           <p className="font-medium text-gray-900">{opportunity.service.name}</p>
-          <p className="text-sm text-gray-500">{opportunity.service.organization.name}</p>
+          <p className="text-sm text-gray-500">{opportunity.service.type}</p>
         </div>
       ),
       className: 'px-6 py-4'

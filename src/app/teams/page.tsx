@@ -2,29 +2,37 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import AdminLayout from '../../components/AdminLayout';
 import { PermissionGate } from '@/components/PermissionGate';
 import { Column, ActionCell, IconButton, StatusBadge } from '@/components/DataTable';
 import Button from '@/components/Button';
-import { Users, UserPlus, Settings, Trash } from 'lucide-react';
+import { Users, UserPlus, Trash, Pencil } from 'lucide-react';
 import { useToast } from '@/contexts/ToastContext';
 import { teamService, Team } from '@/lib/teams';
-import { teamTypeService, TeamType } from '@/lib/teamTypes';
+import { TeamType } from '@/lib/teamTypes';
+import { teamImageService } from '@/lib/teamImageService';
+import { MediaFile } from '@/lib/mediaService';
 import { usePermissions } from '@/contexts/HierarchicalPermissionContext';
 import { CreateTeamModal } from '@/components/teams/CreateTeamModal';
 import { TeamMembersModal } from '@/components/teams/TeamMembersModal';
 import { useSuperAdmin } from '@/hooks/useSuperAdmin';
+import ConfirmationModal from '@/components/ConfirmationModal';
 
 export default function TeamsPage() {
   const [teams, setTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(false);
   const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editingTeam, setEditingTeam] = useState<Team | null>(null);
   const [membersModalOpen, setMembersModalOpen] = useState(false);
   const [selectedTeam] = useState<Team | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [teamToDelete, setTeamToDelete] = useState<Team | null>(null);
   const [teamTypes, setTeamTypes] = useState<TeamType[]>([]);
   const router = useRouter();
-  const { currentUnion, currentConference, currentChurch } = usePermissions();
+  const {} = usePermissions();
   const { isSuperAdmin } = useSuperAdmin();
   const { error: showErrorToast, success: showSuccessToast } = useToast();
 
@@ -37,14 +45,8 @@ export default function TeamsPage() {
         // Super admin views all teams from MongoDB collection across all hierarchies
         response = await teamService.getAllTeams();
       } else {
-        // Regular user - view teams for their current entity (church, conference, or union)
-        const currentEntityId = currentChurch || currentConference || currentUnion;
-        if (!currentEntityId) {
-          console.warn('No current entity selected');
-          setLoading(false);
-          return;
-        }
-        response = await teamService.getOrganizationTeams(currentEntityId);
+        // Regular user - get teams accessible to user via hierarchy
+        response = await teamService.getAllTeams(); // This endpoint filters by user permissions
       }
       
       const teamsData = response.data || [];
@@ -62,51 +64,193 @@ export default function TeamsPage() {
     } finally {
       setLoading(false);
     }
-  }, [currentChurch, currentConference, currentUnion, isSuperAdmin, showErrorToast]);
+  }, [isSuperAdmin, showErrorToast]);
 
   const loadTeamTypes = useCallback(async () => {
-    const currentEntityId = currentChurch || currentConference || currentUnion;
-    if (!currentEntityId) return;
-
-    try {
-      const response = await teamTypeService.getOrganizationTeamTypes(currentEntityId);
-      setTeamTypes(response.data);
-    } catch {
-      // Don't show toast for team types error as it's not critical
-    }
-  }, [currentChurch, currentConference, currentUnion]);
+    // For now, we'll skip team types loading since it requires organization context
+    // This will be handled by the CreateTeamModal using the user's context
+    setTeamTypes([]);
+  }, []);
 
 
   useEffect(() => {
-    if (isSuperAdmin) {
-      loadTeams();
-    } else {
-      const currentEntityId = currentChurch || currentConference || currentUnion;
-      if (currentEntityId) {
-        loadTeams();
-        loadTeamTypes();
+    loadTeams();
+    loadTeamTypes();
+  }, [loadTeams, loadTeamTypes]);
+
+  const handleEditTeam = (team: Team) => {
+    setEditingTeam(team);
+    setEditModalOpen(true);
+  };
+
+  const handleUpdateTeam = async (teamData: {
+    name: string;
+    type: string;
+    description?: string;
+    location?: string;
+    churchId?: string;
+    bannerImage?: File | null;
+    bannerMediaFile?: MediaFile | null;
+    bannerAlt?: string;
+    profileImage?: File | null;
+    profileMediaFile?: MediaFile | null;
+    profileAlt?: string;
+  }) => {
+    if (!editingTeam) return;
+    
+    try {
+      // Update the team first
+      await teamService.updateTeam(editingTeam._id, {
+        name: teamData.name,
+        type: teamData.type as "communications" | "acs" | "general",
+        description: teamData.description,
+        location: teamData.location,
+      });
+
+      // Handle image updates similar to create
+      // Handle banner image
+      if (teamData.bannerImage || teamData.bannerMediaFile) {
+        try {
+          if (teamData.bannerImage) {
+            await teamImageService.uploadBanner(
+              editingTeam._id, 
+              teamData.bannerImage, 
+              teamData.bannerAlt || `${teamData.name} banner`
+            );
+          } else if (teamData.bannerMediaFile) {
+            if (!teamData.bannerMediaFile._id) {
+              throw new Error('Selected media file has no ID');
+            }
+            await teamImageService.setBannerFromMediaFile(
+              editingTeam._id,
+              teamData.bannerMediaFile._id,
+              teamData.bannerAlt || `${teamData.name} banner`
+            );
+          }
+        } catch (err) {
+          console.error('Failed to update banner:', err);
+          const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+          showErrorToast('Warning', `Team updated but banner upload failed: ${errorMessage}`);
+        }
       }
+      
+      // Handle profile photo
+      if (teamData.profileImage || teamData.profileMediaFile) {
+        try {
+          if (teamData.profileImage) {
+            await teamImageService.uploadProfilePhoto(
+              editingTeam._id, 
+              teamData.profileImage, 
+              teamData.profileAlt || `${teamData.name} profile photo`
+            );
+          } else if (teamData.profileMediaFile) {
+            if (!teamData.profileMediaFile._id) {
+              throw new Error('Selected media file has no ID');
+            }
+            await teamImageService.setProfilePhotoFromMediaFile(
+              editingTeam._id,
+              teamData.profileMediaFile._id,
+              teamData.profileAlt || `${teamData.name} profile photo`
+            );
+          }
+        } catch (err) {
+          console.error('Failed to update profile photo:', err);
+          const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+          showErrorToast('Warning', `Team updated but profile photo upload failed: ${errorMessage}`);
+        }
+      }
+      
+      showSuccessToast('Success', 'Team updated successfully');
+      loadTeams();
+      setEditModalOpen(false);
+      setEditingTeam(null);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update team';
+      showErrorToast('Error', errorMessage);
     }
-  }, [currentChurch, currentConference, currentUnion, loadTeams, loadTeamTypes, isSuperAdmin]);
+  };
 
   const handleCreateTeam = async (teamData: {
     name: string;
     type: string;
     description?: string;
-    maxMembers: number;
+    location?: string;
+    churchId?: string;
+    bannerImage?: File | null;
+    bannerMediaFile?: MediaFile | null;
+    bannerAlt?: string;
+    profileImage?: File | null;
+    profileMediaFile?: MediaFile | null;
+    profileAlt?: string;
   }) => {
-    const currentEntityId = currentChurch || currentConference || currentUnion;
-    if (!currentEntityId) {
-      showErrorToast('Error', 'No current entity selected');
-      return;
-    }
-
     try {
-      await teamService.createTeam({
-        ...teamData,
+      // Create the team first
+      const response = await teamService.createTeam({
+        name: teamData.name,
         type: teamData.type as "communications" | "acs" | "general",
-        organizationId: currentEntityId
+        description: teamData.description,
+        location: teamData.location,
+        churchId: teamData.churchId || '' // Use selected church or let backend determine
       });
+
+      const createdTeam = response.data;
+      
+      // Handle banner image - following church pattern
+      if (teamData.bannerImage || teamData.bannerMediaFile) {
+        try {
+          if (teamData.bannerImage) {
+            // Upload new file
+            await teamImageService.uploadBanner(
+              createdTeam._id, 
+              teamData.bannerImage, 
+              teamData.bannerAlt || `${teamData.name} banner`
+            );
+          } else if (teamData.bannerMediaFile) {
+            // Set from existing media file
+            if (!teamData.bannerMediaFile._id) {
+              throw new Error('Selected media file has no ID');
+            }
+            await teamImageService.setBannerFromMediaFile(
+              createdTeam._id,
+              teamData.bannerMediaFile._id,
+              teamData.bannerAlt || `${teamData.name} banner`
+            );
+          }
+        } catch (err) {
+          console.error('Failed to set banner:', err);
+          const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+          showErrorToast('Warning', `Team created but banner upload failed: ${errorMessage}`);
+        }
+      }
+      
+      // Handle profile photo - following church pattern
+      if (teamData.profileImage || teamData.profileMediaFile) {
+        try {
+          if (teamData.profileImage) {
+            // Upload new file
+            await teamImageService.uploadProfilePhoto(
+              createdTeam._id, 
+              teamData.profileImage, 
+              teamData.profileAlt || `${teamData.name} profile photo`
+            );
+          } else if (teamData.profileMediaFile) {
+            // Set from existing media file
+            if (!teamData.profileMediaFile._id) {
+              throw new Error('Selected media file has no ID');
+            }
+            await teamImageService.setProfilePhotoFromMediaFile(
+              createdTeam._id,
+              teamData.profileMediaFile._id,
+              teamData.profileAlt || `${teamData.name} profile photo`
+            );
+          }
+        } catch (err) {
+          console.error('Failed to set profile photo:', err);
+          const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+          showErrorToast('Warning', `Team created but profile photo upload failed: ${errorMessage}`);
+        }
+      }
+      
       showSuccessToast('Success', 'Team created successfully');
       loadTeams();
       setCreateModalOpen(false);
@@ -116,26 +260,45 @@ export default function TeamsPage() {
     }
   };
 
-  const handleDeleteTeam = async (teamId: string) => {
-    if (!confirm('Are you sure you want to delete this team?')) return;
+  const handleDeleteTeam = (team: Team) => {
+    setTeamToDelete(team);
+    setDeleteModalOpen(true);
+  };
+
+  const confirmDeleteTeam = async () => {
+    if (!teamToDelete) return;
 
     try {
-      await teamService.deleteTeam(teamId);
+      await teamService.deleteTeam(teamToDelete._id);
       showSuccessToast('Success', 'Team deleted successfully');
       loadTeams();
+      setDeleteModalOpen(false);
+      setTeamToDelete(null);
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to delete team';
       showErrorToast('Error', errorMessage);
     }
   };
 
+  const closeDeleteModal = () => {
+    setDeleteModalOpen(false);
+    setTeamToDelete(null);
+  };
+
 
   const filteredTeams = teams.filter(team =>
     team.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    team.type.toLowerCase().includes(searchQuery.toLowerCase())
+    (team.type && team.type.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
-  const getTeamTypeData = (typeName: string) => {
+  const getTeamTypeData = (typeName: string | undefined) => {
+    if (!typeName) {
+      return {
+        icon: '👥',
+        colorClass: 'bg-gray-100 text-gray-800',
+        description: 'No type specified'
+      };
+    }
     const teamType = teamTypes.find(t => t.name === typeName);
     if (!teamType) {
       return {
@@ -161,15 +324,30 @@ export default function TeamsPage() {
         return (
           <div className="flex items-center">
             <div className="flex-shrink-0 h-10 w-10">
-              <div className="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center text-lg">
-                {typeData.icon}
-              </div>
+              {team.profilePhoto?.url ? (
+                <Image
+                  src={team.profilePhoto.url}
+                  alt={team.profilePhoto.alt || `${team.name} profile`}
+                  width={40}
+                  height={40}
+                  className="rounded-full object-cover"
+                />
+              ) : (
+                <div className="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center text-lg">
+                  {typeData.icon}
+                </div>
+              )}
             </div>
             <div className="ml-4">
               <div className="text-sm font-medium text-gray-900">{team.name}</div>
               <div className="text-sm text-gray-500">
                 {team.description || typeData.description || 'No description'}
               </div>
+              {team.location && (
+                <div className="text-xs text-gray-400 mt-1">
+                  📍 {team.location}
+                </div>
+              )}
             </div>
           </div>
         );
@@ -182,18 +360,18 @@ export default function TeamsPage() {
         const typeData = getTeamTypeData(team.type);
         return (
           <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${typeData.colorClass}`}>
-            {team.type}
+            {team.type || 'No type'}
           </span>
         );
       }
     },
-    // Add Organization column for super admin viewing all teams
+    // Church information for teams
     ...(isSuperAdmin ? [{
-      key: 'organization' as keyof Team,
-      header: 'Organization',
+      key: 'church' as keyof Team,
+      header: 'Church',
       accessor: (team: Team) => (
         <span className="text-sm text-gray-900">
-          {team.organization?.name || 'Unknown'}
+          {typeof team.churchId === 'object' && team.churchId?.name ? team.churchId.name : 'Church'}
         </span>
       )
     }] : []),
@@ -203,25 +381,8 @@ export default function TeamsPage() {
       accessor: (team) => (
         <div className="text-sm text-gray-900">
           <span className="font-medium">{team.memberCount || 0}</span>
-          <span className="text-gray-500"> / {team.maxMembers || 'Unlimited'}</span>
         </div>
       )
-    },
-    {
-      key: 'capacity',
-      header: 'Capacity',
-      accessor: (team) => {
-        if (!team.maxMembers) return <span className="text-sm text-gray-500">-</span>;
-        const capacity = ((team.memberCount || 0) / team.maxMembers) * 100;
-        const colors = capacity >= 90 ? { bg: 'bg-red-100', text: 'text-red-800' } 
-                     : capacity >= 75 ? { bg: 'bg-yellow-100', text: 'text-yellow-800' }
-                     : { bg: 'bg-green-100', text: 'text-green-800' };
-        return (
-          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${colors.bg} ${colors.text}`}>
-            {capacity.toFixed(0)}%
-          </span>
-        );
-      }
     },
     // Add Created By column for super admin
     ...(isSuperAdmin ? [{
@@ -262,14 +423,14 @@ export default function TeamsPage() {
           </PermissionGate>
           <PermissionGate permission="teams.update">
             <IconButton
-              onClick={() => router.push(`/teams/${team._id}`)}
+              onClick={() => handleEditTeam(team)}
               title="Edit Team"
-              icon={<Settings className="h-5 w-5" />}
+              icon={<Pencil className="h-5 w-5" />}
             />
           </PermissionGate>
           <PermissionGate permission="teams.delete">
             <IconButton
-              onClick={() => handleDeleteTeam(team._id)}
+              onClick={() => handleDeleteTeam(team)}
               title="Delete Team"
               icon={<Trash className="h-5 w-5" />}
               variant="danger"
@@ -281,30 +442,11 @@ export default function TeamsPage() {
   ];
 
 
-  const currentEntityId = currentChurch || currentConference || currentUnion;
-  if (!currentEntityId && !isSuperAdmin) {
-    return (
-      <AdminLayout title="Teams" description="Manage teams for your entity">
-        <div className="bg-white shadow overflow-hidden sm:rounded-lg">
-          <div className="px-6 py-4">
-            <h3 className="text-lg leading-6 font-medium text-gray-900">No Entity Selected</h3>
-            <p className="mt-1 text-sm text-gray-500">Please select a church, conference, or union to view teams.</p>
-          </div>
-        </div>
-      </AdminLayout>
-    );
-  }
-
-  const getCurrentEntityName = () => {
-    if (currentChurch) return 'your church';
-    if (currentConference) return 'your conference';
-    if (currentUnion) return 'your union';
-    return 'your entity';
-  };
+  // Remove entity requirement check since teams are loaded via hierarchy
 
   const description = isSuperAdmin 
     ? "Manage teams across all hierarchies"
-    : `Manage teams for ${getCurrentEntityName()}`;
+    : "Manage teams accessible to you";
 
   return (
     <AdminLayout 
@@ -393,6 +535,19 @@ export default function TeamsPage() {
           onSubmit={handleCreateTeam}
         />
 
+        <CreateTeamModal
+          open={editModalOpen}
+          onOpenChange={(open) => {
+            setEditModalOpen(open);
+            if (!open) {
+              setEditingTeam(null);
+            }
+          }}
+          onSubmit={handleUpdateTeam}
+          editTeam={editingTeam}
+          mode="edit"
+        />
+
         {selectedTeam && (
           <TeamMembersModal
             open={membersModalOpen}
@@ -401,6 +556,18 @@ export default function TeamsPage() {
             onUpdate={loadTeams}
           />
         )}
+
+        <ConfirmationModal
+          isOpen={deleteModalOpen}
+          onClose={closeDeleteModal}
+          onConfirm={confirmDeleteTeam}
+          title="Delete Team"
+          message={`Are you sure you want to delete "${teamToDelete?.name}"? This action cannot be undone and will remove all team data including members and associated content.`}
+          confirmLabel="Delete Team"
+          cancelLabel="Cancel"
+          confirmButtonColor="red"
+          icon={<Trash className="h-6 w-6 text-red-600" />}
+        />
       </div>
     </AdminLayout>
   );

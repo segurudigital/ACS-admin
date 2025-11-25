@@ -3,22 +3,28 @@ import { API_BASE_URL } from './config';
 export interface Team {
   _id: string;
   name: string;
-  organizationId: string;
-  organization?: {
-    _id: string;
-    name: string;
-    type: string;
-  };
-  type: 'acs' | 'communications' | 'general';
-  leaderId?: string;
+  churchId?: string | { _id: string; name: string; };
+  type?: 'acs' | 'communications' | 'general'; // Legacy field
+  category?: 'acs' | 'communications' | 'general'; // New field
+  leaderId?: string | { _id: string; name: string; };
   description?: string;
-  maxMembers: number;
+  location?: string;
+  banner?: {
+    url: string | null;
+    key: string | null;
+    alt: string | null;
+  };
+  profilePhoto?: {
+    url: string | null;
+    key: string | null;
+    alt: string | null;
+  };
   memberCount: number;
   isActive: boolean;
   settings: {
     allowSelfJoin: boolean;
     requireApproval: boolean;
-    visibility: 'public' | 'private' | 'organization';
+    visibility: 'public' | 'private';
   };
   metadata?: {
     region?: string;
@@ -43,21 +49,6 @@ export interface TeamMember {
   teamAssignedAt: string;
 }
 
-export interface TeamStatistics {
-  teamId: string;
-  name: string;
-  memberCount: number;
-  maxMembers: number;
-  capacity: number;
-  roleDistribution: {
-    leader: number;
-    member: number;
-    communications: number;
-  };
-  serviceCount: number;
-  isActive: boolean;
-  createdAt: string;
-}
 
 class TeamService {
   private getHeaders(teamId?: string): HeadersInit {
@@ -70,10 +61,6 @@ class TeamService {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const organizationId = localStorage.getItem('currentOrganizationId');
-    if (organizationId) {
-      headers['X-Organization-Id'] = organizationId;
-    }
 
     if (teamId) {
       headers['X-Team-Id'] = teamId;
@@ -82,48 +69,6 @@ class TeamService {
     return headers;
   }
 
-  // Get teams for an organization
-  async getOrganizationTeams(organizationId: string, options?: {
-    type?: string;
-    includeInactive?: boolean;
-  }) {
-    const params = new URLSearchParams();
-    if (options?.type) {
-      params.append('type', options.type);
-    }
-    if (options?.includeInactive) {
-      params.append('includeInactive', 'true');
-    }
-
-    const url = `${API_BASE_URL}/api/teams/organization/${organizationId}?${params}`;
-    const headers = this.getHeaders();
-
-    try {
-      const response = await fetch(url, {
-        headers,
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        let errorMessage = `Failed to fetch teams (${response.status}: ${response.statusText})`;
-        try {
-          const error = await response.json();
-          errorMessage = error.message || errorMessage;
-        } catch {
-          // Keep the HTTP status error message
-        }
-        throw new Error(errorMessage);
-      }
-
-      const data = await response.json();
-      return data;
-    } catch (error) {
-      if (error instanceof TypeError && error.message.includes('fetch')) {
-        throw new Error('Network error: Unable to connect to server. Please check if the backend is running.');
-      }
-      throw error;
-    }
-  }
 
   // Get user's teams
   async getMyTeams() {
@@ -168,16 +113,36 @@ class TeamService {
     }
   }
 
+  // Get teams for a church
+  async getChurchTeams(churchId: string, options?: {
+    type?: string;
+    includeInactive?: boolean;
+  }) {
+    const params = new URLSearchParams();
+    if (options?.type) params.append('type', options.type);
+    if (options?.includeInactive) params.append('includeInactive', 'true');
+
+    const response = await fetch(`${API_BASE_URL}/api/teams/church/${churchId}?${params}`, {
+      headers: this.getHeaders(),
+      credentials: 'include',
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Failed to fetch church teams');
+    }
+
+    return response.json();
+  }
+
   // Search teams
   async searchTeams(query: string, options?: {
-    organizationId?: string;
     type?: string;
     limit?: number;
     skip?: number;
     includeInactive?: boolean;
   }) {
     const params = new URLSearchParams({ q: query });
-    if (options?.organizationId) params.append('organizationId', options.organizationId);
     if (options?.type) params.append('type', options.type);
     if (options?.limit) params.append('limit', options.limit.toString());
     if (options?.skip) params.append('skip', options.skip.toString());
@@ -211,35 +176,25 @@ class TeamService {
     return response.json();
   }
 
-  // Get team statistics
-  async getTeamStatistics(teamId: string): Promise<{ success: boolean; data: TeamStatistics }> {
-    const response = await fetch(`${API_BASE_URL}/api/teams/${teamId}/statistics`, {
-      headers: this.getHeaders(teamId),
-      credentials: 'include',
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || 'Failed to fetch team statistics');
-    }
-
-    return response.json();
-  }
 
   // Create new team
   async createTeam(teamData: {
     name: string;
-    organizationId: string;
+    churchId: string;
     type?: 'acs' | 'communications' | 'general';
     leaderId?: string;
     description?: string;
-    maxMembers?: number;
+    location?: string;
   }) {
+    // Filter out empty churchId to let backend determine it automatically
+    const { churchId, ...filteredTeamData } = teamData;
+    const requestData = churchId && churchId.trim() !== '' ? teamData : filteredTeamData;
+
     const response = await fetch(`${API_BASE_URL}/api/teams`, {
       method: 'POST',
       headers: this.getHeaders(),
       credentials: 'include',
-      body: JSON.stringify(teamData),
+      body: JSON.stringify(requestData),
     });
 
     if (!response.ok) {
@@ -357,10 +312,9 @@ class TeamService {
     return response.json();
   }
 
-  // Get quota status for organization
-  async getQuotaStatus(organizationId?: string) {
-    const params = organizationId ? `?organizationId=${organizationId}` : '';
-    const response = await fetch(`${API_BASE_URL}/api/quota/status${params}`, {
+  // Get quota status
+  async getQuotaStatus() {
+    const response = await fetch(`${API_BASE_URL}/api/quota/status`, {
       headers: this.getHeaders(),
       credentials: 'include',
     });

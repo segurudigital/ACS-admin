@@ -48,18 +48,24 @@ export default function Churches() {
 
    const fetchTeamCounts = useCallback(async (churches: Church[]) => {
       const counts: Record<string, number> = {};
-      
+
       try {
          await Promise.all(
             churches.map(async (church) => {
                if (church._id) {
                   try {
-                     const response = await teamService.getOrganizationTeams(church._id, {
-                        includeInactive: false
-                     });
+                     const response = await teamService.getChurchTeams(
+                        church._id,
+                        {
+                           includeInactive: false,
+                        }
+                     );
                      counts[church._id] = response.data?.length || 0;
                   } catch (error) {
-                     console.warn(`Failed to fetch team count for church ${church._id}:`, error);
+                     console.warn(
+                        `Failed to fetch team count for church ${church._id}:`,
+                        error
+                     );
                      counts[church._id] = 0;
                   }
                }
@@ -75,68 +81,90 @@ export default function Churches() {
       try {
          setLoading(true);
          const response = await ChurchService.getAllChurches({
-            isActive: showInactive ? false : true
+            isActive: showInactive ? false : true,
          });
 
          if (response && response.success) {
             // Handle successful response with data
             const churches = response.data || [];
             const churchesArray = Array.isArray(churches) ? churches : [];
-            
+
             // Debug: Log initial church data
-            console.log('Initial churches from getAllChurches:', churchesArray.map(c => ({
-               id: c._id,
-               name: c.name,
-               hasPrimaryImage: !!c.primaryImage,
-               primaryImageUrl: c.primaryImage?.url
-            })));
-            
+            console.log(
+               'Initial churches from getAllChurches:',
+               churchesArray.map((c) => ({
+                  id: c._id,
+                  name: c.name,
+                  hasPrimaryImage: !!c.primaryImage,
+                  primaryImageUrl: c.primaryImage?.url,
+               }))
+            );
+
             // Fetch complete church data for churches missing primaryImage
             const enrichedChurches = await Promise.all(
                churchesArray.map(async (church) => {
                   // If church doesn't have primaryImage data, fetch complete details
                   if (!church.primaryImage && church._id) {
-                     console.log(`Fetching complete data for church: ${church.name} (${church._id})`);
+                     console.log(
+                        `Fetching complete data for church: ${church.name} (${church._id})`
+                     );
                      try {
-                        const detailedChurch = await ChurchService.getChurchById(church._id);
+                        const detailedChurch =
+                           await ChurchService.getChurchById(church._id);
                         if (detailedChurch.success && detailedChurch.data) {
-                           console.log(`Got detailed data for ${church.name}:`, {
-                              hasPrimaryImage: !!detailedChurch.data.primaryImage,
-                              primaryImageUrl: detailedChurch.data.primaryImage?.url,
-                              primaryImageData: detailedChurch.data.primaryImage
-                           });
+                           console.log(
+                              `Got detailed data for ${church.name}:`,
+                              {
+                                 hasPrimaryImage:
+                                    !!detailedChurch.data.primaryImage,
+                                 primaryImageUrl:
+                                    detailedChurch.data.primaryImage?.url,
+                                 primaryImageData:
+                                    detailedChurch.data.primaryImage,
+                              }
+                           );
                            return detailedChurch.data;
                         }
                      } catch (error) {
-                        console.warn(`Failed to fetch details for church ${church._id}:`, error);
+                        console.warn(
+                           `Failed to fetch details for church ${church._id}:`,
+                           error
+                        );
                      }
                   }
                   return church;
                })
             );
-            
+
             // Debug: Log final enriched church data
-            console.log('Final enriched churches:', enrichedChurches.map(c => ({
-               id: c._id,
-               name: c.name,
-               hasPrimaryImage: !!c.primaryImage,
-               primaryImageUrl: c.primaryImage?.url
-            })));
-            
+            console.log(
+               'Final enriched churches:',
+               enrichedChurches.map((c) => ({
+                  id: c._id,
+                  name: c.name,
+                  hasPrimaryImage: !!c.primaryImage,
+                  primaryImageUrl: c.primaryImage?.url,
+               }))
+            );
+
             setChurches(enrichedChurches);
-            
+
             // Extract unique conferences from churches
             const conferenceMap = new Map<string, Conference>();
             enrichedChurches
-               .filter(church => church.conferenceId && typeof church.conferenceId === 'object')
-               .forEach(church => {
+               .filter(
+                  (church) =>
+                     church.conferenceId &&
+                     typeof church.conferenceId === 'object'
+               )
+               .forEach((church) => {
                   const conf = church.conferenceId as unknown as Conference;
                   if (conf && typeof conf === 'object' && conf._id) {
                      conferenceMap.set(conf._id, conf);
                   }
                });
             setConferences(Array.from(conferenceMap.values()));
-            
+
             // Fetch team counts for all churches
             fetchTeamCounts(enrichedChurches);
          } else if (response && response.success === false) {
@@ -156,7 +184,10 @@ export default function Churches() {
          }
       } catch (error) {
          console.error('Error fetching churches:', error);
-         const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
+         const errorMessage =
+            error instanceof Error
+               ? error.message
+               : 'An unexpected error occurred';
          // Only show toast error if it's not a network/timeout issue
          if (!errorMessage.toLowerCase().includes('fetch')) {
             toast.error('Failed to load churches', errorMessage);
@@ -174,14 +205,10 @@ export default function Churches() {
 
    const handleDeleteChurch = async (church: Church) => {
       try {
-         const response = await ChurchService.deleteChurch(
-            church._id
-         );
+         const response = await ChurchService.deleteChurch(church._id);
 
          if (response.success) {
-            setChurches((prev) =>
-               prev.filter((c) => c._id !== church._id)
-            );
+            setChurches((prev) => prev.filter((c) => c._id !== church._id));
             toast.success(
                'Church deleted',
                `${church.name} has been successfully removed.`
@@ -191,33 +218,32 @@ export default function Churches() {
          }
       } catch (error) {
          console.error('Error deleting church:', error);
-         toast.error(
-            'Failed to delete church',
-            'An unexpected error occurred'
-         );
+         toast.error('Failed to delete church', 'An unexpected error occurred');
       } finally {
          setShowDeleteConfirm(false);
          setChurchToDelete(undefined);
       }
    };
 
-   const handleChurchSaved = async (
-      savedChurch: Church,
-      isEdit: boolean
-   ) => {
+   const handleChurchSaved = async (savedChurch: Church, isEdit: boolean) => {
       // Ensure we have complete church data including primaryImage
       let completeChurch = savedChurch;
       if (!savedChurch.primaryImage && savedChurch._id) {
          try {
-            const detailedResponse = await ChurchService.getChurchById(savedChurch._id);
+            const detailedResponse = await ChurchService.getChurchById(
+               savedChurch._id
+            );
             if (detailedResponse.success && detailedResponse.data) {
                completeChurch = detailedResponse.data;
             }
          } catch (error) {
-            console.warn(`Failed to fetch complete church data for ${savedChurch._id}:`, error);
+            console.warn(
+               `Failed to fetch complete church data for ${savedChurch._id}:`,
+               error
+            );
          }
       }
-      
+
       if (isEdit) {
          // Update existing church in the list
          setChurches((prev) =>
@@ -249,51 +275,53 @@ export default function Churches() {
       setSelectedChurch(undefined);
    };
 
-   const filteredChurches = (churches || []).filter(
-      (church) => {
-         if (!church) return false;
-         
-         const searchLower = searchQuery.toLowerCase();
-         
-         // If no search query, return all churches
-         if (!searchQuery.trim()) return true;
-         
-         // Check church name
-         if (church.name?.toLowerCase().includes(searchLower)) {
-            return true;
-         }
-         
-         // Check contact email with null safety
-         if (church.contact?.email?.toLowerCase().includes(searchLower)) {
-            return true;
-         }
-         
-         // Check location city/state
-         if (church.location?.address?.city?.toLowerCase().includes(searchLower)) {
-            return true;
-         }
-         
-         if (church.location?.address?.state?.toLowerCase().includes(searchLower)) {
-            return true;
-         }
-         
-         // Check conference name
-         const conferenceName = typeof church.conferenceId === 'object' && church.conferenceId
-            ? (church.conferenceId as Conference).name 
-            : conferences.find(c => c._id === church.conferenceId)?.name || '';
-         if (conferenceName.toLowerCase().includes(searchLower)) {
-            return true;
-         }
-         
-         // Check team count (convert to string for search)
-         const teamCount = teamCounts[church._id] || 0;
-         if (teamCount.toString().includes(searchQuery.trim())) {
-            return true;
-         }
-         
-         return false;
+   const filteredChurches = (churches || []).filter((church) => {
+      if (!church) return false;
+
+      const searchLower = searchQuery.toLowerCase();
+
+      // If no search query, return all churches
+      if (!searchQuery.trim()) return true;
+
+      // Check church name
+      if (church.name?.toLowerCase().includes(searchLower)) {
+         return true;
       }
-   );
+
+      // Check contact email with null safety
+      if (church.contact?.email?.toLowerCase().includes(searchLower)) {
+         return true;
+      }
+
+      // Check location city/state
+      if (church.location?.address?.city?.toLowerCase().includes(searchLower)) {
+         return true;
+      }
+
+      if (
+         church.location?.address?.state?.toLowerCase().includes(searchLower)
+      ) {
+         return true;
+      }
+
+      // Check conference name
+      const conferenceName =
+         typeof church.conferenceId === 'object' && church.conferenceId
+            ? (church.conferenceId as Conference).name
+            : conferences.find((c) => c._id === church.conferenceId)?.name ||
+              '';
+      if (conferenceName.toLowerCase().includes(searchLower)) {
+         return true;
+      }
+
+      // Check team count (convert to string for search)
+      const teamCount = teamCounts[church._id] || 0;
+      if (teamCount.toString().includes(searchQuery.trim())) {
+         return true;
+      }
+
+      return false;
+   });
 
    // Define table columns
    const columns: Column<Church>[] = [
@@ -309,13 +337,17 @@ export default function Churches() {
                         hasUrl: !!church.primaryImage?.url,
                         url: church.primaryImage?.url,
                         thumbnailUrl: church.primaryImage?.thumbnailUrl,
-                        fullPrimaryImageData: church.primaryImage
+                        fullPrimaryImageData: church.primaryImage,
                      });
                      return church.primaryImage?.url;
                   })() ? (
                      <div className="h-12 w-12 rounded-lg overflow-hidden bg-gray-100 shadow-sm">
                         <Image
-                           src={church.primaryImage?.thumbnailUrl || church.primaryImage?.url || ''}
+                           src={
+                              church.primaryImage?.thumbnailUrl ||
+                              church.primaryImage?.url ||
+                              ''
+                           }
                            alt={church.primaryImage?.alt || church.name}
                            width={96}
                            height={96}
@@ -324,7 +356,10 @@ export default function Churches() {
                            priority={false}
                            quality={95}
                            onError={() => {
-                              console.warn(`Failed to load image for church: ${church.name}`, church.primaryImage);
+                              console.warn(
+                                 `Failed to load image for church: ${church.name}`,
+                                 church.primaryImage
+                              );
                            }}
                         />
                      </div>
@@ -336,13 +371,17 @@ export default function Churches() {
                </div>
                <div className="ml-4">
                   <button
-                     onClick={() => window.location.href = `/churches/${church._id}`}
+                     onClick={() =>
+                        (window.location.href = `/churches/${church._id}`)
+                     }
                      className="text-sm font-medium text-indigo-600 hover:text-indigo-900 text-left cursor-pointer"
                   >
                      {church.name}
                   </button>
                   {church.code && (
-                     <div className="text-xs text-gray-500">Code: {church.code}</div>
+                     <div className="text-xs text-gray-500">
+                        Code: {church.code}
+                     </div>
                   )}
                </div>
             </div>
@@ -352,10 +391,11 @@ export default function Churches() {
          key: 'conference',
          header: 'Conference',
          accessor: (church) => {
-            const conference = typeof church.conferenceId === 'object' 
-               ? church.conferenceId 
-               : conferences.find(c => c._id === church.conferenceId);
-            
+            const conference =
+               typeof church.conferenceId === 'object'
+                  ? church.conferenceId
+                  : conferences.find((c) => c._id === church.conferenceId);
+
             return (
                <div className="text-sm text-gray-900">
                   {conference?.name || 'Unknown Conference'}
@@ -369,7 +409,8 @@ export default function Churches() {
          header: 'Location',
          accessor: (church) => (
             <div className="text-sm text-gray-900">
-               {church.location?.address?.city || church.location?.address?.state ? (
+               {church.location?.address?.city ||
+               church.location?.address?.state ? (
                   <div className="flex items-start">
                      <MapPinIcon className="h-4 w-4 text-gray-400 mr-2 mt-1 shrink-0" />
                      <div>
@@ -377,7 +418,9 @@ export default function Churches() {
                            <div>{church.location.address.city}</div>
                         )}
                         {church.location?.address?.state && (
-                           <div className="text-gray-500">{church.location.address.state}</div>
+                           <div className="text-gray-500">
+                              {church.location.address.state}
+                           </div>
                         )}
                      </div>
                   </div>
@@ -525,10 +568,14 @@ export default function Churches() {
                               <input
                                  type="checkbox"
                                  checked={showInactive}
-                                 onChange={(e) => setShowInactive(e.target.checked)}
+                                 onChange={(e) =>
+                                    setShowInactive(e.target.checked)
+                                 }
                                  className="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
                               />
-                              <span className="ml-2 text-sm text-gray-700">Show inactive</span>
+                              <span className="ml-2 text-sm text-gray-700">
+                                 Show inactive
+                              </span>
                            </label>
                         </div>
                      </div>
@@ -579,7 +626,10 @@ export default function Churches() {
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
                            {filteredChurches.map((item) => (
-                              <tr key={item?._id || Math.random()} className="hover:bg-gray-50">
+                              <tr
+                                 key={item?._id || Math.random()}
+                                 className="hover:bg-gray-50"
+                              >
                                  {columns.map((column) => (
                                     <td
                                        key={column.key}

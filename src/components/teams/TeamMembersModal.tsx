@@ -134,7 +134,7 @@ export function TeamMembersModal({ open, onOpenChange, team, onUpdate }: TeamMem
           <DialogHeader>
             <DialogTitle>Team Members - {team.name}</DialogTitle>
             <DialogDescription>
-              {members.length} of {team.maxMembers} members
+              {members.length} members
             </DialogDescription>
           </DialogHeader>
 
@@ -158,7 +158,6 @@ export function TeamMembersModal({ open, onOpenChange, team, onUpdate }: TeamMem
                 <Button
                   size="sm"
                   onClick={() => setAddMemberOpen(true)}
-                  disabled={team.memberCount >= team.maxMembers}
                 >
                   <UserPlus className="w-4 h-4 mr-1" />
                   Add Member

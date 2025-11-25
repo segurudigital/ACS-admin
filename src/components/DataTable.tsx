@@ -1,6 +1,6 @@
 'use client';
 
-import React, { ReactNode } from 'react';
+import { ReactNode } from 'react';
 import { TableSearchBar } from './SearchBar';
 
 export interface Column<T> {

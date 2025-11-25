@@ -58,12 +58,10 @@ interface AuditLog {
 export class SuperAdminService {
   private static getAuthHeaders() {
     const token = AuthService.getToken();
-    const organizationId = localStorage.getItem('currentOrganizationId');
     
     return {
       'Content-Type': 'application/json',
-      'Authorization': token ? `Bearer ${token}` : '',
-      ...(organizationId && { 'X-Organization-Id': organizationId })
+      'Authorization': token ? `Bearer ${token}` : ''
     };
   }
 

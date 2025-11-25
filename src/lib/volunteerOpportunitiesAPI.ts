@@ -11,14 +11,6 @@ export interface VolunteerOpportunityListItem {
     _id: string;
     name: string;
     type: string;
-    organization: {
-      _id: string;
-      name: string;
-    };
-  };
-  organization: {
-    _id: string;
-    name: string;
   };
   requirements: {
     skills?: string[];
@@ -131,7 +123,6 @@ export interface VolunteerOpportunityFilters {
   serviceId?: string;
   status?: string;
   category?: string;
-  organizationId?: string;
 }
 
 class VolunteerOpportunitiesAPI {
@@ -147,11 +138,6 @@ class VolunteerOpportunitiesAPI {
       headers['Authorization'] = `Bearer ${token}`;
     }
     
-    // Add organization ID if available
-    const organizationId = typeof window !== 'undefined' ? localStorage.getItem('currentOrganizationId') : null;
-    if (organizationId) {
-      headers['X-Organization-Id'] = organizationId;
-    }
 
     const response = await fetch(`${API_BASE_URL}${url}`, {
       ...options,
@@ -181,9 +167,6 @@ class VolunteerOpportunitiesAPI {
       }
       if (filters.category) {
         params.append('category', filters.category);
-      }
-      if (filters.organizationId) {
-        params.append('organizationId', filters.organizationId);
       }
     }
 
@@ -217,7 +200,7 @@ class VolunteerOpportunitiesAPI {
     });
   }
 
-  async getServicesForDropdown(): Promise<Array<{ _id: string; name: string; type: string; organization: { name: string } }>> {
+  async getServicesForDropdown(): Promise<Array<{ _id: string; name: string; type: string }>> {
     return this.fetchWithAuth('/admin/volunteer-opportunities/services');
   }
 }

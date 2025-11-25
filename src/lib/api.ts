@@ -15,11 +15,6 @@ class ApiClient {
       headers['Authorization'] = `Bearer ${token}`;
     }
     
-    // Add organization ID if available
-    const organizationId = typeof window !== 'undefined' ? localStorage.getItem('currentOrganizationId') : null;
-    if (organizationId) {
-      headers['X-Organization-Id'] = organizationId;
-    }
 
     const response = await fetch(`${API_BASE_URL}${url}`, {
       ...options,

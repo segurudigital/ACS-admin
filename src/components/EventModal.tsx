@@ -15,7 +15,7 @@ interface EventModalProps {
 
 export default function EventModal({ isOpen, onClose, onEventSaved, event }: EventModalProps) {
   const [loading, setLoading] = useState(false);
-  const [services, setServices] = useState<Array<{ _id: string; name: string; type: string; organization: { name: string } }>>([]);
+  const [services, setServices] = useState<Array<{ _id: string; name: string; type: string }>>([]);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -184,7 +184,7 @@ export default function EventModal({ isOpen, onClose, onEventSaved, event }: Eve
                   <option value="">Select a service</option>
                   {services.map((service) => (
                     <option key={service._id} value={service._id}>
-                      {service.name} - {service.organization.name}
+                      {service.name} - {service.type}
                     </option>
                   ))}
                 </select>

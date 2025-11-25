@@ -18,18 +18,17 @@ export default function TeamTypesPage() {
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const router = useRouter();
-  const { currentUnion, currentConference, currentChurch } = usePermissions();
+  const { user } = usePermissions();
 
   const loadTeamTypes = useCallback(async () => {
-    const currentEntityId = currentChurch || currentConference || currentUnion;
-    if (!currentEntityId) {
+    if (!user?.id) {
       setLoading(false);
       return;
     }
 
     try {
       setLoading(true);
-      const response = await teamTypeService.getOrganizationTeamTypes(currentEntityId, true);
+      const response = await teamTypeService.getUserTeamTypes(user.id);
       const teamTypesData = response.data || [];
       setTeamTypes(teamTypesData);
     } catch (error: unknown) {
@@ -43,14 +42,13 @@ export default function TeamTypesPage() {
     } finally {
       setLoading(false);
     }
-  }, [currentChurch, currentConference, currentUnion]);
+  }, [user?.id]);
 
   useEffect(() => {
-    const currentEntityId = currentChurch || currentConference || currentUnion;
-    if (currentEntityId) {
+    if (user?.id) {
       loadTeamTypes();
     }
-  }, [currentChurch, currentConference, currentUnion, loadTeamTypes]);
+  }, [user?.id, loadTeamTypes]);
 
   const handleCreateTeamType = async (teamTypeData: CreateTeamTypeData) => {
     try {
@@ -127,16 +125,6 @@ export default function TeamTypesPage() {
       )
     },
     {
-      key: 'permissions',
-      header: 'Permissions',
-      accessor: (teamType) => (
-        <div className="text-sm text-gray-900">
-          <span className="font-medium">{teamType.permissions.length}</span>
-          <span className="text-gray-500"> permissions</span>
-        </div>
-      )
-    },
-    {
       key: 'default',
       header: 'Default',
       accessor: (teamType) => (
@@ -190,29 +178,8 @@ export default function TeamTypesPage() {
     }
   ];
 
-  const currentEntityId = currentChurch || currentConference || currentUnion;
-  if (!currentEntityId) {
-    return (
-      <AdminLayout title="Team Types" description="Manage team types for your entity">
-        <div className="bg-white shadow overflow-hidden sm:rounded-lg">
-          <div className="px-6 py-4">
-            <h3 className="text-lg leading-6 font-medium text-gray-900">No Entity Selected</h3>
-            <p className="mt-1 text-sm text-gray-500">Please select a church, conference, or union to view team types.</p>
-          </div>
-        </div>
-      </AdminLayout>
-    );
-  }
-
-  const getCurrentEntityName = () => {
-    if (currentChurch) return 'your church';
-    if (currentConference) return 'your conference';
-    if (currentUnion) return 'your union';
-    return 'your entity';
-  };
-
   return (
-    <AdminLayout title="Team Types" description={`Manage team types for ${getCurrentEntityName()}`}>
+    <AdminLayout title="Team Types" description="Manage team types for your organization">
       <div className="space-y-6">
         {/* Table with custom header */}
         <div className="bg-white shadow overflow-hidden sm:rounded-lg">

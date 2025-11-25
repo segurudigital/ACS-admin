@@ -13,14 +13,6 @@ export interface EventListItem {
     _id: string;
     name: string;
     type: string;
-    organization: {
-      _id: string;
-      name: string;
-    };
-  };
-  organization: {
-    _id: string;
-    name: string;
   };
   capacity?: {
     maximum: number;
@@ -50,7 +42,6 @@ export interface EventFilters {
   serviceId?: string;
   dateFrom?: string;
   dateTo?: string;
-  organizationId?: string;
 }
 
 class EventsAPI {
@@ -66,11 +57,6 @@ class EventsAPI {
       headers['Authorization'] = `Bearer ${token}`;
     }
     
-    // Add organization ID if available
-    const organizationId = typeof window !== 'undefined' ? localStorage.getItem('currentOrganizationId') : null;
-    if (organizationId) {
-      headers['X-Organization-Id'] = organizationId;
-    }
 
     const response = await fetch(`${API_BASE_URL}${url}`, {
       ...options,
@@ -100,9 +86,6 @@ class EventsAPI {
       }
       if (filters.dateTo) {
         params.append('dateTo', filters.dateTo);
-      }
-      if (filters.organizationId) {
-        params.append('organizationId', filters.organizationId);
       }
     }
 
@@ -136,7 +119,7 @@ class EventsAPI {
     });
   }
 
-  async getServicesForDropdown(): Promise<Array<{ _id: string; name: string; type: string; organization: { name: string } }>> {
+  async getServicesForDropdown(): Promise<Array<{ _id: string; name: string; type: string }>> {
     return this.fetchWithAuth('/admin/events/services');
   }
 }

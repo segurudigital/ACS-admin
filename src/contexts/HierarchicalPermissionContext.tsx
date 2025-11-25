@@ -218,12 +218,10 @@ export const HierarchicalPermissionProvider: React.FC<HierarchicalPermissionProv
 
   const loadUserAndPermissions = useCallback(async () => {
     try {
-      console.log('[HierarchicalPermissionContext] loadUserAndPermissions called');
       setLoading(true);
       const token = AuthService.getToken();
       
       if (!token) {
-        console.log('[HierarchicalPermissionContext] No token found, clearing user state');
         setUser(null);
         setPermissions([]);
         setLoading(false);
@@ -320,7 +318,6 @@ export const HierarchicalPermissionProvider: React.FC<HierarchicalPermissionProv
   // Listen for storage changes and logout events
   useEffect(() => {
     const handleLogout = () => {
-      console.log('[HierarchicalPermissionContext] Logout event received, clearing state');
       
       if (logoutTimeout.current) {
         clearTimeout(logoutTimeout.current);

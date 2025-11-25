@@ -15,7 +15,7 @@ interface VolunteerOpportunityModalProps {
 
 export default function VolunteerOpportunityModal({ isOpen, onClose, onOpportunitySaved, opportunity }: VolunteerOpportunityModalProps) {
   const [loading, setLoading] = useState(false);
-  const [services, setServices] = useState<Array<{ _id: string; name: string; type: string; organization: { name: string } }>>([]);
+  const [services, setServices] = useState<Array<{ _id: string; name: string; type: string }>>([]);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -373,7 +373,7 @@ export default function VolunteerOpportunityModal({ isOpen, onClose, onOpportuni
                     <option value="">Select a service</option>
                     {services.map((service) => (
                       <option key={service._id} value={service._id}>
-                        {service.name} - {service.organization.name}
+                        {service.name} - {service.type}
                       </option>
                     ))}
                   </select>

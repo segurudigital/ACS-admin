@@ -37,7 +37,7 @@ export function QuotaStatus() {
     
     try {
       setLoading(true);
-      const response = await teamService.getQuotaStatus(currentEntityId);
+      const response = await teamService.getQuotaStatus();
       setQuotaData(response.data.quotaStatuses || []);
     } catch (error) {
       console.error('Failed to load quota status:', error);

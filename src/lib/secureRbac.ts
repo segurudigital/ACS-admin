@@ -142,30 +142,28 @@ export class SecureRBACService {
   }
 
   /**
-   * Get permissions for current user in specific organization
+   * Get permissions for current user
    * Uses cached permissions if available and valid
    * @param userId - User ID
-   * @param organizationId - HierarchicalEntity ID
    * @returns Promise<string[]> - Array of permissions
    */
   static async getUserPermissionsSecure(
-    userId: string,
-    organizationId: string
+    userId: string
   ): Promise<string[]> {
     try {
       // Check cache first
       const { SecureAuthService } = await import('./secureAuth');
-      const cachedPermissions = SecureAuthService.getCachedPermissions(organizationId);
+      const cachedPermissions = SecureAuthService.getCachedPermissions();
       
       if (cachedPermissions) {
         return cachedPermissions;
       }
 
       // Fetch from server
-      const permissions = await rbacService.getUserPermissions(userId, organizationId);
+      const permissions = await rbacService.getUserPermissions(userId);
       
       // Cache the permissions
-      SecureAuthService.setCachedPermissions(organizationId, permissions.permissions);
+      SecureAuthService.setCachedPermissions(permissions.permissions);
       
       return permissions.permissions;
     } catch (error) {
@@ -179,6 +177,6 @@ export class SecureRBACService {
    */
   static async clearSecurityCaches(): Promise<void> {
     const { SecureAuthService } = await import('./secureAuth');
-    SecureAuthService.clearSecurityCache();
+    SecureAuthService.secureLogout();
   }
 }
