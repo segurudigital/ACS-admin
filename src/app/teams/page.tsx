@@ -330,7 +330,7 @@ export default function TeamsPage() {
                   alt={team.profilePhoto.alt || `${team.name} profile`}
                   width={40}
                   height={40}
-                  className="rounded-full object-cover"
+                  className="h-10 w-10 rounded-full object-cover"
                 />
               ) : (
                 <div className="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center text-lg">

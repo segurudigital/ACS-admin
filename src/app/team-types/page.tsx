@@ -6,16 +6,21 @@ import AdminLayout from '../../components/AdminLayout';
 import { PermissionGate } from '@/components/PermissionGate';
 import { Column, ActionCell, IconButton, StatusBadge } from '@/components/DataTable';
 import Button from '@/components/Button';
-import { Settings, Trash, Plus, Tag } from 'lucide-react';
+import { Pencil, Trash, Plus, Tag } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { teamTypeService, TeamType, CreateTeamTypeData } from '@/lib/teamTypes';
 import { usePermissions } from '@/contexts/HierarchicalPermissionContext';
 import { CreateTeamTypeModal } from '@/components/teamTypes/CreateTeamTypeModal';
+import ConfirmationModal from '@/components/ConfirmationModal';
 
 export default function TeamTypesPage() {
   const [teamTypes, setTeamTypes] = useState<TeamType[]>([]);
   const [loading, setLoading] = useState(false);
   const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editingTeamType, setEditingTeamType] = useState<TeamType | null>(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [teamTypeToDelete, setTeamTypeToDelete] = useState<TeamType | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const router = useRouter();
   const { user } = usePermissions();
@@ -69,16 +74,51 @@ export default function TeamTypesPage() {
     }
   };
 
-  const handleDeleteTeamType = async (teamTypeId: string) => {
-    if (!confirm('Are you sure you want to delete this team type?')) return;
+  const handleEditTeamType = (teamType: TeamType) => {
+    setEditingTeamType(teamType);
+    setEditModalOpen(true);
+  };
+
+  const handleUpdateTeamType = async (teamTypeData: CreateTeamTypeData) => {
+    if (!editingTeamType) return;
 
     try {
-      await teamTypeService.deleteTeamType(teamTypeId);
+      await teamTypeService.updateTeamType(editingTeamType._id, teamTypeData);
+      toast({
+        title: 'Success',
+        description: 'Team type updated successfully',
+      });
+      loadTeamTypes();
+      setEditModalOpen(false);
+      setEditingTeamType(null);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update team type';
+      toast({
+        title: 'Error',
+        description: errorMessage,
+        variant: 'destructive',
+      });
+      throw error; // Re-throw so modal doesn't close
+    }
+  };
+
+  const handleDeleteTeamType = (teamType: TeamType) => {
+    setTeamTypeToDelete(teamType);
+    setDeleteModalOpen(true);
+  };
+
+  const confirmDeleteTeamType = async () => {
+    if (!teamTypeToDelete) return;
+
+    try {
+      await teamTypeService.deleteTeamType(teamTypeToDelete._id);
       toast({
         title: 'Success',
         description: 'Team type deleted successfully',
       });
       loadTeamTypes();
+      setDeleteModalOpen(false);
+      setTeamTypeToDelete(null);
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to delete team type';
       toast({
@@ -87,6 +127,11 @@ export default function TeamTypesPage() {
         variant: 'destructive',
       });
     }
+  };
+
+  const closeDeleteModal = () => {
+    setDeleteModalOpen(false);
+    setTeamTypeToDelete(null);
   };
 
   const filteredTeamTypes = teamTypes.filter(teamType =>
@@ -117,12 +162,15 @@ export default function TeamTypesPage() {
     {
       key: 'teams',
       header: 'Teams',
-      accessor: (teamType) => (
-        <div className="text-sm text-gray-900">
-          <span className="font-medium">{teamType.teamCount || 0}</span>
-          <span className="text-gray-500"> teams</span>
-        </div>
-      )
+      accessor: (teamType) => {
+        const count = teamType.teamCount ?? 0;
+        return (
+          <div className="text-sm text-gray-900">
+            <span className="font-medium">{count}</span>
+            <span className="text-gray-500"> {count === 1 ? 'team' : 'teams'}</span>
+          </div>
+        );
+      }
     },
     {
       key: 'default',
@@ -159,14 +207,14 @@ export default function TeamTypesPage() {
         <ActionCell>
           <PermissionGate permission="team-types.update">
             <IconButton
-              onClick={() => router.push(`/team-types/${teamType._id}`)}
+              onClick={() => handleEditTeamType(teamType)}
               title="Edit Team Type"
-              icon={<Settings className="h-5 w-5" />}
+              icon={<Pencil className="h-5 w-5" />}
             />
           </PermissionGate>
           <PermissionGate permission="team-types.delete">
             <IconButton
-              onClick={() => handleDeleteTeamType(teamType._id)}
+              onClick={() => handleDeleteTeamType(teamType)}
               title="Delete Team Type"
               icon={<Trash className="h-5 w-5" />}
               variant="danger"
@@ -258,6 +306,31 @@ export default function TeamTypesPage() {
           open={createModalOpen}
           onOpenChange={setCreateModalOpen}
           onSubmit={handleCreateTeamType}
+        />
+
+        <CreateTeamTypeModal
+          open={editModalOpen}
+          onOpenChange={(open) => {
+            setEditModalOpen(open);
+            if (!open) {
+              setEditingTeamType(null);
+            }
+          }}
+          onSubmit={handleUpdateTeamType}
+          editTeamType={editingTeamType}
+          mode="edit"
+        />
+
+        <ConfirmationModal
+          isOpen={deleteModalOpen}
+          onClose={closeDeleteModal}
+          onConfirm={confirmDeleteTeamType}
+          title="Delete Team Type"
+          message={`Are you sure you want to delete "${teamTypeToDelete?.name}"? This action cannot be undone and may affect teams using this type.`}
+          confirmLabel="Delete Team Type"
+          cancelLabel="Cancel"
+          confirmButtonColor="red"
+          icon={<Trash className="h-6 w-6 text-red-600" />}
         />
       </div>
     </AdminLayout>

@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/components/ui/use-toast';
+import { TeamType } from '@/lib/teamTypes';
 
 interface CreateTeamTypeModalProps {
   open: boolean;
@@ -15,14 +16,31 @@ interface CreateTeamTypeModalProps {
     name: string;
     description?: string;
   }) => Promise<void>;
+  editTeamType?: TeamType | null;
+  mode?: 'create' | 'edit';
 }
 
-export function CreateTeamTypeModal({ open, onOpenChange, onSubmit }: CreateTeamTypeModalProps) {
+export function CreateTeamTypeModal({ open, onOpenChange, onSubmit, editTeamType = null, mode = 'create' }: CreateTeamTypeModalProps) {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
   });
   const [loading, setLoading] = useState(false);
+
+  // Populate form data when editing
+  useEffect(() => {
+    if (editTeamType && mode === 'edit') {
+      setFormData({
+        name: editTeamType.name || '',
+        description: editTeamType.description || '',
+      });
+    } else {
+      setFormData({
+        name: '',
+        description: '',
+      });
+    }
+  }, [editTeamType, mode, open]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,9 +88,12 @@ export function CreateTeamTypeModal({ open, onOpenChange, onSubmit }: CreateTeam
       <DialogContent className="sm:max-w-[500px]">
         <form onSubmit={handleSubmit} noValidate>
           <DialogHeader>
-            <DialogTitle>Create New Team Type</DialogTitle>
+            <DialogTitle>{mode === 'edit' ? 'Edit Team Type' : 'Create New Team Type'}</DialogTitle>
             <DialogDescription>
-              Create a new team type for your organization
+              {mode === 'edit' 
+                ? 'Update the team type information for your organization' 
+                : 'Create a new team type for your organization'
+              }
             </DialogDescription>
           </DialogHeader>
           
@@ -111,7 +132,10 @@ export function CreateTeamTypeModal({ open, onOpenChange, onSubmit }: CreateTeam
               Cancel
             </Button>
             <Button type="submit" disabled={loading}>
-              {loading ? 'Creating...' : 'Create Team Type'}
+              {loading 
+                ? (mode === 'edit' ? 'Updating...' : 'Creating...') 
+                : (mode === 'edit' ? 'Update Team Type' : 'Create Team Type')
+              }
             </Button>
           </DialogFooter>
         </form>

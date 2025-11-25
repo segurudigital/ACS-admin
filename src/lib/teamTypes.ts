@@ -35,11 +35,15 @@ export const teamTypeService = {
   // Get team types for current user
   async getUserTeamTypes(
     userId: string, 
-    includeInactive = true
+    includeInactive = true,
+    includeTeamCounts = true
   ): Promise<{ success: boolean; data: TeamType[] }> {
     const params = new URLSearchParams();
     if (includeInactive) {
       params.append('includeInactive', 'true');
+    }
+    if (includeTeamCounts) {
+      params.append('includeTeamCounts', 'true');
     }
     
     const url = `${API_BASE_URL}/api/team-types/user/${userId}?${params}`;
