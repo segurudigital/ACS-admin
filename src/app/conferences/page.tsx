@@ -210,21 +210,21 @@ export default function ConferencesPage() {
       key: 'union',
       header: 'Union',
       accessor: (conference) => (
-        <div className="text-sm text-gray-900">
+        <span className="text-sm text-gray-900">
           {getUnionName(conference.unionId)}
-        </div>
+        </span>
       ),
-      className: 'max-w-xs',
+      className: 'px-6 py-4 whitespace-nowrap text-sm max-w-xs',
     },
     {
       key: 'territory',
       header: 'Territory',
       accessor: (conference) => (
-        <div className="text-sm text-gray-900">
+        <span className="text-sm text-gray-900">
           {conference.territory?.description || 'Not specified'}
-        </div>
+        </span>
       ),
-      className: 'max-w-xs',
+      className: 'px-6 py-4 whitespace-nowrap text-sm max-w-xs',
     },
     {
       key: 'contact',

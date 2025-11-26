@@ -15,10 +15,12 @@ import UnionModal from '@/components/UnionModal';
 import ConfirmationModal from '@/components/ConfirmationModal';
 import { useToast } from '@/contexts/ToastContext';
 import { UnionService } from '@/lib/unionService';
+import { conferenceService } from '@/lib/conferenceService';
 import { Union } from '@/types/hierarchy';
 import { Conference } from '@/types/rbac';
 import {
    BuildingOfficeIcon,
+   BuildingOffice2Icon,
    PencilIcon,
    TrashIcon,
    MapPinIcon,
@@ -56,22 +58,48 @@ export default function Unions() {
             const unionsArray = Array.isArray(unions) ? unions : [];
             setUnions(unionsArray);
             
-            // Fetch conferences for each union
-            const conferencesData: Record<string, Conference[]> = {};
-            for (const union of unionsArray) {
-               try {
-                  const conferenceResponse = await UnionService.getUnionConferences(union._id);
-                  if (conferenceResponse.success && conferenceResponse.data) {
-                     conferencesData[union._id] = conferenceResponse.data as Conference[];
-                  } else {
+            // Fetch all conferences and group them by union
+            try {
+               const conferencesResponse = await conferenceService.getConferences({ includeInactive: showInactive });
+               
+               if (conferencesResponse.success && conferencesResponse.data) {
+                  const allConferences = conferencesResponse.data as Conference[];
+                  
+                  // Group conferences by union ID
+                  const conferencesData: Record<string, Conference[]> = {};
+                  
+                  // Initialize empty arrays for all unions
+                  unionsArray.forEach(union => {
                      conferencesData[union._id] = [];
-                  }
-               } catch (error) {
-                  console.error(`Error fetching conferences for union ${union._id}:`, error);
-                  conferencesData[union._id] = [];
+                  });
+                  
+                  // Group conferences by their union ID
+                  allConferences.forEach(conference => {
+                     const unionId = typeof conference.unionId === 'string' 
+                        ? conference.unionId 
+                        : (conference.unionId as { _id: string })?._id;
+                     
+                     if (unionId && conferencesData[unionId]) {
+                        conferencesData[unionId].push(conference);
+                     }
+                  });
+                  
+                  setUnionConferences(conferencesData);
+               } else {
+                  const emptyData: Record<string, Conference[]> = {};
+                  unionsArray.forEach(union => {
+                     emptyData[union._id] = [];
+                  });
+                  setUnionConferences(emptyData);
                }
+            } catch (error) {
+               console.error('Error fetching conferences:', error);
+               const emptyData: Record<string, Conference[]> = {};
+               unionsArray.forEach(union => {
+                  emptyData[union._id] = [];
+               });
+               setUnionConferences(emptyData);
             }
-            setUnionConferences(conferencesData);
          } else if (response && response.success === false) {
             // Handle API error response
             console.error('API error fetching unions:', response.message);
@@ -115,19 +143,109 @@ export default function Unions() {
             setUnions((prev) =>
                prev.filter((u) => u._id !== union._id)
             );
+            
+            // Simple success message for deletion
             toast.success(
                'Union deleted',
-               `${union.name} has been successfully removed.`
+               `${union.name} has been successfully deleted.`
             );
          } else {
-            toast.error('Failed to delete union', response.message);
+            // Handle specific violation messages - show actual backend error
+            const errorMessage = response.message || 'Failed to delete union';
+            
+            // Parse error message for blocking/prevention scenarios
+            if (errorMessage.toLowerCase().includes('conferences still exist') ||
+                errorMessage.toLowerCase().includes('churches still exist') ||
+                errorMessage.toLowerCase().includes('teams still exist') ||
+                errorMessage.toLowerCase().includes('services still exist')) {
+               
+               // Extract entity information for helpful guidance
+               let guidance = 'Please delete all subordinate entities first.';
+               
+               if (errorMessage.toLowerCase().includes('conferences')) {
+                  guidance = 'Navigate to Conferences and delete all conferences in this union first.';
+               } else if (errorMessage.toLowerCase().includes('churches')) {
+                  guidance = 'Navigate to Churches and delete all churches in this union first.';
+               } else if (errorMessage.toLowerCase().includes('teams')) {
+                  guidance = 'Navigate to Teams and delete all teams in this union first.';
+               } else if (errorMessage.toLowerCase().includes('services')) {
+                  guidance = 'Navigate to Services and delete all services in this union first.';
+               }
+               
+               toast.error(
+                  'Cannot Delete Union',
+                  `${errorMessage}\n\n${guidance}`
+               );
+            } else if (errorMessage.toLowerCase().includes('permission') || 
+                      errorMessage.toLowerCase().includes('authorized') ||
+                      errorMessage.toLowerCase().includes('forbidden')) {
+               toast.error(
+                  'Permission Denied',
+                  errorMessage
+               );
+            } else if (errorMessage.toLowerCase().includes('not found')) {
+               toast.error(
+                  'Union Not Found',
+                  errorMessage
+               );
+            } else if (errorMessage.toLowerCase().includes('validation') ||
+                      errorMessage.toLowerCase().includes('invalid')) {
+               toast.error(
+                  'Validation Error',
+                  errorMessage
+               );
+            } else {
+               // Show the actual backend error message
+               toast.error('Failed to delete union', errorMessage);
+            }
          }
       } catch (error) {
          console.error('Error deleting union:', error);
-         toast.error(
-            'Failed to delete union',
-            'An unexpected error occurred'
-         );
+         const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
+         
+         // Show the actual error message from backend
+         if (errorMessage.toLowerCase().includes('network') || 
+             errorMessage.toLowerCase().includes('fetch')) {
+            toast.error(
+               'Network Error',
+               'Unable to connect to server. Please check your internet connection and try again.'
+            );
+         } else if (errorMessage.toLowerCase().includes('hierarchy') || 
+                   errorMessage.toLowerCase().includes('cascade')) {
+            toast.error(
+               'Hierarchy Error',
+               errorMessage
+            );
+         } else if (errorMessage.toLowerCase().includes('permission') || 
+                   errorMessage.toLowerCase().includes('unauthorized') ||
+                   errorMessage.toLowerCase().includes('forbidden')) {
+            toast.error(
+               'Permission Denied',
+               errorMessage
+            );
+         } else if (errorMessage.toLowerCase().includes('not found')) {
+            toast.error(
+               'Union Not Found',
+               errorMessage
+            );
+         } else if (errorMessage.toLowerCase().includes('validation') ||
+                   errorMessage.toLowerCase().includes('invalid')) {
+            toast.error(
+               'Validation Error', 
+               errorMessage
+            );
+         } else if (errorMessage.toLowerCase().includes('timeout')) {
+            toast.error(
+               'Request Timeout',
+               'The operation took too long to complete. Please try again.'
+            );
+         } else {
+            // Show the actual backend error message
+            toast.error(
+               'Operation Failed',
+               errorMessage
+            );
+         }
       } finally {
          setShowDeleteConfirm(false);
          setUnionToDelete(undefined);
@@ -185,10 +303,6 @@ export default function Unions() {
             return true;
          }
          
-         // Check territory description with null safety
-         if (union.territory?.description?.toLowerCase().includes(searchLower)) {
-            return true;
-         }
          
          return false;
       }
@@ -235,16 +349,6 @@ export default function Unions() {
                </div>
             </div>
          ),
-      },
-      {
-         key: 'territory',
-         header: 'Territory',
-         accessor: (union) => (
-            <div className="text-sm text-gray-900">
-               {union?.territory?.description || '-'}
-            </div>
-         ),
-         className: 'max-w-xs',
       },
       {
          key: 'contact',
@@ -295,33 +399,22 @@ export default function Unions() {
          header: 'Conferences',
          accessor: (union) => {
             const conferences = unionConferences[union._id] || [];
+            const conferenceCount = conferences.length;
             return (
-               <div className="text-sm text-gray-900">
-                  {conferences.length > 0 ? (
-                     <div className="space-y-1">
-                        {conferences.slice(0, 3).map((conference) => (
-                           <div key={conference._id} className="flex items-center">
-                              <span className="text-gray-900">{conference.name}</span>
-                              {!conference.isActive && (
-                                 <span className="ml-2 px-1.5 py-0.5 text-xs rounded-full bg-red-100 text-red-800">
-                                    Inactive
-                                 </span>
-                              )}
-                           </div>
-                        ))}
-                        {conferences.length > 3 && (
-                           <div className="text-xs text-gray-500">
-                              +{conferences.length - 3} more
-                           </div>
-                        )}
+               <span className="text-sm text-gray-900">
+                  <div className="flex items-center">
+                     <BuildingOffice2Icon className="h-4 w-4 text-gray-400 mr-2" />
+                     <div>
+                        <div className="font-medium">{conferenceCount}</div>
+                        <div className="text-xs text-gray-500">
+                           {conferenceCount === 1 ? 'conference' : 'conferences'}
+                        </div>
                      </div>
-                  ) : (
-                     <span className="text-gray-400">No conferences</span>
-                  )}
-               </div>
+                  </div>
+               </span>
             );
          },
-         className: 'max-w-xs',
+         className: 'px-6 py-4 whitespace-nowrap text-sm max-w-xs',
       },
       {
          key: 'status',
@@ -499,11 +592,39 @@ export default function Unions() {
                   unionToDelete && handleDeleteUnion(unionToDelete)
                }
                title="Delete Union"
-               message={`Are you sure you want to delete "${unionToDelete?.name}"? This action cannot be undone.`}
+               message={`Are you sure you want to delete "${unionToDelete?.name}"?`}
                confirmLabel="Delete Union"
-               confirmButtonColor="red"
+               confirmButtonColor="orange"
+               theme="orange"
                icon={<TrashIcon className="h-6 w-6 text-red-600" />}
-            />
+            >
+               {unionToDelete && (
+                  <div className="mt-4 p-4 bg-white/20 border border-white/30 rounded-md backdrop-blur-sm">
+                     <div className="flex items-start">
+                        <div className="flex-shrink-0">
+                           <svg className="h-5 w-5 text-white" viewBox="0 0 20 20" fill="currentColor">
+                              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                           </svg>
+                        </div>
+                        <div className="ml-3">
+                           <h3 className="text-sm font-medium text-white">
+                              Hierarchical Deletion Requirements
+                           </h3>
+                           <div className="mt-2 text-sm text-orange-100">
+                              <p className="mb-2">To delete this union, you must first:</p>
+                              <ul className="list-disc list-inside space-y-1">
+                                 <li>Delete all <strong className="text-white">{unionConferences[unionToDelete._id]?.length || 0} conferences</strong> in this union</li>
+                                 <li>Delete all churches in those conferences</li>
+                                 <li>Delete all teams in those churches</li>
+                                 <li>Delete all services in those teams</li>
+                              </ul>
+                              <p className="mt-3 font-medium text-white">Bottom-up deletion ensures data integrity.</p>
+                           </div>
+                        </div>
+                     </div>
+                  </div>
+               )}
+            </ConfirmationModal>
          </div>
       </AdminLayout>
    );

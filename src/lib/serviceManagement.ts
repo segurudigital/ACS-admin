@@ -1,4 +1,5 @@
 import { AuthService } from './auth';
+import { ServiceScheduling } from '@/types/scheduling';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL + '/api';
 
@@ -6,11 +7,11 @@ export interface Service {
   _id: string;
   name: string;
   type: string;
-  organization: {
+  teamId?: {
     _id: string;
     name: string;
-    type: string;
-  };
+    category?: string;
+  } | string;
   descriptionShort: string;
   descriptionLong: string;
   status: 'active' | 'paused' | 'archived';
@@ -31,6 +32,14 @@ export interface Service {
     url: string;
     alt: string;
   };
+  availability?: 'always_open' | 'set_times' | 'set_events' | null;
+  scheduling?: ServiceScheduling;
+  gallery?: Array<{
+    _id: string;
+    url: string;
+    alt?: string;
+    type: 'image' | 'video';
+  }>;
   tags?: string[];
   contactInfo: {
     email?: string;
@@ -44,7 +53,7 @@ export interface Service {
 export interface ServiceCreateRequest {
   name: string;
   type: string;
-  organization: string; // Organization ID as string
+  teamId: string; // Team ID as string
   descriptionShort: string;
   descriptionLong: string;
   status: 'active' | 'paused' | 'archived';
@@ -65,6 +74,13 @@ export interface ServiceCreateRequest {
     url: string;
     alt: string;
   };
+  availability?: 'always_open' | 'set_times' | 'set_events' | null;
+  gallery?: Array<{
+    _id: string;
+    url: string;
+    alt?: string;
+    type: 'image' | 'video';
+  }>;
   tags?: string[];
   contactInfo: {
     email?: string;
@@ -89,51 +105,81 @@ export interface ServiceStats {
   activeServices: number;
   upcomingEvents: number;
   openVolunteerRoles: number;
-  publishedStories: number;
 }
 
 export interface ServicePermissions {
-  [organizationId: string]: {
-    organizationName: string;
-    organizationType: string;
+  [teamId: string]: {
+    teamName: string;
+    teamType: string;
     canCreateServices: boolean;
     canUpdateServices: boolean;
     canDeleteServices: boolean;
     canManageServices: boolean;
-    canCreateStories: boolean;
   };
 }
 
+interface PermissionsResponse {
+  permissions: ServicePermissions;
+}
+
+interface StatsResponse {
+  stats: ServiceStats;
+}
+
 class ServiceManagementService {
-  private async fetchWithAuth(url: string, options: RequestInit = {}) {
+  private async fetchWithAuth(url: string, options: RequestInit = {}, retries = 3) {
     const token = AuthService.getToken();
     
-    const response = await fetch(`${API_BASE_URL}${url}`, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-        ...options.headers,
-      },
-    });
+    const attemptRequest = async (attemptNumber: number): Promise<unknown> => {
+      try {
+        const response = await fetch(`${API_BASE_URL}${url}`, {
+          ...options,
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+            ...options.headers,
+          },
+        });
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || error.error || 'Request failed');
-    }
+        if (response.status === 429 && attemptNumber < retries) {
+          // Rate limited, wait with exponential backoff
+          const delay = Math.min(1000 * Math.pow(2, attemptNumber), 10000);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          return attemptRequest(attemptNumber + 1);
+        }
 
-    return response.json();
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          const errorMessage = errorData.message || errorData.error || 
+            (response.status === 429 ? 'Too many requests, please try again later.' : 'Request failed');
+          throw new Error(errorMessage);
+        }
+
+        return response.json();
+      } catch (error) {
+        if (attemptNumber < retries && 
+            (error instanceof TypeError || // Network error
+             (error as Error & { name: string }).name === 'AbortError')) { // Request timeout
+          const delay = Math.min(1000 * Math.pow(2, attemptNumber), 10000);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          return attemptRequest(attemptNumber + 1);
+        }
+        throw error;
+      }
+    };
+
+    return attemptRequest(0);
   }
 
   // Get user's service permissions
   async getServicePermissions(): Promise<ServicePermissions> {
-    const data = await this.fetchWithAuth('/admin/services/permissions');
+    const data = await this.fetchWithAuth('/admin/services/permissions') as PermissionsResponse;
     return data.permissions;
   }
 
   // Get dashboard statistics
   async getDashboardStats(): Promise<ServiceStats> {
-    const data = await this.fetchWithAuth('/admin/services/dashboard-stats');
+    const data = await this.fetchWithAuth('/admin/services/dashboard-stats') as StatsResponse;
     return data.stats;
   }
 
@@ -141,7 +187,7 @@ class ServiceManagementService {
   async getServices(params: {
     page?: number;
     limit?: number;
-    organization?: string;
+    teamId?: string;
     type?: string;
     status?: string;
     search?: string;
@@ -155,7 +201,13 @@ class ServiceManagementService {
       }
     });
 
-    return this.fetchWithAuth(`/admin/services?${queryParams}`);
+    const url = `/admin/services?${queryParams}`;
+    console.log('Fetching services from URL:', `${API_BASE_URL}${url}`);
+    console.log('Query params:', Object.fromEntries(queryParams));
+    
+    const result = await this.fetchWithAuth(url);
+    console.log('Services API response:', result);
+    return result;
   }
 
   // Get single service with full details
@@ -163,10 +215,6 @@ class ServiceManagementService {
     return this.fetchWithAuth(`/admin/services/${serviceId}/full`);
   }
 
-  // Get organizations where user can create services
-  async getServiceOrganizations() {
-    return this.fetchWithAuth('/admin/services/organizations');
-  }
 
   // Get available service types
   async getServiceTypes() {
@@ -175,31 +223,17 @@ class ServiceManagementService {
 
   // Create a new service
   async createService(serviceData: ServiceCreateRequest) {
-    // Convert organization to organizationId for backend compatibility
-    const { organization, ...restData } = serviceData;
-    const payload = {
-      ...restData,
-      organizationId: organization
-    };
-    
-    return this.fetchWithAuth('/services', {
+    return this.fetchWithAuth('/admin/services', {
       method: 'POST',
-      body: JSON.stringify(payload),
+      body: JSON.stringify(serviceData),
     });
   }
 
   // Update a service
   async updateService(serviceId: string, updates: ServiceCreateRequest) {
-    // Convert organization to organizationId for backend compatibility
-    const { organization, ...restData } = updates;
-    const payload = {
-      ...restData,
-      organizationId: organization
-    };
-    
-    return this.fetchWithAuth(`/services/${serviceId}`, {
+    return this.fetchWithAuth(`/admin/services/${serviceId}`, {
       method: 'PUT',
-      body: JSON.stringify(payload),
+      body: JSON.stringify(updates),
     });
   }
 
@@ -212,7 +246,7 @@ class ServiceManagementService {
 
   // Delete (archive) a service
   async deleteService(serviceId: string) {
-    return this.fetchWithAuth(`/services/${serviceId}`, {
+    return this.fetchWithAuth(`/admin/services/${serviceId}`, {
       method: 'DELETE',
     });
   }
@@ -222,13 +256,23 @@ class ServiceManagementService {
     return this.fetchWithAuth(`/services/${serviceId}/images`);
   }
 
-  // Update service banner
-  async updateServiceBanner(serviceId: string, file: File) {
+  // Update service primary image
+  async updateServicePrimaryImage(serviceId: string, file: File) {
     const formData = new FormData();
     formData.append('banner', file);
 
     const token = AuthService.getToken();
-    const response = await fetch(`${API_BASE_URL}/services/${serviceId}/banner`, {
+    
+    // Ensure we have a valid base URL
+    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
+    const uploadUrl = `${baseUrl}/api/services/${serviceId}/banner`;
+    
+    console.log('Environment API_BASE_URL:', process.env.NEXT_PUBLIC_API_BASE_URL);
+    console.log('Resolved base URL:', baseUrl);
+    console.log('serviceId:', serviceId);
+    console.log('Final upload URL:', uploadUrl);
+    
+    const response = await fetch(uploadUrl, {
       method: 'PUT',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -236,8 +280,51 @@ class ServiceManagementService {
       body: formData,
     });
 
+    console.log('Primary image upload response status:', response.status);
+    console.log('Primary image upload response URL:', response.url);
+    
     if (!response.ok) {
-      throw new Error('Failed to upload banner image');
+      const errorText = await response.text();
+      console.error('Primary image upload failed:', errorText);
+      throw new Error(`Failed to upload primary image: ${response.status} - ${errorText}`);
+    }
+
+    return response.json();
+  }
+
+  // Update service primary image with media file
+  async updateServicePrimaryImageWithMediaFile(serviceId: string, mediaFileId: string, alt?: string) {
+    const token = AuthService.getToken();
+    
+    // Use the admin endpoint which we know exists and has media file support
+    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
+    const uploadUrl = `${baseUrl}/api/admin/services/${serviceId}/banner`;
+    
+    console.log('Environment API_BASE_URL:', process.env.NEXT_PUBLIC_API_BASE_URL);
+    console.log('Resolved base URL:', baseUrl);
+    console.log('serviceId:', serviceId);
+    console.log('mediaFileId:', mediaFileId);
+    console.log('Final upload URL (admin endpoint):', uploadUrl);
+    
+    const response = await fetch(uploadUrl, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        mediaFileId,
+        alt: alt || '',
+      }),
+    });
+
+    console.log('Primary image media upload response status:', response.status);
+    console.log('Primary image media upload response URL:', response.url);
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Primary image media upload failed:', errorText);
+      throw new Error(`Failed to update primary image with media file: ${response.status} - ${errorText}`);
     }
 
     return response.json();
@@ -371,80 +458,6 @@ class ServiceManagementService {
     });
   }
 
-  // Service Stories
-  async getServiceStories(serviceId: string) {
-    return this.fetchWithAuth(`/services/${serviceId}/stories`);
-  }
-
-  async createServiceStory(serviceId: string, storyData: {
-    title: string;
-    content: string;
-    author?: string;
-    tags?: string[];
-    isPublished: boolean;
-  }) {
-    return this.fetchWithAuth(`/services/${serviceId}/stories`, {
-      method: 'POST',
-      body: JSON.stringify(storyData),
-    });
-  }
-
-  async updateServiceStory(serviceId: string, storyId: string, storyData: Partial<{
-    title: string;
-    content: string;
-    author?: string;
-    tags?: string[];
-    isPublished: boolean;
-  }>) {
-    return this.fetchWithAuth(`/services/${serviceId}/stories/${storyId}`, {
-      method: 'PUT',
-      body: JSON.stringify(storyData),
-    });
-  }
-
-  async deleteServiceStory(serviceId: string, storyId: string) {
-    return this.fetchWithAuth(`/services/${serviceId}/stories/${storyId}`, {
-      method: 'DELETE',
-    });
-  }
-
-  // Global Stories (Admin)
-  async getStories(params: {
-    page?: number;
-    limit?: number;
-    organization?: string;
-    service?: string;
-    status?: string;
-  } = {}) {
-    const queryParams = new URLSearchParams();
-    Object.entries(params).forEach(([key, value]) => {
-      if (value !== undefined) {
-        queryParams.append(key, value.toString());
-      }
-    });
-
-    return this.fetchWithAuth(`/admin/services/stories?${queryParams}`);
-  }
-
-  async createStory(storyData: {title: string; content: string; serviceId: string; author?: string}) {
-    return this.fetchWithAuth('/services/stories', {
-      method: 'POST',
-      body: JSON.stringify(storyData),
-    });
-  }
-
-  async updateStory(storyId: string, updates: {title?: string; content?: string; serviceId?: string; author?: string}) {
-    return this.fetchWithAuth(`/services/stories/${storyId}`, {
-      method: 'PUT',
-      body: JSON.stringify(updates),
-    });
-  }
-
-  async publishStory(storyId: string) {
-    return this.fetchWithAuth(`/services/stories/${storyId}/publish`, {
-      method: 'POST',
-    });
-  }
 }
 
 export const serviceManagement = new ServiceManagementService();

@@ -32,10 +32,13 @@ export default function EventModal({ isOpen, onClose, onEventSaved, event }: Eve
   const fetchServices = useCallback(async () => {
     try {
       const servicesData = await eventsAPI.getServicesForDropdown();
-      setServices(servicesData);
+      setServices(servicesData || []);
     } catch (error) {
       console.error('Failed to fetch services:', error);
-      showErrorToast('Failed to load services');
+      // Only show error toast if it's a real error, not when services array is empty
+      if (error && error instanceof Error && error.message !== 'No services found') {
+        showErrorToast('Failed to load services');
+      }
     }
   }, [showErrorToast]);
 
@@ -145,7 +148,7 @@ export default function EventModal({ isOpen, onClose, onEventSaved, event }: Eve
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={event ? "Edit Event" : "Create Event"} maxWidth="2xl">
+    <Modal isOpen={isOpen} onClose={onClose} title={event ? "Edit Event" : "Create Event"} maxWidth="2xl" theme="orange">
       <ModalBody>
         {loading ? (
           <div className="flex justify-center py-8">
@@ -156,7 +159,7 @@ export default function EventModal({ isOpen, onClose, onEventSaved, event }: Eve
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Event Title */}
               <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-800 mb-1">
                   Event Title *
                 </label>
                 <input
@@ -171,7 +174,7 @@ export default function EventModal({ isOpen, onClose, onEventSaved, event }: Eve
 
               {/* Service Selection */}
               <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-800 mb-1">
                   Service *
                 </label>
                 <select
@@ -197,7 +200,7 @@ export default function EventModal({ isOpen, onClose, onEventSaved, event }: Eve
 
               {/* Date */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-800 mb-1">
                   Date *
                 </label>
                 <input
@@ -211,7 +214,7 @@ export default function EventModal({ isOpen, onClose, onEventSaved, event }: Eve
 
               {/* Start Time */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-800 mb-1">
                   Start Time
                 </label>
                 <select
@@ -256,7 +259,7 @@ export default function EventModal({ isOpen, onClose, onEventSaved, event }: Eve
 
               {/* End Time */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-800 mb-1">
                   End Time
                 </label>
                 <select
@@ -302,7 +305,7 @@ export default function EventModal({ isOpen, onClose, onEventSaved, event }: Eve
 
               {/* Location */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-800 mb-1">
                   Location
                 </label>
                 <input
@@ -316,7 +319,7 @@ export default function EventModal({ isOpen, onClose, onEventSaved, event }: Eve
 
               {/* Capacity */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-800 mb-1">
                   Capacity
                 </label>
                 <input
@@ -331,7 +334,7 @@ export default function EventModal({ isOpen, onClose, onEventSaved, event }: Eve
 
               {/* Description */}
               <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-800 mb-1">
                   Description
                 </label>
                 <textarea

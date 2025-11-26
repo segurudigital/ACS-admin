@@ -3,6 +3,8 @@
 import { AuthService } from './auth';
 import { 
   Union,
+  Conference,
+  Church,
   UnionListResponse, 
   UnionResponse,
   CreateUnionData, 
@@ -142,7 +144,23 @@ export class UnionService {
   /**
    * Delete union
    */
-  static async deleteUnion(id: string): Promise<{ success: boolean; message: string }> {
+  static async deleteUnion(id: string): Promise<{ 
+    success: boolean; 
+    message: string; 
+    data?: {
+      union: Union;
+    };
+    details?: {
+      blockingEntities?: {
+        conferences?: number;
+        churches?: number;
+        teams?: number;
+        services?: number;
+        level: string;
+        action: string;
+      };
+    };
+  }> {
     try {
       const response = await fetch(`${API_BASE_URL}/api/unions/${id}`, {
         method: 'DELETE',
@@ -150,16 +168,31 @@ export class UnionService {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+        let errorData;
+        try {
+          errorData = await response.json();
+        } catch {
+          // If response isn't JSON, use status text
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        // Preserve the original error message from backend
+        const backendMessage = errorData.message || `HTTP ${response.status}: ${response.statusText}`;
+        const error = new Error(backendMessage);
+        (error as Error & { originalResponse?: unknown }).originalResponse = errorData; // Preserve full response
+        throw error;
       }
 
       return await response.json();
     } catch (error) {
       console.error('Error deleting union:', error);
-      throw new Error(
-        error instanceof Error ? error.message : 'Failed to delete union'
-      );
+      
+      // Re-throw the original error to preserve backend messages
+      if (error instanceof Error) {
+        throw error;
+      } else {
+        throw new Error('Failed to delete union');
+      }
     }
   }
 
@@ -171,8 +204,8 @@ export class UnionService {
     success: boolean;
     data: {
       union: Union;
-      conferences: unknown[];
-      churches: unknown[];
+      conferences: Conference[];
+      churches: Church[];
     };
   }> {
     try {
@@ -199,7 +232,7 @@ export class UnionService {
    */
   static async getUnionConferences(id: string): Promise<{
     success: boolean;
-    data: unknown[];
+    data: Conference[];
   }> {
     try {
       const response = await fetch(`${API_BASE_URL}/api/unions/${id}/conferences`, {

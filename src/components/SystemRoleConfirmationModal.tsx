@@ -26,6 +26,7 @@ export default function SystemRoleConfirmationModal({
       onClose={onClose}
       title={`Confirm System Role ${action === 'edit' ? 'Modification' : 'Deletion'}`}
       maxWidth="md"
+      theme="orange"
     >
       <ModalBody className="space-y-4">
         <div className="flex">
@@ -35,10 +36,10 @@ export default function SystemRoleConfirmationModal({
             </svg>
           </div>
           <div className="ml-3">
-            <h3 className="text-lg font-medium text-gray-900">
+            <h3 className="text-lg font-medium text-gray-800">
               {action === 'edit' ? 'Modify System Role' : 'Delete System Role'}
             </h3>
-            <div className="mt-2 text-sm text-gray-700 space-y-2">
+            <div className="mt-2 text-sm text-gray-800 space-y-2">
               <p>
                 You are about to {action} the system role <strong>&quot;{roleName}&quot;</strong>.
               </p>
@@ -73,14 +74,14 @@ export default function SystemRoleConfirmationModal({
         <button
           type="button"
           onClick={onClose}
-          className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-500"
+          className="px-4 py-2 text-sm font-medium text-gray-800 hover:text-gray-500"
         >
           Cancel
         </button>
         <button
           type="button"
           onClick={onConfirm}
-          className={`px-4 py-2 text-sm font-medium rounded-md text-white ${
+          className={`px-4 py-2 text-sm font-medium rounded-md text-gray-800 ${
             action === 'delete' 
               ? 'bg-red-600 hover:bg-red-700' 
               : 'bg-orange-600 hover:bg-orange-700'

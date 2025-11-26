@@ -25,9 +25,6 @@ export default function UnionModal({
 }: UnionModalProps) {
   const [formData, setFormData] = useState({
     name: union?.name || '',
-    territory: {
-      description: union?.territory?.description || ''
-    },
     headquarters: {
       address: union?.headquarters?.address || '',
       city: union?.headquarters?.city || '',
@@ -134,7 +131,6 @@ export default function UnionModal({
       
       const unionData = {
         name: formData.name,
-        territory: formData.territory,
         headquarters: formData.headquarters,
         contact: formData.contact
       };
@@ -223,9 +219,6 @@ export default function UnionModal({
     if (isOpen) {
       setFormData({
         name: union?.name || '',
-        territory: {
-          description: union?.territory?.description || ''
-        },
         headquarters: {
           address: union?.headquarters?.address || '',
           city: union?.headquarters?.city || '',
@@ -258,12 +251,13 @@ export default function UnionModal({
       onClose={onClose}
       title={union ? 'Edit Union' : 'Create Union'}
       maxWidth="2xl"
+      theme="orange"
     >
       <form onSubmit={handleSubmit}>
         <ModalBody className="space-y-6">
           {/* Basic Info */}
           <div>
-            <label className="block text-sm font-medium text-gray-700">
+            <label className="block text-sm font-medium text-gray-800">
               Union Name *
             </label>
             <input
@@ -276,36 +270,14 @@ export default function UnionModal({
             />
           </div>
 
-          {/* Territory */}
-          <div>
-            <h4 className="text-sm font-medium text-gray-900 mb-4">Territory</h4>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Territory Description
-                </label>
-                <textarea
-                  value={formData.territory.description}
-                  onChange={(e) => setFormData(prev => ({ 
-                    ...prev, 
-                    territory: { ...prev.territory, description: e.target.value }
-                  }))}
-                  placeholder="Brief description of the union's territory"
-                  rows={2}
-                  className="mt-1 block w-full px-4 py-3 text-base rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
-                />
-              </div>
-            </div>
-          </div>
 
           {/* Headquarters */}
           <div>
-            <h4 className="text-sm font-medium text-gray-900 mb-4">Headquarters</h4>
+            <h4 className="text-sm font-medium text-gray-800 mb-4">Headquarters</h4>
             
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-sm font-medium text-gray-800">
                   Address
                 </label>
                 <input
@@ -321,7 +293,7 @@ export default function UnionModal({
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-sm font-medium text-gray-800">
                   City
                 </label>
                 <input
@@ -337,7 +309,7 @@ export default function UnionModal({
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-sm font-medium text-gray-800">
                   State/Province
                 </label>
                 <input
@@ -353,7 +325,7 @@ export default function UnionModal({
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-sm font-medium text-gray-800">
                   Country
                 </label>
                 <input
@@ -369,7 +341,7 @@ export default function UnionModal({
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-sm font-medium text-gray-800">
                   Postal Code
                 </label>
                 <input
@@ -388,11 +360,11 @@ export default function UnionModal({
 
           {/* Contact Information */}
           <div>
-            <h4 className="text-sm font-medium text-gray-900 mb-4">Contact Information</h4>
+            <h4 className="text-sm font-medium text-gray-800 mb-4">Contact Information</h4>
             
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-sm font-medium text-gray-800">
                   Email
                 </label>
                 <input
@@ -408,7 +380,7 @@ export default function UnionModal({
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-sm font-medium text-gray-800">
                   Phone
                 </label>
                 <input
@@ -424,7 +396,7 @@ export default function UnionModal({
               </div>
 
               <div className="col-span-2">
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-sm font-medium text-gray-800">
                   Website
                 </label>
                 <input
@@ -443,7 +415,7 @@ export default function UnionModal({
 
           {/* Banner Image Upload */}
           <div>
-            <h4 className="text-sm font-medium text-gray-900 mb-4">Banner Image</h4>
+            <h4 className="text-sm font-medium text-gray-800 mb-4">Banner Image</h4>
             
             {bannerPreview ? (
               <div className="relative">
@@ -459,12 +431,12 @@ export default function UnionModal({
                 <button
                   type="button"
                   onClick={removeBannerImage}
-                  className="absolute top-2 right-2 p-1 bg-red-600 text-white rounded-full hover:bg-red-700"
+                  className="absolute top-2 right-2 p-1 bg-red-600 text-gray-800 rounded-full hover:bg-red-700"
                 >
                   <XMarkIcon className="h-4 w-4" />
                 </button>
                 <div className="mt-2">
-                  <label className="block text-sm font-medium text-gray-700">
+                  <label className="block text-sm font-medium text-gray-800">
                     Alt Text
                   </label>
                   <input
@@ -483,7 +455,7 @@ export default function UnionModal({
                   <button
                     type="button"
                     onClick={openMediaLibrary}
-                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-[#F25F29] hover:bg-[#F23E16] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
                   >
                     <CloudArrowUpIcon className="h-4 w-4 mr-2" />
                     Select Banner Image
@@ -509,14 +481,14 @@ export default function UnionModal({
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-500"
+            className="px-4 py-2 text-sm font-medium text-gray-800 hover:text-gray-500"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={loading || !formData.name}
-            className="px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-[#F5821F] hover:bg-[#e0741c] disabled:bg-gray-300 disabled:cursor-not-allowed"
+            className="px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-[#F25F29] hover:bg-[#F23E16] disabled:bg-gray-300 disabled:cursor-not-allowed"
           >
             {union ? 'Update' : 'Create'} Union
           </button>

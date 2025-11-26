@@ -18,6 +18,10 @@ interface Event {
   capacity?: number;
 }
 
+interface EventsResponse {
+  events: Event[];
+}
+
 interface EventsModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -46,7 +50,7 @@ export default function EventsModal({ isOpen, onClose, serviceId, permissions }:
   const fetchEvents = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await serviceManagement.getServiceEvents(serviceId);
+      const response = await serviceManagement.getServiceEvents(serviceId) as EventsResponse;
       setEvents(response.events || []);
     } catch (error) {
       console.error('Failed to fetch events:', error);
@@ -155,7 +159,7 @@ export default function EventsModal({ isOpen, onClose, serviceId, permissions }:
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Manage Events" maxWidth="2xl">
+    <Modal isOpen={isOpen} onClose={onClose} title="Manage Events" maxWidth="2xl" theme="orange">
       <ModalBody>
         {loading ? (
           <div className="flex justify-center py-8">
@@ -166,12 +170,12 @@ export default function EventsModal({ isOpen, onClose, serviceId, permissions }:
             {/* Add/Edit Event Form */}
             {showAddForm && permissions.canManage && (
               <div className="bg-gray-50 rounded-lg p-6 border">
-                <h4 className="text-lg font-medium text-gray-900 mb-4">
+                <h4 className="text-lg font-medium text-gray-800 mb-4">
                   {editingEvent ? 'Edit Event' : 'Add New Event'}
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-800 mb-1">
                       Event Title *
                     </label>
                     <input
@@ -183,7 +187,7 @@ export default function EventsModal({ isOpen, onClose, serviceId, permissions }:
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-800 mb-1">
                       Date *
                     </label>
                     <input
@@ -194,7 +198,7 @@ export default function EventsModal({ isOpen, onClose, serviceId, permissions }:
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-800 mb-1">
                       Time
                     </label>
                     <input
@@ -205,7 +209,7 @@ export default function EventsModal({ isOpen, onClose, serviceId, permissions }:
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-800 mb-1">
                       Location
                     </label>
                     <input
@@ -217,7 +221,7 @@ export default function EventsModal({ isOpen, onClose, serviceId, permissions }:
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-800 mb-1">
                       Capacity
                     </label>
                     <input
@@ -230,7 +234,7 @@ export default function EventsModal({ isOpen, onClose, serviceId, permissions }:
                     />
                   </div>
                   <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-800 mb-1">
                       Description
                     </label>
                     <textarea
@@ -255,7 +259,7 @@ export default function EventsModal({ isOpen, onClose, serviceId, permissions }:
 
             {/* Events List */}
             <div>
-              <h4 className="text-lg font-medium text-gray-900 mb-4">
+              <h4 className="text-lg font-medium text-gray-800 mb-4">
                 Events ({events.length})
               </h4>
               {events.length > 0 ? (
@@ -269,7 +273,7 @@ export default function EventsModal({ isOpen, onClose, serviceId, permissions }:
                         <div className="flex-1">
                           <div className="flex items-center space-x-2 mb-2">
                             <CalendarIcon className="h-5 w-5 text-gray-400" />
-                            <h5 className="font-medium text-gray-900">{event.title}</h5>
+                            <h5 className="font-medium text-gray-800">{event.title}</h5>
                           </div>
                           <p className="text-sm text-gray-600 mb-1">
                             {formatDate(event.date)}

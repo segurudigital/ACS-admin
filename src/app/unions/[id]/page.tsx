@@ -130,7 +130,7 @@ export default function UnionDetailPage() {
    return (
       <AdminLayout
          title={union.name}
-         description={`Union • ${union.territory?.description || 'No territory specified'}`}
+         description="Union"
          hideTitle={true}
          hideHeader={true}
       >
@@ -184,9 +184,6 @@ export default function UnionDetailPage() {
                         <h1 className="text-4xl md:text-5xl font-bold text-white mb-3">
                            {union.name}
                         </h1>
-                        <p className="text-lg text-gray-200">
-                           {union.territory?.description || 'No territory description'}
-                        </p>
                      </div>
                   </div>
                </div>
@@ -204,14 +201,6 @@ export default function UnionDetailPage() {
          <div className="mt-8">
             {/* Main Content Container */}
             <div className="max-w-6xl mx-auto">
-               {/* Territory Description Section */}
-               {union.territory?.description && (
-                  <div className="bg-white rounded-lg shadow-sm p-8 mb-8">
-                     <p className="text-lg text-gray-600 text-center max-w-3xl mx-auto">
-                        {union.territory.description}
-                     </p>
-                  </div>
-               )}
 
                {/* Union Details Section */}
                <div className="bg-white rounded-lg shadow-sm p-8 mb-8">
@@ -348,21 +337,6 @@ export default function UnionDetailPage() {
                            <div className="flex justify-between">
                               <span className="text-gray-600">Church Count:</span>
                               <span className="font-medium">{union.metadata.churchCount}</span>
-                           </div>
-                        )}
-                        {union.metadata.territory && union.metadata.territory.length > 0 && (
-                           <div className="md:col-span-2">
-                              <span className="text-gray-600">Territory Coverage:</span>
-                              <div className="mt-2 flex flex-wrap gap-2">
-                                 {union.metadata.territory.map((territory, index) => (
-                                    <span
-                                       key={index}
-                                       className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-purple-100 text-purple-800"
-                                    >
-                                       {territory}
-                                    </span>
-                                 ))}
-                              </div>
                            </div>
                         )}
                         {union.metadata.lastUpdated && (

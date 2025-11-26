@@ -138,13 +138,6 @@ export default function RolePermissionsPage() {
       requiredHierarchyLevel: 2  // Church level and above (all levels)
     },
     {
-      id: 'stories',
-      name: 'Success Stories',
-      description: 'Testimonials and story management',
-      level: 'church',
-      requiredHierarchyLevel: 2  // Church level and above (all levels)
-    },
-    {
       id: 'dashboard',
       name: 'Analytics & Reports',
       description: 'Dashboard access and reporting',

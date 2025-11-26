@@ -16,7 +16,8 @@
       "Bash(npx eslint:*)",
       "Bash(git remote set-url:*)",
       "Bash(git fetch:*)",
-      "Bash(git merge:*)"
+      "Bash(git merge:*)",
+      "Bash(rm:*)"
     ],
     "deny": []
   }

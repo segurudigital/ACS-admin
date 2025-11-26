@@ -66,10 +66,13 @@ export default function VolunteerOpportunityModal({ isOpen, onClose, onOpportuni
   const fetchServices = useCallback(async () => {
     try {
       const servicesData = await volunteerOpportunitiesAPI.getServicesForDropdown();
-      setServices(servicesData);
+      setServices(servicesData || []);
     } catch (error) {
       console.error('Failed to fetch services:', error);
-      showErrorToast('Failed to load services');
+      // Only show error toast if it's a real error, not when services array is empty
+      if (error && error instanceof Error && error.message !== 'No services found') {
+        showErrorToast('Failed to load services');
+      }
     }
   }, [showErrorToast]);
 
@@ -333,7 +336,7 @@ export default function VolunteerOpportunityModal({ isOpen, onClose, onOpportuni
   ];
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={opportunity ? "Edit Volunteer Opportunity" : "Create Volunteer Opportunity"} maxWidth="2xl">
+    <Modal isOpen={isOpen} onClose={onClose} title={opportunity ? "Edit Volunteer Opportunity" : "Create Volunteer Opportunity"} maxWidth="2xl" theme="orange">
       <ModalBody>
         {loading ? (
           <div className="flex justify-center py-8">
@@ -343,10 +346,10 @@ export default function VolunteerOpportunityModal({ isOpen, onClose, onOpportuni
           <div className="space-y-8">
             {/* Basic Information */}
             <div>
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Basic Information</h3>
+              <h3 className="text-lg font-medium text-gray-800 mb-4">Basic Information</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-800 mb-1">
                     Title *
                   </label>
                   <input
@@ -360,7 +363,7 @@ export default function VolunteerOpportunityModal({ isOpen, onClose, onOpportuni
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-800 mb-1">
                     Service *
                   </label>
                   <select
@@ -385,7 +388,7 @@ export default function VolunteerOpportunityModal({ isOpen, onClose, onOpportuni
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-800 mb-1">
                     Category
                   </label>
                   <input
@@ -398,7 +401,7 @@ export default function VolunteerOpportunityModal({ isOpen, onClose, onOpportuni
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-800 mb-1">
                     Description *
                   </label>
                   <textarea
@@ -415,10 +418,10 @@ export default function VolunteerOpportunityModal({ isOpen, onClose, onOpportuni
 
             {/* Requirements */}
             <div>
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Requirements</h3>
+              <h3 className="text-lg font-medium text-gray-800 mb-4">Requirements</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-800 mb-1">
                     Required Skills (comma-separated)
                   </label>
                   <input
@@ -431,7 +434,7 @@ export default function VolunteerOpportunityModal({ isOpen, onClose, onOpportuni
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-800 mb-1">
                     Minimum Age
                   </label>
                   <input
@@ -449,7 +452,7 @@ export default function VolunteerOpportunityModal({ isOpen, onClose, onOpportuni
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-800 mb-1">
                     Experience Required
                   </label>
                   <input
@@ -476,7 +479,7 @@ export default function VolunteerOpportunityModal({ isOpen, onClose, onOpportuni
                         })}
                         className="rounded border-gray-300 text-[#F5821F] focus:ring-[#F5821F]"
                       />
-                      <span className="ml-2 text-sm text-gray-700">Background Check Required</span>
+                      <span className="ml-2 text-sm text-gray-800">Background Check Required</span>
                     </label>
                     <label className="flex items-center">
                       <input
@@ -488,7 +491,7 @@ export default function VolunteerOpportunityModal({ isOpen, onClose, onOpportuni
                         })}
                         className="rounded border-gray-300 text-[#F5821F] focus:ring-[#F5821F]"
                       />
-                      <span className="ml-2 text-sm text-gray-700">Working with Children Check</span>
+                      <span className="ml-2 text-sm text-gray-800">Working with Children Check</span>
                     </label>
                   </div>
                 </div>
@@ -497,10 +500,10 @@ export default function VolunteerOpportunityModal({ isOpen, onClose, onOpportuni
 
             {/* Time Commitment & Location */}
             <div>
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Time Commitment & Location</h3>
+              <h3 className="text-lg font-medium text-gray-800 mb-4">Time Commitment & Location</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-800 mb-1">
                     Commitment Type
                   </label>
                   <select
@@ -520,7 +523,7 @@ export default function VolunteerOpportunityModal({ isOpen, onClose, onOpportuni
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-800 mb-1">
                     Location Type
                   </label>
                   <select
@@ -540,7 +543,7 @@ export default function VolunteerOpportunityModal({ isOpen, onClose, onOpportuni
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-800 mb-1">
                     Hours Per Week (Min)
                   </label>
                   <input
@@ -557,7 +560,7 @@ export default function VolunteerOpportunityModal({ isOpen, onClose, onOpportuni
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-800 mb-1">
                     Hours Per Week (Max)
                   </label>
                   <input
@@ -574,7 +577,7 @@ export default function VolunteerOpportunityModal({ isOpen, onClose, onOpportuni
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-800 mb-1">
                     Number of Positions
                   </label>
                   <input
@@ -589,7 +592,7 @@ export default function VolunteerOpportunityModal({ isOpen, onClose, onOpportuni
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-800 mb-1">
                     Status
                   </label>
                   <select
@@ -609,10 +612,10 @@ export default function VolunteerOpportunityModal({ isOpen, onClose, onOpportuni
 
             {/* Application Process */}
             <div>
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Application Process</h3>
+              <h3 className="text-lg font-medium text-gray-800 mb-4">Application Process</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-800 mb-1">
                     Application Method
                   </label>
                   <select
@@ -632,7 +635,7 @@ export default function VolunteerOpportunityModal({ isOpen, onClose, onOpportuni
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-800 mb-1">
                     Visibility
                   </label>
                   <select
@@ -649,7 +652,7 @@ export default function VolunteerOpportunityModal({ isOpen, onClose, onOpportuni
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-800 mb-1">
                     Contact Email
                   </label>
                   <input
@@ -665,7 +668,7 @@ export default function VolunteerOpportunityModal({ isOpen, onClose, onOpportuni
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-800 mb-1">
                     Contact Phone
                   </label>
                   <input
@@ -681,7 +684,7 @@ export default function VolunteerOpportunityModal({ isOpen, onClose, onOpportuni
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-800 mb-1">
                     Benefits (comma-separated)
                   </label>
                   <input
@@ -694,7 +697,7 @@ export default function VolunteerOpportunityModal({ isOpen, onClose, onOpportuni
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-800 mb-1">
                     Start Date
                   </label>
                   <input
@@ -706,7 +709,7 @@ export default function VolunteerOpportunityModal({ isOpen, onClose, onOpportuni
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-800 mb-1">
                     End Date (Optional)
                   </label>
                   <input

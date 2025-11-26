@@ -18,6 +18,10 @@ interface VolunteerRole {
   currentVolunteers?: number;
 }
 
+interface VolunteerRolesResponse {
+  roles: VolunteerRole[];
+}
+
 interface VolunteersModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -46,7 +50,7 @@ export default function VolunteersModal({ isOpen, onClose, serviceId, permission
   const fetchVolunteerRoles = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await serviceManagement.getServiceVolunteerRoles(serviceId);
+      const response = await serviceManagement.getServiceVolunteerRoles(serviceId) as VolunteerRolesResponse;
       setRoles(response.roles || []);
     } catch (error) {
       console.error('Failed to fetch volunteer roles:', error);
@@ -149,7 +153,7 @@ export default function VolunteersModal({ isOpen, onClose, serviceId, permission
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Manage Volunteer Opportunities" maxWidth="2xl">
+    <Modal isOpen={isOpen} onClose={onClose} title="Manage Volunteer Opportunities" maxWidth="2xl" theme="orange">
       <ModalBody>
         {loading ? (
           <div className="flex justify-center py-8">
@@ -173,12 +177,12 @@ export default function VolunteersModal({ isOpen, onClose, serviceId, permission
             {/* Add/Edit Role Form */}
             {showAddForm && permissions.canManage && (
               <div className="bg-gray-50 rounded-lg p-6 border">
-                <h4 className="text-lg font-medium text-gray-900 mb-4">
+                <h4 className="text-lg font-medium text-gray-800 mb-4">
                   {editingRole ? 'Edit Volunteer Role' : 'Add New Volunteer Role'}
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-800 mb-1">
                       Role Title *
                     </label>
                     <input
@@ -190,7 +194,7 @@ export default function VolunteersModal({ isOpen, onClose, serviceId, permission
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-800 mb-1">
                       Time Commitment
                     </label>
                     <input
@@ -202,7 +206,7 @@ export default function VolunteersModal({ isOpen, onClose, serviceId, permission
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-800 mb-1">
                       Volunteers Needed
                     </label>
                     <input
@@ -215,7 +219,7 @@ export default function VolunteersModal({ isOpen, onClose, serviceId, permission
                     />
                   </div>
                   <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-800 mb-1">
                       Description *
                     </label>
                     <textarea
@@ -227,7 +231,7 @@ export default function VolunteersModal({ isOpen, onClose, serviceId, permission
                     />
                   </div>
                   <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-800 mb-1">
                       Requirements
                     </label>
                     <textarea
@@ -246,7 +250,7 @@ export default function VolunteersModal({ isOpen, onClose, serviceId, permission
                         onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
                         className="rounded border-gray-300 text-[#F5821F] focus:ring-[#F5821F]"
                       />
-                      <span className="ml-2 text-sm text-gray-700">Active role (accepting applications)</span>
+                      <span className="ml-2 text-sm text-gray-800">Active role (accepting applications)</span>
                     </label>
                   </div>
                 </div>
@@ -263,7 +267,7 @@ export default function VolunteersModal({ isOpen, onClose, serviceId, permission
 
             {/* Roles List */}
             <div>
-              <h4 className="text-lg font-medium text-gray-900 mb-4">
+              <h4 className="text-lg font-medium text-gray-800 mb-4">
                 Volunteer Roles ({roles.length})
               </h4>
               {roles.length > 0 ? (
@@ -279,9 +283,9 @@ export default function VolunteersModal({ isOpen, onClose, serviceId, permission
                         <div className="flex-1">
                           <div className="flex items-center space-x-2 mb-2">
                             <UserGroupIcon className="h-5 w-5 text-gray-400" />
-                            <h5 className="font-medium text-gray-900">{role.title}</h5>
+                            <h5 className="font-medium text-gray-800">{role.title}</h5>
                             {!role.isActive && (
-                              <span className="px-2 py-1 bg-gray-200 text-gray-700 text-xs rounded-full">
+                              <span className="px-2 py-1 bg-gray-200 text-gray-800 text-xs rounded-full">
                                 Inactive
                               </span>
                             )}
@@ -313,7 +317,7 @@ export default function VolunteersModal({ isOpen, onClose, serviceId, permission
                           
                           {role.requirements && (
                             <div className="mt-2">
-                              <p className="text-xs font-medium text-gray-700 mb-1">Requirements:</p>
+                              <p className="text-xs font-medium text-gray-800 mb-1">Requirements:</p>
                               <p className="text-xs text-gray-600">{role.requirements}</p>
                             </div>
                           )}

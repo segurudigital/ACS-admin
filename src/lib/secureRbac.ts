@@ -9,14 +9,14 @@ import { api } from './api';
  */
 export class SecureRBACService {
   /**
-   * Get only users within the current user's manageable organizations
+   * Get only users within the current user's manageable teams
    * Overrides parent method to add security filtering
    */
-  static async getUsers(organizationId?: string): Promise<UserWithRoles[]> {
+  static async getUsers(teamId?: string): Promise<UserWithRoles[]> {
     try {
       const queryParams = new URLSearchParams();
-      if (organizationId) {
-        queryParams.append('organizationId', organizationId);
+      if (teamId) {
+        queryParams.append('teamId', teamId);
       }
       
       const url = queryParams.toString() 
@@ -58,7 +58,7 @@ export class SecureRBACService {
   }
 
   /**
-   * Get only organizations the user has access to
+   * Get only hierarchical entities the user has access to
    * Overrides parent method to ensure proper filtering
    */
   static async getHierarchicalEntitys(filters?: {
@@ -80,8 +80,8 @@ export class SecureRBACService {
       }
 
       const url = queryParams.toString()
-        ? `/api/organizations?${queryParams.toString()}`
-        : '/api/organizations';
+        ? `/api/hierarchical-entities?${queryParams.toString()}`
+        : '/api/hierarchical-entities';
 
       const response = await api.get(url);
       
@@ -89,31 +89,31 @@ export class SecureRBACService {
         return response.data;
       }
       
-      throw new Error(response.message || 'Failed to fetch organizations');
+      throw new Error(response.message || 'Failed to fetch hierarchical entities');
     } catch (error) {
-      console.error('Error fetching organizations:', error);
+      console.error('Error fetching hierarchical entities:', error);
       throw error;
     }
   }
 
   /**
-   * Get users for a specific organization only
-   * @param organizationId - HierarchicalEntity ID
-   * @returns Promise<UserWithRoles[]> - Users in the organization
+   * Get users for a specific hierarchical entity only
+   * @param entityId - HierarchicalEntity ID
+   * @returns Promise<UserWithRoles[]> - Users in the entity
    */
-  static async getHierarchicalEntityUsers(organizationId: string): Promise<UserWithRoles[]> {
+  static async getHierarchicalEntityUsers(entityId: string): Promise<UserWithRoles[]> {
     try {
       const response = await api.get(
-        `/api/organizations/${organizationId}/users`
+        `/api/hierarchical-entities/${entityId}/users`
       );
       
       if (response.success && response.data) {
         return response.data;
       }
       
-      throw new Error(response.message || 'Failed to fetch organization users');
+      throw new Error(response.message || 'Failed to fetch entity users');
     } catch (error) {
-      console.error('Error fetching organization users:', error);
+      console.error('Error fetching entity users:', error);
       throw error;
     }
   }

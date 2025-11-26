@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
 import AdminLayout from '../../components/AdminLayout';
 import { PermissionGate } from '@/components/PermissionGate';
 import { Column, ActionCell, IconButton, StatusBadge } from '@/components/DataTable';
@@ -22,7 +21,6 @@ export default function TeamTypesPage() {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [teamTypeToDelete, setTeamTypeToDelete] = useState<TeamType | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const router = useRouter();
   const { user } = usePermissions();
 
   const loadTeamTypes = useCallback(async () => {
@@ -33,7 +31,7 @@ export default function TeamTypesPage() {
 
     try {
       setLoading(true);
-      const response = await teamTypeService.getUserTeamTypes(user.id);
+      const response = await teamTypeService.getUserTeamTypes(user.id, true, true);
       const teamTypesData = response.data || [];
       setTeamTypes(teamTypesData);
     } catch (error: unknown) {

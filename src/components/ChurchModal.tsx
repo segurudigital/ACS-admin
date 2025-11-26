@@ -119,7 +119,9 @@ export default function ChurchModal({
   };
 
   const openMediaLibrary = () => {
+    console.log('Opening media library...');
     setIsMediaLibraryOpen(true);
+    console.log('Media library state set to true');
   };
 
   // Helper function to provide user-friendly error messages
@@ -386,13 +388,14 @@ export default function ChurchModal({
       onClose={onClose}
       title={church ? 'Edit Church' : 'Create Church'}
       maxWidth="2xl"
+      theme="orange"
     >
       <form onSubmit={handleSubmit}>
         <ModalBody className="space-y-6">
           {/* Basic Info */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700">
+              <label className="block text-sm font-medium text-gray-800">
                 Church Name *
               </label>
               <input
@@ -406,7 +409,7 @@ export default function ChurchModal({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">
+              <label className="block text-sm font-medium text-gray-800">
                 Church Code
               </label>
               <div className="relative">
@@ -442,7 +445,7 @@ export default function ChurchModal({
 
           {/* Conference */}
           <div>
-            <label className="block text-sm font-medium text-gray-700">
+            <label className="block text-sm font-medium text-gray-800">
               Conference *
             </label>
             <select
@@ -463,11 +466,11 @@ export default function ChurchModal({
 
           {/* Location */}
           <div>
-            <h4 className="text-sm font-medium text-gray-900 mb-4">Location</h4>
+            <h4 className="text-sm font-medium text-gray-800 mb-4">Location</h4>
             
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-sm font-medium text-gray-800">
                   Address
                 </label>
                 <input
@@ -486,7 +489,7 @@ export default function ChurchModal({
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-sm font-medium text-gray-800">
                   City
                 </label>
                 <input
@@ -505,7 +508,7 @@ export default function ChurchModal({
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-sm font-medium text-gray-800">
                   State/Province
                 </label>
                 <input
@@ -524,7 +527,7 @@ export default function ChurchModal({
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-sm font-medium text-gray-800">
                   Country
                 </label>
                 <input
@@ -543,7 +546,7 @@ export default function ChurchModal({
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-sm font-medium text-gray-800">
                   Postal Code
                 </label>
                 <input
@@ -565,11 +568,11 @@ export default function ChurchModal({
 
           {/* Contact Information */}
           <div>
-            <h4 className="text-sm font-medium text-gray-900 mb-4">Contact Information</h4>
+            <h4 className="text-sm font-medium text-gray-800 mb-4">Contact Information</h4>
             
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-sm font-medium text-gray-800">
                   Email
                 </label>
                 <input
@@ -585,7 +588,7 @@ export default function ChurchModal({
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-sm font-medium text-gray-800">
                   Phone
                 </label>
                 <input
@@ -601,7 +604,7 @@ export default function ChurchModal({
               </div>
 
               <div className="col-span-2">
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-sm font-medium text-gray-800">
                   Website
                 </label>
                 <input
@@ -620,7 +623,7 @@ export default function ChurchModal({
 
           {/* Banner Image Upload */}
           <div>
-            <h4 className="text-sm font-medium text-gray-900 mb-4">Banner Image</h4>
+            <h4 className="text-sm font-medium text-gray-800 mb-4">Banner Image</h4>
             
             {bannerPreview ? (
               <div className="relative">
@@ -636,12 +639,12 @@ export default function ChurchModal({
                 <button
                   type="button"
                   onClick={removeBannerImage}
-                  className="absolute top-2 right-2 p-1 bg-red-600 text-white rounded-full hover:bg-red-700"
+                  className="absolute top-2 right-2 p-1 bg-red-600 text-gray-800 rounded-full hover:bg-red-700"
                 >
                   <XMarkIcon className="h-4 w-4" />
                 </button>
                 <div className="mt-2">
-                  <label className="block text-sm font-medium text-gray-700">
+                  <label className="block text-sm font-medium text-gray-800">
                     Alt Text
                   </label>
                   <input
@@ -660,7 +663,7 @@ export default function ChurchModal({
                   <button
                     type="button"
                     onClick={openMediaLibrary}
-                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-[#F25F29] hover:bg-[#F23E16] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
                   >
                     <CloudArrowUpIcon className="h-4 w-4 mr-2" />
                     Select Banner Image
@@ -686,14 +689,14 @@ export default function ChurchModal({
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-500"
+            className="px-4 py-2 text-sm font-medium text-gray-800 hover:text-gray-500"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={loading || !formData.name || !formData.conferenceId}
-            className="px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-[#F5821F] hover:bg-[#e0741c] disabled:bg-gray-300 disabled:cursor-not-allowed"
+            className="px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-[#F25F29] hover:bg-[#F23E16] disabled:bg-gray-300 disabled:cursor-not-allowed"
           >
             {loading ? 'Saving...' : (church ? 'Update' : 'Create')} Church
           </button>
@@ -703,7 +706,10 @@ export default function ChurchModal({
 
     <MediaLibraryModal
       isOpen={isMediaLibraryOpen}
-      onClose={() => setIsMediaLibraryOpen(false)}
+      onClose={() => {
+        console.log('Closing media library modal');
+        setIsMediaLibraryOpen(false);
+      }}
       onSelect={handleMediaSelect}
       title="Select Banner Image"
       allowedTypes={['banner', 'gallery']}

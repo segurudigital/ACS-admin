@@ -216,13 +216,14 @@ export default function RoleModal({
       onClose={onClose}
       title={effectiveViewMode ? 'View Role Details' : (role ? 'Edit Role' : 'Create Role')}
       maxWidth="2xl"
+      theme="orange"
     >
       <form onSubmit={handleSubmit}>
         <ModalBody className="space-y-6">
           {/* Basic Info */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700">
+              <label className="block text-sm font-medium text-gray-800">
                 Role Name *
               </label>
               <input
@@ -241,7 +242,7 @@ export default function RoleModal({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">
+              <label className="block text-sm font-medium text-gray-800">
                 Display Name *
               </label>
               <input
@@ -257,7 +258,7 @@ export default function RoleModal({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">
+            <label className="block text-sm font-medium text-gray-800">
               Level *
             </label>
             <select
@@ -273,7 +274,7 @@ export default function RoleModal({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">
+            <label className="block text-sm font-medium text-gray-800">
               Description *
             </label>
             <textarea
@@ -289,7 +290,7 @@ export default function RoleModal({
 
           {/* Permissions */}
           <div>
-            <label className="block text-sm font-medium text-gray-900 mb-3">
+            <label className="block text-sm font-medium text-gray-800 mb-3">
               Permissions *
             </label>
             {hasWildcardPermission() && (
@@ -313,7 +314,7 @@ export default function RoleModal({
                 return (
                   <div key={resource} className="border rounded-lg p-4">
                     <div className="flex items-center justify-between mb-3">
-                      <h5 className="text-sm font-medium text-gray-900 capitalize">
+                      <h5 className="text-sm font-medium text-gray-800 capitalize">
                         {resource}
                       </h5>
                       <button
@@ -323,7 +324,7 @@ export default function RoleModal({
                         className={`text-xs px-3 py-1 rounded-md font-medium ${
                           hasAllPermissions 
                             ? 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200' 
-                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
                         } disabled:opacity-50`}
                       >
                         {hasAllPermissions ? 'Deselect All' : 'Select All'}
@@ -340,7 +341,7 @@ export default function RoleModal({
                             className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded disabled:opacity-50 mt-0.5"
                           />
                           <div className="flex-1">
-                            <div className="text-sm text-gray-900">{perm.description || perm.label}</div>
+                            <div className="text-sm text-gray-800">{perm.description || perm.label}</div>
                           </div>
                         </label>
                       ))}
@@ -436,7 +437,7 @@ export default function RoleModal({
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-500"
+            className="px-4 py-2 text-sm font-medium text-gray-800 hover:text-gray-500"
           >
             Cancel
           </button>
@@ -444,7 +445,7 @@ export default function RoleModal({
             <button
               type="submit"
               disabled={loading || !formData.name || !formData.displayName || formData.permissions.length === 0}
-              className="px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-[#F5821F] hover:bg-[#e0741c] disabled:bg-gray-300 disabled:cursor-not-allowed"
+              className="px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-[#F25F29] hover:bg-[#F23E16] disabled:bg-gray-300 disabled:cursor-not-allowed"
             >
               {loading ? 'Saving...' : (role ? 'Update Role' : 'Create Role')}
             </button>

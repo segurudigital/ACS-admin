@@ -397,12 +397,12 @@ export default function Churches() {
                   : conferences.find((c) => c._id === church.conferenceId);
 
             return (
-               <div className="text-sm text-gray-900">
+               <span className="text-sm text-gray-900">
                   {conference?.name || 'Unknown Conference'}
-               </div>
+               </span>
             );
          },
-         className: 'max-w-xs',
+         className: 'px-6 py-4 whitespace-nowrap text-sm max-w-xs',
       },
       {
          key: 'location',
@@ -471,27 +471,6 @@ export default function Churches() {
                )}
             </div>
          ),
-      },
-      {
-         key: 'membership',
-         header: 'Membership',
-         accessor: (church) => (
-            <div className="text-sm text-gray-900">
-               {church.demographics?.membership?.total ? (
-                  <div>
-                     <div>{church.demographics.membership.total} members</div>
-                     {church.demographics?.averageAttendance && (
-                        <div className="text-xs text-gray-500">
-                           Avg: {church.demographics.averageAttendance}
-                        </div>
-                     )}
-                  </div>
-               ) : (
-                  <span className="text-gray-400">Not specified</span>
-               )}
-            </div>
-         ),
-         className: 'max-w-xs',
       },
       {
          key: 'status',

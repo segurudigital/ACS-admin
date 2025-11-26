@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Image from 'next/image';
 import AdminLayout from '../../components/AdminLayout';
 import { PermissionGate } from '@/components/PermissionGate';
@@ -10,6 +10,10 @@ import ServiceModal from '@/components/ServiceModal';
 import ConfirmationModal from '@/components/ConfirmationModal';
 import { useToast } from '@/contexts/ToastContext';
 import { serviceManagement, Service } from '@/lib/serviceManagement';
+
+interface ServicesResponse {
+  services: Service[];
+}
 import { 
   BuildingStorefrontIcon,
   MapPinIcon,
@@ -51,15 +55,50 @@ export default function Services() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [serviceToDelete, setServiceToDelete] = useState<Service | null>(null);
   const { success, error } = useToast();
+  const fetchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const fetchServices = useCallback(async () => {
+  const fetchServices = useCallback(async (debounce = false) => {
+    // Clear existing timeout if setting up a new debounced call
+    if (fetchTimeoutRef.current) {
+      clearTimeout(fetchTimeoutRef.current);
+      fetchTimeoutRef.current = null;
+    }
+
+    if (debounce) {
+      fetchTimeoutRef.current = setTimeout(() => fetchServices(false), 300);
+      return;
+    }
+
     try {
       setLoading(true);
-      const data = await serviceManagement.getServices();
-      setServices(data.services || []);
+      const data = await serviceManagement.getServices() as ServicesResponse;
+      // Debug: Check what we're receiving
+      console.log('Raw services data:', data);
+      console.log('Services array:', data?.services);
+      
+      // Filter out any null, undefined, or invalid services
+      const validServices = (data?.services || []).filter(service => 
+        service && 
+        typeof service === 'object' && 
+        service._id && 
+        service.name && 
+        service.type
+      );
+      
+      console.log('Valid services after filtering:', validServices);
+      setServices(validServices);
     } catch (err) {
-      error('Failed to fetch services');
-      console.error('Error:', err);
+      console.error('Error fetching services:', err);
+      const errorMessage = (err as Error)?.message || 'Failed to fetch services';
+      
+      // Only show error toast if it's a real error, not when services array is empty
+      if (err && errorMessage !== 'No services found') {
+        if (errorMessage.includes('Too many requests')) {
+          error('Server is busy. Please wait a moment and try again.');
+        } else {
+          error('Failed to fetch services');
+        }
+      }
       setServices([]);
     } finally {
       setLoading(false);
@@ -85,6 +124,12 @@ export default function Services() {
   };
 
   const handleServiceSaved = (savedService: Service, isEdit: boolean) => {
+    // Validate the saved service before adding/updating
+    if (!savedService || !savedService._id || !savedService.name || !savedService.type) {
+      error('Invalid service data received');
+      return;
+    }
+    
     if (isEdit) {
       setServices(prev => 
         prev.map(service => service._id === savedService._id ? savedService : service)
@@ -110,7 +155,7 @@ export default function Services() {
           <div className="min-w-0">
             <button
               onClick={() => window.location.href = `/services/${service._id}`}
-              className="font-medium text-indigo-600 hover:text-indigo-900 truncate text-left cursor-pointer"
+              className="font-medium text-orange-600 hover:text-orange-900 truncate text-left cursor-pointer"
             >
               {service.name}
             </button>
@@ -130,18 +175,26 @@ export default function Services() {
       ),
     },
     {
-      key: 'organization',
-      header: 'Organization',
-      accessor: (service: Service) => (
-        <div>
-          <div className="text-sm font-medium text-gray-900">
-            {service.organization.name}
+      key: 'team',
+      header: 'Team',
+      accessor: (service: Service) => {
+        // Debug the team structure
+        console.log('Team data for service:', service.name, 'teamId:', service.teamId);
+        
+        const teamName = typeof service.teamId === 'object' ? service.teamId?.name : 'Team ID: ' + service.teamId;
+        const teamCategory = typeof service.teamId === 'object' ? service.teamId?.category : '';
+        
+        return (
+          <div>
+            <div className="text-sm font-medium text-gray-900">
+              {teamName || 'No Team'}
+            </div>
+            <div className="text-xs text-gray-500 capitalize">
+              {teamCategory || ''}
+            </div>
           </div>
-          <div className="text-xs text-gray-500 capitalize">
-            {service.organization.type}
-          </div>
-        </div>
-      ),
+        );
+      },
     },
     {
       key: 'location',
@@ -228,16 +281,22 @@ export default function Services() {
     },
   ];
 
-  const filteredServices = services.filter(service =>
-    service.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    service.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    service.organization.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredServices = services.filter(service => {
+    // Skip null, undefined, or invalid service entries
+    if (!service || !service.name || !service.type) {
+      return false;
+    }
+    
+    return (
+      service.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      service.type.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  });
 
   return (
     <AdminLayout 
       title="Services" 
-      description="Manage community services across your organization"
+      description="Manage community services across your teams"
     >
       <div className="space-y-6">
         {/* Table with custom header */}
@@ -333,9 +392,11 @@ export default function Services() {
           }}
           onConfirm={() => serviceToDelete && handleDeleteService(serviceToDelete)}
           title="Delete Service"
-          message={`Are you sure you want to delete "${serviceToDelete?.name}"? This service will no longer be visible to the public.`}
-          confirmLabel="Delete"
-          confirmButtonColor="red"
+          message={`Are you sure you want to delete "${serviceToDelete?.name}"? This action cannot be undone and will permanently remove all service data.`}
+          confirmLabel="Delete Service"
+          confirmButtonColor="orange"
+          theme="orange"
+          icon={<TrashIcon className="h-6 w-6 text-red-600" />}
         />
       </div>
     </AdminLayout>

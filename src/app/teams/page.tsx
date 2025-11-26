@@ -10,7 +10,7 @@ import Button from '@/components/Button';
 import { Users, UserPlus, Trash, Pencil } from 'lucide-react';
 import { useToast } from '@/contexts/ToastContext';
 import { teamService, Team } from '@/lib/teams';
-import { TeamType } from '@/lib/teamTypes';
+import { TeamType, teamTypeService } from '@/lib/teamTypes';
 import { teamImageService } from '@/lib/teamImageService';
 import { MediaFile } from '@/lib/mediaService';
 import { usePermissions } from '@/contexts/HierarchicalPermissionContext';
@@ -32,7 +32,7 @@ export default function TeamsPage() {
   const [teamToDelete, setTeamToDelete] = useState<Team | null>(null);
   const [teamTypes, setTeamTypes] = useState<TeamType[]>([]);
   const router = useRouter();
-  const {} = usePermissions();
+  const { user } = usePermissions();
   const { isSuperAdmin } = useSuperAdmin();
   const { error: showErrorToast, success: showSuccessToast } = useToast();
 
@@ -67,10 +67,20 @@ export default function TeamsPage() {
   }, [isSuperAdmin, showErrorToast]);
 
   const loadTeamTypes = useCallback(async () => {
-    // For now, we'll skip team types loading since it requires organization context
-    // This will be handled by the CreateTeamModal using the user's context
-    setTeamTypes([]);
-  }, []);
+    if (!user?.id) {
+      setTeamTypes([]);
+      return;
+    }
+    
+    try {
+      const response = await teamTypeService.getUserTeamTypes(user.id, true, false);
+      setTeamTypes(response.data || []);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to load team types';
+      console.error('Error loading team types:', errorMessage);
+      setTeamTypes([]);
+    }
+  }, [user?.id]);
 
 
   useEffect(() => {
@@ -102,7 +112,7 @@ export default function TeamsPage() {
       // Update the team first
       await teamService.updateTeam(editingTeam._id, {
         name: teamData.name,
-        type: teamData.type as "communications" | "acs" | "general",
+        type: teamData.type,
         description: teamData.description,
         location: teamData.location,
       });
@@ -187,7 +197,7 @@ export default function TeamsPage() {
       // Create the team first
       const response = await teamService.createTeam({
         name: teamData.name,
-        type: teamData.type as "communications" | "acs" | "general",
+        type: teamData.type,
         description: teamData.description,
         location: teamData.location,
         churchId: teamData.churchId || '' // Use selected church or let backend determine
@@ -285,35 +295,46 @@ export default function TeamsPage() {
     setTeamToDelete(null);
   };
 
-
-  const filteredTeams = teams.filter(team =>
-    team.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (team.type && team.type.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
-
   const getTeamTypeData = (typeName: string | undefined) => {
     if (!typeName) {
       return {
+        name: 'No Type',
         icon: '👥',
         colorClass: 'bg-gray-100 text-gray-800',
         description: 'No type specified'
       };
     }
+    
+    // Look for team type that matches either the type or category field
     const teamType = teamTypes.find(t => t.name === typeName);
-    if (!teamType) {
+    if (teamType) {
       return {
+        name: teamType.name,
         icon: '👥',
-        colorClass: 'bg-gray-100 text-gray-800',
-        description: 'Unknown type'
+        colorClass: teamType.isActive ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800',
+        description: teamType.description || ''
       };
     }
     
+    // Fall back to the legacy type names if no team type found
     return {
-      icon: '👥', // Default icon since TeamType doesn't have icon property
-      colorClass: 'bg-gray-100 text-gray-800', // Default color since TeamType doesn't have color property
-      description: teamType.description || ''
+      name: typeName,
+      icon: '👥',
+      colorClass: 'bg-gray-100 text-gray-800',
+      description: 'Legacy type'
     };
   };
+
+  const filteredTeams = teams.filter(team => {
+    const query = searchQuery.toLowerCase();
+    const teamTypeName = team.category || team.type;
+    const typeData = getTeamTypeData(teamTypeName);
+    
+    return team.name.toLowerCase().includes(query) ||
+           (teamTypeName && teamTypeName.toLowerCase().includes(query)) ||
+           typeData.name.toLowerCase().includes(query) ||
+           (typeData.description && typeData.description.toLowerCase().includes(query));
+  });
 
   const columns: Column<Team>[] = [
     {
@@ -357,10 +378,15 @@ export default function TeamsPage() {
       key: 'type',
       header: 'Type',
       accessor: (team) => {
-        const typeData = getTeamTypeData(team.type);
+        // Use category field first, then fall back to type field
+        const teamTypeName = team.category || team.type;
+        const typeData = getTeamTypeData(teamTypeName);
         return (
-          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${typeData.colorClass}`}>
-            {team.type || 'No type'}
+          <span 
+            className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${typeData.colorClass}`}
+            title={typeData.description}
+          >
+            {typeData.name}
           </span>
         );
       }
@@ -565,7 +591,8 @@ export default function TeamsPage() {
           message={`Are you sure you want to delete "${teamToDelete?.name}"? This action cannot be undone and will remove all team data including members and associated content.`}
           confirmLabel="Delete Team"
           cancelLabel="Cancel"
-          confirmButtonColor="red"
+          confirmButtonColor="orange"
+          theme="orange"
           icon={<Trash className="h-6 w-6 text-red-600" />}
         />
       </div>

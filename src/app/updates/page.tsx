@@ -187,27 +187,6 @@ const updates: Update[] = [
     impact: "medium"
   },
   {
-    id: "10",
-    title: "Stories & Content Management",
-    description: "Comprehensive story system with rich content, media, and service integration",
-    date: "2024-11-13",
-    version: "1.7.0",
-    type: "feature",
-    details: [
-      "Built comprehensive story types (beneficiary, volunteer, donor, community, organization)",
-      "Created rich content editor with body text, summaries, and titles",
-      "Implemented media integration (featured images, galleries, video embeds)",
-      "Added impact metrics tracking and highlighted quotes system",
-      "Built publication workflow (draft → review → published → archived)",
-      "Created story categories (success_story, news, update, testimonial, case_study, annual_report)",
-      "Implemented service-story relationship linking",
-      "Added SEO optimization with meta titles, descriptions, and keywords",
-      "Created author attribution and call-to-action configuration",
-      "Built view and share count tracking with featured story management"
-    ],
-    impact: "medium"
-  },
-  {
     id: "11",
     title: "Email Service Integration",
     description: "Automated email system for notifications and verification",

@@ -34,7 +34,7 @@ export default function ImageUploadModal({
       return;
     }
 
-    // Validate file size (2MB limit for banner images)
+    // Validate file size (2MB limit for primary images)
     const maxSize = 2 * 1024 * 1024; // 2MB
     if (file.size > maxSize) {
       showError('Image size must be less than 2MB');
@@ -86,8 +86,8 @@ export default function ImageUploadModal({
 
     setLoading(true);
     try {
-      await serviceManagement.updateServiceBanner(serviceId, selectedFile);
-      showSuccess('Banner image uploaded successfully');
+      await serviceManagement.updateServicePrimaryImage(serviceId, selectedFile);
+      showSuccess('Primary image uploaded successfully');
       onSuccess();
       handleClose();
     } catch (error: unknown) {
@@ -119,12 +119,13 @@ export default function ImageUploadModal({
     <Modal
       isOpen={isOpen}
       onClose={handleClose}
-      title="Upload Banner Image"
+      title="Upload Primary Image"
       maxWidth="md"
+      theme="orange"
     >
       <ModalBody className="space-y-6">
         <div className="text-sm text-gray-600">
-          Upload a new banner image for this service. The image will be displayed at the top of the service details page.
+          Upload a new primary image for this service. The image will be displayed at the top of the service details page.
         </div>
 
         {/* File Upload Area */}
@@ -165,7 +166,7 @@ export default function ImageUploadModal({
                     e.stopPropagation();
                     removeSelectedFile();
                   }}
-                  className="absolute top-2 right-2 p-1 bg-red-600 text-white rounded-full hover:bg-red-700"
+                  className="absolute top-2 right-2 p-1 bg-red-600 text-gray-800 rounded-full hover:bg-red-700"
                 >
                   <XMarkIcon className="w-4 h-4" />
                 </button>
@@ -179,7 +180,7 @@ export default function ImageUploadModal({
             <div className="space-y-4">
               <CloudArrowUpIcon className="mx-auto h-12 w-12 text-gray-400" />
               <div>
-                <p className="text-lg font-medium text-gray-900">
+                <p className="text-lg font-medium text-gray-800">
                   Drop your image here, or click to select
                 </p>
                 <p className="text-sm text-gray-500">
@@ -206,7 +207,7 @@ export default function ImageUploadModal({
         <button
           type="button"
           onClick={handleClose}
-          className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+          className="px-4 py-2 text-sm font-medium text-gray-800 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
           disabled={loading}
         >
           Cancel
@@ -215,7 +216,7 @@ export default function ImageUploadModal({
           type="button"
           onClick={handleUpload}
           disabled={!selectedFile || loading}
-          className="ml-3 px-4 py-2 text-sm font-medium text-white bg-[#F5821F] border border-transparent rounded-md shadow-sm hover:bg-[#e0741c] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#F5821F] disabled:opacity-50 disabled:cursor-not-allowed"
+          className="ml-3 px-4 py-2 text-sm font-medium text-white bg-[#F25F29] border border-transparent rounded-md shadow-sm hover:bg-[#F23E16] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#F5821F] disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {loading ? 'Uploading...' : 'Upload Image'}
         </button>

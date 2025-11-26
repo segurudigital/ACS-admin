@@ -57,7 +57,7 @@ The system uses two types of permission checks:
 
 Team leaders automatically get enhanced permissions:
 - `teams.read`, `teams.update`, `teams.manage_members`
-- `services.*`, `stories.*`, `users.read`
+- `services.*`, `users.read`
 
 ### Usage Example
 ```tsx

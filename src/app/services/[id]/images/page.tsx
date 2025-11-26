@@ -4,18 +4,97 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import AdminLayout from '@/components/AdminLayout';
 import Button from '@/components/Button';
-import BannerImageSection from '@/components/BannerImageSection';
 import GallerySection from '@/components/GallerySection';
 import { useToast } from '@/contexts/ToastContext';
 import { serviceManagement } from '@/lib/serviceManagement';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 
-interface ServiceImagesData {
-  banner?: {
-    url: string;
-    key: string;
-    alt: string;
+interface ServiceDetails {
+  service: {
+    _id: string;
+    name: string;
+    type: string;
+    teamId?: {
+      _id: string;
+      name: string;
+      type: string;
+    };
+    descriptionShort: string;
+    descriptionLong: string;
+    status: 'active' | 'paused' | 'archived';
+    primaryImage?: {
+      url: string;
+      alt: string;
+    };
+    bannerImage?: {
+      url: string;
+      alt: string;
+    };
+    gallery?: Array<{
+      url: string;
+      alt: string;
+      caption: string;
+    }>;
+    tags?: string[];
+    availability?: 'always_open' | 'set_times' | 'set_events' | null;
+    scheduling?: {
+      weeklySchedule?: {
+        timezone?: string;
+        schedule?: Array<{
+          dayOfWeek: number; // 0-6 (Sunday = 0)
+          timeSlots: Array<{
+            startTime: string; // HH:mm format
+            endTime: string; // HH:mm format
+          }>;
+          isEnabled: boolean;
+        }>;
+      };
+      events?: Array<{
+        name: string;
+        description?: string;
+        startDateTime: string; // ISO Date string
+        endDateTime: string; // ISO Date string
+        timezone?: string;
+        isRecurring?: boolean;
+        recurrencePattern?: {
+          type?: 'daily' | 'weekly' | 'monthly';
+          interval?: number;
+          endDate?: string;
+          daysOfWeek?: number[];
+        };
+      }>;
+      lastUpdated?: string;
+    };
+    locations: Array<{
+      label: string;
+      address: {
+        street?: string;
+        suburb?: string;
+        state?: string;
+        postcode?: string;
+      };
+      coordinates?: {
+        lat: number;
+        lng: number;
+      };
+    }>;
+    contactInfo: {
+      email?: string;
+      phone?: string;
+      website?: string;
+    };
+    createdAt: string;
+    updatedAt: string;
   };
+  events: Array<{ _id: string; name: string; start: string; end?: string; description?: string; locationText?: string }>;
+  permissions: {
+    canUpdate: boolean;
+    canDelete: boolean;
+    canManage: boolean;
+  };
+}
+
+interface ServiceImagesData {
   gallery: Array<{
     _id: string;
     url: string;
@@ -45,11 +124,30 @@ export default function ServiceImagesPage() {
       setLoading(true);
       
       // Fetch service details to get the name and permissions
-      const serviceDetails = await serviceManagement.getServiceDetails(serviceId);
-      setServiceName(serviceDetails.service.name);
+      const serviceDetails = await serviceManagement.getServiceDetails(serviceId) as ServiceDetails | { data: ServiceDetails['service']; events?: ServiceDetails['events']; permissions?: ServiceDetails['permissions'] } | ServiceDetails['service'];
+      
+      // Handle different response structures
+      let serviceName: string;
+      let permissions: { canUpdate: boolean };
+      
+      if ('service' in serviceDetails) {
+        // Response structure: { service: {...}, events: [...], permissions: {...} }
+        serviceName = serviceDetails.service.name;
+        permissions = serviceDetails.permissions || { canUpdate: false };
+      } else if ('data' in serviceDetails) {
+        // Response structure: { data: {...} }
+        serviceName = serviceDetails.data.name;
+        permissions = serviceDetails.permissions || { canUpdate: false };
+      } else {
+        // Response structure: { _id: ..., name: ..., ... } (direct service object)
+        serviceName = serviceDetails.name;
+        permissions = { canUpdate: false };
+      }
+      
+      setServiceName(serviceName);
       
       // Check if user has permission to manage images
-      if (!serviceDetails.permissions.canUpdate) {
+      if (!permissions.canUpdate) {
         showErrorToast('You do not have permission to manage images for this service');
         router.push(`/services/${serviceId}`);
         return;
@@ -58,9 +156,8 @@ export default function ServiceImagesPage() {
       setHasPermission(true);
       
       // Fetch images
-      const imagesResponse = await serviceManagement.getServiceImages(serviceId);
+      const imagesResponse = await serviceManagement.getServiceImages(serviceId) as ServiceImagesData;
       setImages({
-        banner: imagesResponse.banner,
         gallery: imagesResponse.gallery || []
       });
     } catch (error) {
@@ -75,21 +172,6 @@ export default function ServiceImagesPage() {
     fetchServiceImages();
   }, [fetchServiceImages]);
 
-  const handleBannerUpdate = async (file: File | null) => {
-    if (!file) {
-      // Handle banner removal if needed
-      return;
-    }
-
-    try {
-      await serviceManagement.updateServiceBanner(serviceId, file);
-      showSuccessToast('Banner image updated successfully');
-      fetchServiceImages();
-    } catch (error) {
-      console.error('Failed to update banner:', error);
-      showErrorToast('Failed to update banner image');
-    }
-  };
 
   const handleGalleryUpdate = async (files: File[]) => {
     try {
@@ -152,8 +234,8 @@ export default function ServiceImagesPage() {
 
   return (
     <AdminLayout
-      title={`Images - ${serviceName}`}
-      description="Manage banner and gallery images for this service"
+      title={`Gallery - ${serviceName}`}
+      description="Manage gallery images for this service"
     >
       <div className="space-y-6">
         {/* Back Button */}
@@ -166,12 +248,6 @@ export default function ServiceImagesPage() {
             Back to Service Details
           </Button>
         </div>
-
-        {/* Banner Section */}
-        <BannerImageSection
-          currentBanner={images.banner}
-          onBannerUpdate={handleBannerUpdate}
-        />
 
         {/* Gallery Section */}
         <GallerySection

@@ -278,13 +278,14 @@ export default function ConferenceModal({
       onClose={onClose}
       title={conference ? 'Edit Conference' : 'Create Conference'}
       maxWidth="2xl"
+      theme="orange"
     >
       <form onSubmit={handleSubmit}>
         <ModalBody className="space-y-6">
 
           {/* Basic Info */}
           <div>
-            <label className="block text-sm font-medium text-gray-700">
+            <label className="block text-sm font-medium text-gray-800">
               Conference Name *
             </label>
             <input
@@ -299,7 +300,7 @@ export default function ConferenceModal({
 
           {/* Parent Union */}
           <div>
-            <label className="block text-sm font-medium text-gray-700">
+            <label className="block text-sm font-medium text-gray-800">
               Parent Union *
             </label>
             <select
@@ -319,9 +320,9 @@ export default function ConferenceModal({
 
           {/* Territory */}
           <div>
-            <h4 className="text-sm font-medium text-gray-900 mb-4">Territory</h4>
+            <h4 className="text-sm font-medium text-gray-800 mb-4">Territory</h4>
             <div>
-              <label className="block text-sm font-medium text-gray-700">
+              <label className="block text-sm font-medium text-gray-800">
                 Territory Description
               </label>
               <textarea
@@ -339,10 +340,10 @@ export default function ConferenceModal({
 
           {/* Headquarters */}
           <div>
-            <h4 className="text-sm font-medium text-gray-900 mb-4">Headquarters</h4>
+            <h4 className="text-sm font-medium text-gray-800 mb-4">Headquarters</h4>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-sm font-medium text-gray-800">
                   Address
                 </label>
                 <input
@@ -358,7 +359,7 @@ export default function ConferenceModal({
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-sm font-medium text-gray-800">
                   City
                 </label>
                 <input
@@ -374,7 +375,7 @@ export default function ConferenceModal({
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-sm font-medium text-gray-800">
                   State/Province
                 </label>
                 <input
@@ -390,7 +391,7 @@ export default function ConferenceModal({
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-sm font-medium text-gray-800">
                   Country
                 </label>
                 <input
@@ -406,7 +407,7 @@ export default function ConferenceModal({
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-sm font-medium text-gray-800">
                   Postal Code
                 </label>
                 <input
@@ -426,10 +427,10 @@ export default function ConferenceModal({
 
           {/* Contact Information */}
           <div>
-            <h4 className="text-sm font-medium text-gray-900 mb-4">Contact Information</h4>
+            <h4 className="text-sm font-medium text-gray-800 mb-4">Contact Information</h4>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-sm font-medium text-gray-800">
                   Email
                 </label>
                 <input
@@ -445,7 +446,7 @@ export default function ConferenceModal({
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-sm font-medium text-gray-800">
                   Phone
                 </label>
                 <input
@@ -461,7 +462,7 @@ export default function ConferenceModal({
               </div>
 
               <div className="col-span-2">
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-sm font-medium text-gray-800">
                   Website
                 </label>
                 <input
@@ -480,7 +481,7 @@ export default function ConferenceModal({
 
           {/* Banner Image Upload */}
           <div>
-            <h4 className="text-sm font-medium text-gray-900 mb-4">Banner Image</h4>
+            <h4 className="text-sm font-medium text-gray-800 mb-4">Banner Image</h4>
             
             {bannerPreview ? (
               <div className="relative">
@@ -496,12 +497,12 @@ export default function ConferenceModal({
                 <button
                   type="button"
                   onClick={removeBannerImage}
-                  className="absolute top-2 right-2 p-1 bg-red-600 text-white rounded-full hover:bg-red-700"
+                  className="absolute top-2 right-2 p-1 bg-red-600 text-gray-800 rounded-full hover:bg-red-700"
                 >
                   <XMarkIcon className="h-4 w-4" />
                 </button>
                 <div className="mt-2">
-                  <label className="block text-sm font-medium text-gray-700">
+                  <label className="block text-sm font-medium text-gray-800">
                     Alt Text
                   </label>
                   <input
@@ -520,7 +521,7 @@ export default function ConferenceModal({
                   <button
                     type="button"
                     onClick={openMediaLibrary}
-                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-[#F25F29] hover:bg-[#F23E16] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
                   >
                     <CloudArrowUpIcon className="h-4 w-4 mr-2" />
                     Select Banner Image
@@ -547,14 +548,14 @@ export default function ConferenceModal({
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-500"
+            className="px-4 py-2 text-sm font-medium text-gray-800 hover:text-gray-500"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={loading || !formData.name || !formData.unionId}
-            className="px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-[#F5821F] hover:bg-[#e0741c] disabled:bg-gray-300 disabled:cursor-not-allowed"
+            className="px-4 py-2 border border-transparent text-sm font-medium rounded-md text-gray-800 bg-[#F25F29] hover:bg-[#F23E16] disabled:bg-gray-300 disabled:cursor-not-allowed"
           >
             {loading ? 'Saving...' : (conference ? 'Update' : 'Create')} Conference
           </button>

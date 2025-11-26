@@ -4,8 +4,8 @@ export interface Team {
   _id: string;
   name: string;
   churchId?: string | { _id: string; name: string; };
-  type?: 'acs' | 'communications' | 'general'; // Legacy field
-  category?: 'acs' | 'communications' | 'general'; // New field
+  type?: string; // Legacy field, team type name
+  category?: string; // New field, team type name
   leaderId?: string | { _id: string; name: string; };
   description?: string;
   location?: string;
@@ -181,7 +181,7 @@ class TeamService {
   async createTeam(teamData: {
     name: string;
     churchId: string;
-    type?: 'acs' | 'communications' | 'general';
+    type?: string;
     leaderId?: string;
     description?: string;
     location?: string;

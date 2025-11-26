@@ -6,13 +6,9 @@ import Image from 'next/image';
 import AdminLayout from '@/components/AdminLayout';
 import Button from '@/components/Button';
 import { StatusBadge } from '@/components/DataTable';
-import ImageUploadModal from '@/components/ImageUploadModal';
-import VolunteersModal from '@/components/VolunteersModal';
-import StoriesModal from '@/components/StoriesModal';
 import { useToast } from '@/contexts/ToastContext';
 import { serviceManagement } from '@/lib/serviceManagement';
 import {
-   PencilIcon,
    MapPinIcon,
    EnvelopeIcon,
    PhoneIcon,
@@ -25,7 +21,7 @@ interface ServiceDetails {
       _id: string;
       name: string;
       type: string;
-      organization: {
+      teamId?: {
          _id: string;
          name: string;
          type: string;
@@ -37,12 +33,45 @@ interface ServiceDetails {
          url: string;
          alt: string;
       };
+      bannerImage?: {
+         url: string;
+         alt: string;
+      };
       gallery?: Array<{
          url: string;
          alt: string;
          caption: string;
       }>;
       tags?: string[];
+      availability?: 'always_open' | 'set_times' | 'set_events' | null;
+      scheduling?: {
+         weeklySchedule?: {
+            timezone?: string;
+            schedule?: Array<{
+               dayOfWeek: number; // 0-6 (Sunday = 0)
+               timeSlots: Array<{
+                  startTime: string; // HH:mm format
+                  endTime: string; // HH:mm format
+               }>;
+               isEnabled: boolean;
+            }>;
+         };
+         events?: Array<{
+            name: string;
+            description?: string;
+            startDateTime: string; // ISO Date string
+            endDateTime: string; // ISO Date string
+            timezone?: string;
+            isRecurring?: boolean;
+            recurrencePattern?: {
+               type?: 'daily' | 'weekly' | 'monthly';
+               interval?: number;
+               endDate?: string;
+               daysOfWeek?: number[];
+            };
+         }>;
+         lastUpdated?: string;
+      };
       locations: Array<{
          label: string;
          address: {
@@ -65,35 +94,35 @@ interface ServiceDetails {
       updatedAt: string;
    };
    events: Array<{ _id: string; name: string; start: string; end?: string; description?: string; locationText?: string }>;
-   roles: Array<{ _id: string; title: string; description: string; category?: string; status?: string; numberOfPositions?: number; positionsFilled?: number; timeCommitment?: { type?: string; hoursPerWeek?: { minimum?: number; maximum?: number } }; location?: { type?: string }; requirements?: { minimumAge?: number }; applicationProcess?: { contactEmail?: string } }>; // Full VolunteerRole objects with all fields
-   stories: Array<{ _id: string; title: string; content: string }>;
    permissions: {
       canUpdate: boolean;
       canDelete: boolean;
       canManage: boolean;
-      canCreateStories: boolean;
    };
 }
 
 function ServiceBannerImage({ service }: { service: ServiceDetails['service'] }) {
   const [imageError, setImageError] = useState(false);
 
-  if (!service.primaryImage?.url || imageError) {
+  // Check for image in multiple possible field names (prioritize ones with valid URLs)
+  const imageData = (service.primaryImage?.url ? service.primaryImage : null) ||
+                   (service.bannerImage?.url ? service.bannerImage : null) ||
+                   null;
+
+  if (!imageData?.url || imageError) {
     return <div className="absolute inset-0 bg-gradient-to-br from-[#F5821F] to-[#e0741c]"></div>;
   }
 
   return (
     <Image
-      src={service.primaryImage.url}
-      alt={service.primaryImage.alt || service.name}
+      src={imageData.url}
+      alt={imageData.alt || service.name}
       fill
       className="object-cover opacity-50"
       priority
       onError={() => {
-        console.error('Banner image failed to load:', service.primaryImage?.url);
         setImageError(true);
       }}
-      onLoad={() => console.log('Banner image loaded successfully')}
     />
   );
 }
@@ -105,16 +134,35 @@ export default function ServiceDetailPage() {
 
    const [serviceData, setServiceData] = useState<ServiceDetails | null>(null);
    const [loading, setLoading] = useState(true);
-   const [showImageUploadModal, setShowImageUploadModal] = useState(false);
-   const [showVolunteersModal, setShowVolunteersModal] = useState(false);
-   const [showStoriesModal, setShowStoriesModal] = useState(false);
    const { error: showErrorToast } = useToast();
 
    const fetchServiceDetails = useCallback(async () => {
       try {
          setLoading(true);
-         const data = await serviceManagement.getServiceDetails(serviceId);
-         setServiceData(data);
+         const data = await serviceManagement.getServiceDetails(serviceId) as ServiceDetails | { data: ServiceDetails['service']; events?: ServiceDetails['events']; permissions?: ServiceDetails['permissions'] } | ServiceDetails['service'];
+         
+         // Handle different response structures
+         let serviceData: ServiceDetails;
+         if ('service' in data) {
+            // Response structure: { service: {...}, events: [...], ... }
+            serviceData = data as ServiceDetails;
+         } else if ('data' in data) {
+            // Response structure: { data: {...} }
+            serviceData = {
+               service: data.data,
+               events: data.events || [],
+               permissions: data.permissions || { canUpdate: false, canDelete: false, canManage: false }
+            };
+         } else {
+            // Response structure: { _id: ..., name: ..., ... } (direct service object)
+            serviceData = {
+               service: data as ServiceDetails['service'],
+               events: [],
+               permissions: { canUpdate: false, canDelete: false, canManage: false }
+            };
+         }
+         
+         setServiceData(serviceData);
       } catch (error) {
          console.error('Failed to fetch service details:', error);
          showErrorToast('Failed to load service details');
@@ -128,10 +176,6 @@ export default function ServiceDetailPage() {
       fetchServiceDetails();
    }, [fetchServiceDetails]);
 
-   const handleImageUploaded = () => {
-      setShowImageUploadModal(false);
-      fetchServiceDetails();
-   };
 
 
    if (loading) {
@@ -171,12 +215,12 @@ export default function ServiceDetailPage() {
       );
    }
 
-   const { service, events, roles, stories, permissions } = serviceData;
+   const { service, events, permissions } = serviceData;
 
    return (
       <AdminLayout
          title={service.name}
-         description={`${service.organization.name} • ${service.type.replace(
+         description={`${service.teamId?.name || 'Team'} • ${service.type.replace(
             /_/g,
             ' '
          )}`}
@@ -190,20 +234,6 @@ export default function ServiceDetailPage() {
             {/* User Profile Overlay */}
             <div className="absolute top-8 right-4 z-20">
                <div className="flex items-center space-x-4">
-                  {/* Action Buttons */}
-                  <div className="flex space-x-2">
-                     {permissions.canUpdate && (
-                        <Button
-                           variant="outline"
-                           size="sm"
-                           leftIcon={PencilIcon}
-                           onClick={() => setShowImageUploadModal(true)}
-                           className="!text-white !border-white hover:!bg-white hover:!text-gray-900 shadow-lg backdrop-blur-sm"
-                        >
-                           Upload Image
-                        </Button>
-                     )}
-                  </div>
 
                   {/* User Profile */}
                   <div className="flex items-center space-x-3">
@@ -258,7 +288,7 @@ export default function ServiceDetailPage() {
                            {service.descriptionShort}
                         </p>
                         <p className="text-sm text-gray-300 mt-2">
-                           {service.organization.name}
+                           {service.teamId?.name || 'Team'}
                         </p>
                      </div>
                   </div>
@@ -279,20 +309,33 @@ export default function ServiceDetailPage() {
                <div className="max-w-6xl mx-auto">
                   {/* Description Section */}
                   <div className="bg-white rounded-lg shadow-sm p-8 mb-8">
-                     <p className="text-lg text-gray-600 text-center max-w-3xl mx-auto">
-                        {service.descriptionLong || service.descriptionShort}
-                     </p>
-                  </div>
-
-                  {/* About This Service Section */}
-                  <div className="bg-white rounded-lg shadow-sm p-8 mb-8">
                      <h2 className="text-2xl font-bold text-gray-900 mb-6">
                         About This Service
                      </h2>
-                     <div className="prose max-w-none text-gray-600">
-                        <p>{service.descriptionLong}</p>
-                        {service.tags && service.tags.length > 0 && (
-                           <div className="mt-6 flex flex-wrap gap-2">
+                     
+                     {/* Short Description */}
+                     <div className="mb-6">
+                        <h3 className="font-semibold text-gray-900 mb-2">Summary</h3>
+                        <p className="text-lg text-gray-600">
+                           {service.descriptionShort}
+                        </p>
+                     </div>
+
+                     {/* Detailed Description */}
+                     {service.descriptionLong && service.descriptionLong !== service.descriptionShort && (
+                        <div className="mb-6">
+                           <h3 className="font-semibold text-gray-900 mb-2">Detailed Description</h3>
+                           <div className="prose max-w-none text-gray-600">
+                              <p>{service.descriptionLong}</p>
+                           </div>
+                        </div>
+                     )}
+
+                     {/* Tags */}
+                     {service.tags && service.tags.length > 0 && (
+                        <div>
+                           <h3 className="font-semibold text-gray-900 mb-3">Tags</h3>
+                           <div className="flex flex-wrap gap-2">
                               {service.tags.map((tag, index) => (
                                  <span
                                     key={index}
@@ -302,8 +345,8 @@ export default function ServiceDetailPage() {
                                  </span>
                               ))}
                            </div>
-                        )}
-                     </div>
+                        </div>
+                     )}
                   </div>
 
                   {/* Service Details Section */}
@@ -311,30 +354,65 @@ export default function ServiceDetailPage() {
                      <h2 className="text-2xl font-bold text-gray-900 mb-6">
                         Service Details
                      </h2>
-                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                        {/* Basic Information */}
+                        <div>
+                           <h3 className="font-semibold text-gray-900 mb-4">
+                              Basic Information
+                           </h3>
+                           <div className="space-y-3">
+                              <div>
+                                 <p className="text-sm font-medium text-gray-500">Service Type</p>
+                                 <p className="text-gray-900 capitalize">
+                                    {service.type.replace(/_/g, ' ')}
+                                 </p>
+                              </div>
+                              <div>
+                                 <p className="text-sm font-medium text-gray-500">Team</p>
+                                 <p className="text-gray-900">
+                                    {service.teamId?.name || 'N/A'}
+                                    {service.teamId?.type && (
+                                       <span className="text-gray-500 ml-1">
+                                          ({service.teamId.type})
+                                       </span>
+                                    )}
+                                 </p>
+                              </div>
+                              <div>
+                                 <p className="text-sm font-medium text-gray-500">Status</p>
+                                 <p className="text-gray-900 capitalize">
+                                    {service.status}
+                                 </p>
+                              </div>
+                           </div>
+                        </div>
+
                         {/* Location Information */}
                         {service.locations && service.locations.length > 0 && (
                            <div>
                               <h3 className="font-semibold text-gray-900 mb-4 flex items-center">
                                  <MapPinIcon className="h-5 w-5 text-gray-400 mr-2" />
-                                 Locations
+                                 Location
                               </h3>
                               <div className="space-y-3">
                                  {service.locations.map((location, index) => (
                                     <div key={index} className="text-gray-600">
-                                       <p className="font-medium text-gray-900">
+                                       <p className="font-medium text-gray-900 mb-1">
                                           {location.label}
                                        </p>
                                        {location.address && (
-                                          <p className="text-sm mt-1">
-                                             {location.address.street &&
-                                                `${location.address.street}, `}
-                                             {location.address.suburb &&
-                                                `${location.address.suburb}, `}
-                                             {location.address.state &&
-                                                `${location.address.state} `}
-                                             {location.address.postcode}
-                                          </p>
+                                          <div className="text-sm space-y-1">
+                                             {location.address.street && (
+                                                <p>{location.address.street}</p>
+                                             )}
+                                             {(location.address.suburb || location.address.state || location.address.postcode) && (
+                                                <p>
+                                                   {location.address.suburb && `${location.address.suburb}, `}
+                                                   {location.address.state && `${location.address.state} `}
+                                                   {location.address.postcode}
+                                                </p>
+                                             )}
+                                          </div>
                                        )}
                                     </div>
                                  ))}
@@ -343,52 +421,162 @@ export default function ServiceDetailPage() {
                         )}
 
                         {/* Contact Information */}
-                        {service.contactInfo && (
+                        <div>
+                           <h3 className="font-semibold text-gray-900 mb-4">
+                              Contact Information
+                           </h3>
+                           <div className="space-y-3">
+                              {service.contactInfo?.email ? (
+                                 <div className="flex items-center text-gray-600">
+                                    <EnvelopeIcon className="h-5 w-5 text-gray-400 mr-3 flex-shrink-0" />
+                                    <a
+                                       href={`mailto:${service.contactInfo.email}`}
+                                       className="hover:text-[#F5821F] transition-colors break-all"
+                                    >
+                                       {service.contactInfo.email}
+                                    </a>
+                                 </div>
+                              ) : (
+                                 <p className="text-gray-500 text-sm">No email provided</p>
+                              )}
+                              
+                              {service.contactInfo?.phone ? (
+                                 <div className="flex items-center text-gray-600">
+                                    <PhoneIcon className="h-5 w-5 text-gray-400 mr-3 flex-shrink-0" />
+                                    <a
+                                       href={`tel:${service.contactInfo.phone}`}
+                                       className="hover:text-[#F5821F] transition-colors"
+                                    >
+                                       {service.contactInfo.phone}
+                                    </a>
+                                 </div>
+                              ) : (
+                                 <p className="text-gray-500 text-sm">No phone provided</p>
+                              )}
+                              
+                              {service.contactInfo?.website ? (
+                                 <div className="flex items-center text-gray-600">
+                                    <GlobeAltIcon className="h-5 w-5 text-gray-400 mr-3 flex-shrink-0" />
+                                    <a
+                                       href={service.contactInfo.website}
+                                       target="_blank"
+                                       rel="noopener noreferrer"
+                                       className="hover:text-[#F5821F] transition-colors break-all"
+                                    >
+                                       {service.contactInfo.website}
+                                    </a>
+                                 </div>
+                              ) : (
+                                 <p className="text-gray-500 text-sm">No website provided</p>
+                              )}
+                           </div>
+                        </div>
+                     </div>
+                  </div>
+
+                  {/* Availability & Scheduling Section */}
+                  {(service.availability || service.scheduling) && (
+                     <div className="bg-white rounded-lg shadow-sm p-8 mb-8">
+                        <h2 className="text-2xl font-bold text-gray-900 mb-6">
+                           Availability & Scheduling
+                        </h2>
+                        
+                        {/* Service Availability */}
+                        {service.availability && (
+                           <div className="mb-6">
+                              <h3 className="font-semibold text-gray-900 mb-3">Service Availability</h3>
+                              <p className="text-gray-600 capitalize">
+                                 {service.availability === 'always_open' && 'Always Open'}
+                                 {service.availability === 'set_times' && 'Set Times'}
+                                 {service.availability === 'set_events' && 'Set Events'}
+                              </p>
+                              <p className="text-sm text-gray-500 mt-1">
+                                 {service.availability === 'always_open' && 'This service is available 24/7'}
+                                 {service.availability === 'set_times' && 'This service operates on specific times'}
+                                 {service.availability === 'set_events' && 'This service operates through scheduled events'}
+                              </p>
+                           </div>
+                        )}
+
+                        {/* Weekly Schedule */}
+                        {service.scheduling?.weeklySchedule?.schedule && service.availability === 'set_times' && (
+                           <div className="mb-6">
+                              <h3 className="font-semibold text-gray-900 mb-3">Weekly Schedule</h3>
+                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                 {(() => {
+                                    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+                                    const schedule = service.scheduling?.weeklySchedule?.schedule || [];
+                                    
+                                    return dayNames.map((dayName, dayIndex) => {
+                                       const daySchedule = schedule.find((s) => s.dayOfWeek === dayIndex);
+                                       
+                                       return (
+                                          <div key={dayName} className="border border-gray-200 rounded-lg p-4">
+                                             <h4 className="font-medium text-gray-900 mb-2">{dayName}</h4>
+                                             {daySchedule?.isEnabled ? (
+                                                <div className="space-y-1">
+                                                   {daySchedule.timeSlots?.map((slot, index: number) => (
+                                                      <p key={index} className="text-sm text-gray-600">
+                                                         {slot.startTime} - {slot.endTime}
+                                                      </p>
+                                                   ))}
+                                                   {(!daySchedule.timeSlots || daySchedule.timeSlots.length === 0) && (
+                                                      <p className="text-sm text-gray-500">No time slots set</p>
+                                                   )}
+                                                </div>
+                                             ) : (
+                                                <p className="text-sm text-gray-500">Closed</p>
+                                             )}
+                                          </div>
+                                       );
+                                    });
+                                 })()}
+                              </div>
+                              {service.scheduling?.weeklySchedule?.timezone && (
+                                 <p className="text-sm text-gray-500 mt-3">
+                                    Timezone: {service.scheduling?.weeklySchedule?.timezone}
+                                 </p>
+                              )}
+                           </div>
+                        )}
+
+                        {/* Scheduled Events */}
+                        {service.scheduling?.events && service.scheduling.events.length > 0 && service.availability === 'set_events' && (
                            <div>
-                              <h3 className="font-semibold text-gray-900 mb-4">
-                                 Contact Information
-                              </h3>
+                              <h3 className="font-semibold text-gray-900 mb-3">Scheduled Events</h3>
                               <div className="space-y-3">
-                                 {service.contactInfo.email && (
-                                    <div className="flex items-center text-gray-600">
-                                       <EnvelopeIcon className="h-5 w-5 text-gray-400 mr-3" />
-                                       <a
-                                          href={`mailto:${service.contactInfo.email}`}
-                                          className="hover:text-[#F5821F] transition-colors"
-                                       >
-                                          {service.contactInfo.email}
-                                       </a>
+                                 {service.scheduling.events.slice(0, 5).map((event, index: number) => (
+                                    <div key={index} className="border border-gray-200 rounded-lg p-4">
+                                       <h4 className="font-medium text-gray-900">{event.name}</h4>
+                                       {event.description && (
+                                          <p className="text-sm text-gray-600 mt-1">{event.description}</p>
+                                       )}
+                                       <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
+                                          {event.startDateTime && (
+                                             <span>📅 {new Date(event.startDateTime).toLocaleDateString()}</span>
+                                          )}
+                                          {event.startDateTime && event.endDateTime && (
+                                             <span>🕒 {new Date(event.startDateTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} - {new Date(event.endDateTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                                          )}
+                                          {event.isRecurring && (
+                                             <span>🔄 Recurring ({event.recurrencePattern?.type})</span>
+                                          )}
+                                       </div>
+                                       {event.timezone && event.timezone !== 'Australia/Sydney' && (
+                                          <p className="text-xs text-gray-400 mt-1">Timezone: {event.timezone}</p>
+                                       )}
                                     </div>
-                                 )}
-                                 {service.contactInfo.phone && (
-                                    <div className="flex items-center text-gray-600">
-                                       <PhoneIcon className="h-5 w-5 text-gray-400 mr-3" />
-                                       <a
-                                          href={`tel:${service.contactInfo.phone}`}
-                                          className="hover:text-[#F5821F] transition-colors"
-                                       >
-                                          {service.contactInfo.phone}
-                                       </a>
-                                    </div>
-                                 )}
-                                 {service.contactInfo.website && (
-                                    <div className="flex items-center text-gray-600">
-                                       <GlobeAltIcon className="h-5 w-5 text-gray-400 mr-3" />
-                                       <a
-                                          href={service.contactInfo.website}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className="hover:text-[#F5821F] transition-colors"
-                                       >
-                                          {service.contactInfo.website}
-                                       </a>
-                                    </div>
+                                 ))}
+                                 {service.scheduling.events.length > 5 && (
+                                    <p className="text-sm text-gray-500 text-center py-2">
+                                       And {service.scheduling.events.length - 5} more events...
+                                    </p>
                                  )}
                               </div>
                            </div>
                         )}
                      </div>
-                  </div>
+                  )}
 
                   {/* Events Section */}
                   <div className="bg-white rounded-lg shadow-sm p-8 mb-8">
@@ -460,152 +648,13 @@ export default function ServiceDetailPage() {
                      )}
                   </div>
 
-                  {/* Volunteer Roles Section */}
-                  <div className="bg-white rounded-lg shadow-sm p-8 mb-8">
-                     <div className="mb-6">
-                        <h2 className="text-2xl font-bold text-gray-900">
-                           Volunteer Opportunities
-                        </h2>
-                     </div>
-                     {roles.length > 0 ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                           {roles.slice(0, 10).map((role) => (
-                              <div key={role._id} className="p-6">
-                                 <div className="mb-4">
-                                    <div className="flex items-start justify-between mb-2">
-                                       <h3 className="text-lg font-medium text-gray-900">
-                                          {role.title}
-                                       </h3>
-                                       {role.status && (
-                                          <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                                             role.status === 'open' ? 'bg-green-100 text-green-800' : 
-                                             role.status === 'filled' ? 'bg-purple-100 text-purple-800' :
-                                             role.status === 'paused' ? 'bg-yellow-100 text-yellow-800' :
-                                             'bg-gray-100 text-gray-800'
-                                          }`}>
-                                             {role.status.charAt(0).toUpperCase() + role.status.slice(1)}
-                                          </span>
-                                       )}
-                                    </div>
-                                    <p className="text-gray-600 mt-1 text-sm">
-                                       {role.description}
-                                    </p>
-                                    {role.category && (
-                                       <p className="text-sm text-orange-600 font-medium mt-2">
-                                          {role.category}
-                                       </p>
-                                    )}
-                                 </div>
-                                 
-                                 <div className="space-y-2">
-                                    {role.numberOfPositions && (
-                                       <div className="flex items-center text-sm text-gray-600">
-                                          <span className="font-medium w-20">Positions:</span>
-                                          <span>
-                                             {role.positionsFilled || 0} / {role.numberOfPositions} filled
-                                             {((role.numberOfPositions - (role.positionsFilled || 0)) > 0) && (
-                                                <span className="text-green-600 ml-1">
-                                                   ({role.numberOfPositions - (role.positionsFilled || 0)} available)
-                                                </span>
-                                             )}
-                                          </span>
-                                       </div>
-                                    )}
-                                    
-                                    {role.timeCommitment?.type && (
-                                       <div className="flex items-center text-sm text-gray-600">
-                                          <span className="font-medium w-20">Time:</span>
-                                          <span>
-                                             {role.timeCommitment.type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                                             {role.timeCommitment.hoursPerWeek && (
-                                                <span>
-                                                   {` (${role.timeCommitment.hoursPerWeek.minimum || 0}${
-                                                      role.timeCommitment.hoursPerWeek.maximum && role.timeCommitment.hoursPerWeek.maximum !== role.timeCommitment.hoursPerWeek.minimum 
-                                                         ? `-${role.timeCommitment.hoursPerWeek.maximum}` : ''
-                                                   }h/week)`}
-                                                </span>
-                                             )}
-                                          </span>
-                                       </div>
-                                    )}
-                                    
-                                    {role.location?.type && (
-                                       <div className="flex items-center text-sm text-gray-600">
-                                          <span className="font-medium w-20">Location:</span>
-                                          <span>{role.location.type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</span>
-                                       </div>
-                                    )}
-                                    
-                                    {role.requirements?.minimumAge && (
-                                       <div className="flex items-center text-sm text-gray-600">
-                                          <span className="font-medium w-20">Min Age:</span>
-                                          <span>{role.requirements.minimumAge} years</span>
-                                       </div>
-                                    )}
-                                    
-                                    {role.applicationProcess?.contactEmail && (
-                                       <div className="flex items-center text-sm text-gray-600">
-                                          <span className="font-medium w-20">Contact:</span>
-                                          <a href={`mailto:${role.applicationProcess.contactEmail}`} 
-                                             className="text-orange-600 hover:text-orange-700">
-                                             {role.applicationProcess.contactEmail}
-                                          </a>
-                                       </div>
-                                    )}
-                                 </div>
-                              </div>
-                           ))}
-                        </div>
-                     ) : (
-                        <p className="text-gray-500 text-center py-8">
-                           No volunteer opportunities available.
-                        </p>
-                     )}
-                  </div>
 
-                  {/* Stories Section */}
+
+                  {/* Gallery Section */}
                   <div className="bg-white rounded-lg shadow-sm p-8 mb-8">
                      <div className="flex items-center justify-between mb-6">
                         <h2 className="text-2xl font-bold text-gray-900">
-                           Success Stories
-                        </h2>
-                        {permissions.canManage && (
-                           <button
-                              onClick={() => setShowStoriesModal(true)}
-                              className="text-[#F5821F] hover:text-[#e0741c] font-medium text-sm"
-                           >
-                              Manage Stories
-                           </button>
-                        )}
-                     </div>
-                     {stories.length > 0 ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                           {stories.slice(0, 3).map((story) => (
-                              <div
-                                 key={story._id}
-                                 className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
-                              >
-                                 <h3 className="font-medium text-gray-900 mb-2">
-                                    {story.title}
-                                 </h3>
-                                 <p className="text-sm text-gray-600 line-clamp-3">
-                                    {story.content}
-                                 </p>
-                              </div>
-                           ))}
-                        </div>
-                     ) : (
-                        <p className="text-gray-500 text-center py-8">
-                           No stories have been shared yet.
-                        </p>
-                     )}
-                  </div>
-
-                  {/* Images Section */}
-                  <div className="bg-white rounded-lg shadow-sm p-8 mb-8">
-                     <div className="flex items-center justify-between mb-6">
-                        <h2 className="text-2xl font-bold text-gray-900">
-                           Images & Gallery
+                           Gallery
                         </h2>
                         {permissions.canUpdate && (
                            <button
@@ -619,31 +668,8 @@ export default function ServiceDetailPage() {
                         )}
                      </div>
 
-                     {/* Banner Image Display */}
-                     {service.primaryImage && (
-                        <div className="mb-6">
-                           <h3 className="font-medium text-gray-700 mb-3">
-                              Banner Image
-                           </h3>
-                           <div className="relative h-64 rounded-lg overflow-hidden shadow-md">
-                              <Image
-                                 src={service.primaryImage.url}
-                                 alt={
-                                    service.primaryImage.alt || 'Service banner'
-                                 }
-                                 fill
-                                 className="object-cover"
-                              />
-                           </div>
-                        </div>
-                     )}
-
                      {/* Gallery Display */}
-                     <div>
-                        <h3 className="font-medium text-gray-700 mb-3">
-                           Gallery
-                        </h3>
-                        {service.gallery && service.gallery.length > 0 ? (
+                     {service.gallery && service.gallery.length > 0 ? (
                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                               {service.gallery
                                  .slice(0, 8)
@@ -698,38 +724,11 @@ export default function ServiceDetailPage() {
                               No gallery images uploaded yet.
                            </p>
                         )}
-                     </div>
                   </div>
                </div>
             </div>
 
             {/* Modals */}
-            {showImageUploadModal && (
-               <ImageUploadModal
-                  isOpen={showImageUploadModal}
-                  onClose={() => setShowImageUploadModal(false)}
-                  onSuccess={handleImageUploaded}
-                  serviceId={serviceId}
-               />
-            )}
-            
-            {showVolunteersModal && (
-               <VolunteersModal
-                  isOpen={showVolunteersModal}
-                  onClose={() => setShowVolunteersModal(false)}
-                  serviceId={serviceId}
-                  permissions={permissions}
-               />
-            )}
-            
-            {showStoriesModal && (
-               <StoriesModal
-                  isOpen={showStoriesModal}
-                  onClose={() => setShowStoriesModal(false)}
-                  serviceId={serviceId}
-                  permissions={permissions}
-               />
-            )}
          </AdminLayout>
    );
 }

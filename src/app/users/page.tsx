@@ -295,15 +295,15 @@ export default function Users() {
                   {allAssignments.length > 0 ? (
                      allAssignments.map((assignment, index) => {
                         const roleDisplay = typeof assignment.role === 'object' 
-                           ? assignment.role.displayName || assignment.role.name
-                           : 'Unknown Role';
+                           ? (assignment.role.displayName || assignment.role.name || 'Unknown Role')
+                           : (assignment.role || 'Unknown Role');
                         
                         return (
                            <span
                               key={index}
                               className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800"
                            >
-                              {roleDisplay}
+                              {String(roleDisplay)}
                            </span>
                         );
                      })

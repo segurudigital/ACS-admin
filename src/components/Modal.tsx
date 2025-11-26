@@ -1,6 +1,7 @@
 'use client';
 
-import { ReactNode } from 'react';
+import { ReactNode, createContext, useContext } from 'react';
+import { ModalTheme, ModalThemeName, getModalTheme } from '../lib/modalThemes';
 
 interface ModalProps {
   isOpen: boolean;
@@ -9,7 +10,12 @@ interface ModalProps {
   children: ReactNode;
   maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl';
   showCloseButton?: boolean;
+  theme?: ModalThemeName;
+  backgroundClass?: string; // For backward compatibility
 }
+
+// Context for sharing theme with child components
+const ModalThemeContext = createContext<ModalTheme | null>(null);
 
 export default function Modal({
   isOpen,
@@ -17,9 +23,15 @@ export default function Modal({
   title,
   children,
   maxWidth = 'lg',
-  showCloseButton = true
+  showCloseButton = true,
+  theme = 'default',
+  backgroundClass
 }: ModalProps) {
   if (!isOpen) return null;
+
+  // Get theme configuration
+  const modalTheme = getModalTheme(theme);
+  const finalBackgroundClass = backgroundClass || modalTheme.background;
 
   const maxWidthClasses = {
     sm: 'max-w-sm',
@@ -36,20 +48,21 @@ export default function Modal({
   };
 
   return (
-    <div 
-      className="fixed inset-0 backdrop-blur-md flex items-center justify-center p-4 z-50"
-      onClick={handleBackdropClick}
-    >
-      <div className={`bg-white rounded-lg ${maxWidthClasses[maxWidth]} w-full max-h-[90vh] overflow-hidden shadow-xl`}>
+    <ModalThemeContext.Provider value={modalTheme}>
+      <div 
+        className="fixed inset-0 backdrop-blur-md flex items-center justify-center p-4 z-50"
+        onClick={handleBackdropClick}
+      >
+      <div className={`${finalBackgroundClass} rounded-lg ${maxWidthClasses[maxWidth]} w-full max-h-[90vh] overflow-hidden shadow-xl`}>
         {/* Header */}
-        <div className="px-6 py-4 border-b flex items-center justify-between">
-          <h3 className="text-lg font-medium text-gray-900">
+        <div className={`px-6 py-4 ${modalTheme.removeBorder ? '' : 'border-b'} flex items-center justify-between`}>
+          <h3 className={`text-lg font-medium ${modalTheme.textColor}`}>
             {title}
           </h3>
           {showCloseButton && (
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 focus:outline-none"
+              className={modalTheme.textColor === 'text-white' ? 'text-white hover:text-orange-200' : 'text-gray-400 hover:text-gray-600'}
               aria-label="Close modal"
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -65,6 +78,7 @@ export default function Modal({
         </div>
       </div>
     </div>
+    </ModalThemeContext.Provider>
   );
 }
 
@@ -78,9 +92,17 @@ export function ModalBody({ children, className = '' }: { children: ReactNode; c
 }
 
 export function ModalFooter({ children }: { children: ReactNode }) {
+  const theme = useContext(ModalThemeContext);
+  const footerClass = theme?.removeBorder 
+    ? `px-6 py-4 ${theme.background} flex justify-end space-x-3`
+    : 'px-6 py-4 border-t bg-gray-50 flex justify-end space-x-3';
+  
   return (
-    <div className="px-6 py-4 border-t bg-gray-50 flex justify-end space-x-3">
+    <div className={footerClass}>
       {children}
     </div>
   );
 }
+
+// Export the context hook for other components
+export const useModalTheme = () => useContext(ModalThemeContext);

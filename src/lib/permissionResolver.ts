@@ -6,10 +6,6 @@ export interface User {
   hierarchyPath: string;
   managedLevels: number[];
   permissions?: string[];
-  organizations?: Array<{
-    organization: { _id: string; hierarchyLevel: string; hierarchyPath: string };
-    role: { name: string; permissions?: string[]; canManage?: number[] };
-  }>;
   teamAssignments?: Array<{
     teamId: string;
     role: 'leader' | 'member' | 'communications';
@@ -145,7 +141,7 @@ export class PermissionResolver {
   private checkCreatePermission(user: User, parentEntity: Entity | null, entityType: string): PermissionCheckResult {
     // Determine required level for creation
     const requiredLevels: Record<string, number> = {
-      'organization': 1, // Conference can create churches
+      'entity': 1, // Conference can create churches
       'team': 2,         // Church can create teams
       'service': 3       // Team can create services
     };
@@ -290,16 +286,14 @@ export class PermissionResolver {
     // Check exact permission
     if (user.permissions.includes(permission)) return true;
 
-    // Check resource wildcard (e.g., 'organizations.*')
+    // Check resource wildcard
     const [resource] = permission.split('.');
     if (user.permissions.includes(`${resource}.*`)) return true;
 
-    // Check role permissions
-    for (const orgAssignment of user.organizations || []) {
-      const rolePermissions = orgAssignment.role.permissions || [];
-      if (rolePermissions.includes(permission) || rolePermissions.includes(`${resource}.*`)) {
-        return true;
-      }
+    // Check team role permissions
+    // TODO: Implement team-based permission checking
+    if (user.teamAssignments?.length) {
+      // Team-based permission logic will be implemented here
     }
 
     return false;
@@ -316,7 +310,7 @@ export class PermissionResolver {
 
     // Otherwise, infer from entity type
     const typeLevels: Record<string, number> = {
-      'organization': 2, // Churches
+      'entity': 2, // Churches
       'team': 3,
       'service': 4
     };

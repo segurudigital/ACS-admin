@@ -397,13 +397,14 @@ export default function UserModal({
          onClose={onClose}
          title={user ? 'Edit User' : 'Create User'}
          maxWidth="2xl"
+         theme="orange"
       >
          <form onSubmit={handleSubmit}>
             <ModalBody className="space-y-6">
                {/* Basic Info */}
                <div className="grid grid-cols-2 gap-4">
                   <div>
-                     <label className="block text-sm font-medium text-gray-700">
+                     <label className="block text-sm font-medium text-gray-800">
                         Full Name *
                      </label>
                      <input
@@ -421,7 +422,7 @@ export default function UserModal({
                   </div>
 
                   <div>
-                     <label className="block text-sm font-medium text-gray-700">
+                     <label className="block text-sm font-medium text-gray-800">
                         Email Address *
                      </label>
                      <input
@@ -440,7 +441,7 @@ export default function UserModal({
                </div>
 
                <div>
-                  <label className="block text-sm font-medium text-gray-700">
+                  <label className="block text-sm font-medium text-gray-800">
                      Phone Number
                   </label>
                   <input
@@ -458,12 +459,12 @@ export default function UserModal({
 
                {/* Address Info */}
                <div className="space-y-4">
-                  <h4 className="text-sm font-medium text-gray-900">
+                  <h4 className="text-sm font-medium text-gray-800">
                      Address Information
                   </h4>
 
                   <div>
-                     <label className="block text-sm font-medium text-gray-700">
+                     <label className="block text-sm font-medium text-gray-800">
                         Street Address
                      </label>
                      <textarea
@@ -481,7 +482,7 @@ export default function UserModal({
 
                   <div className="grid grid-cols-3 gap-4">
                      <div>
-                        <label className="block text-sm font-medium text-gray-700">
+                        <label className="block text-sm font-medium text-gray-800">
                            City
                         </label>
                         <input
@@ -498,7 +499,7 @@ export default function UserModal({
                      </div>
 
                      <div>
-                        <label className="block text-sm font-medium text-gray-700">
+                        <label className="block text-sm font-medium text-gray-800">
                            State/Province
                         </label>
                         <input
@@ -515,7 +516,7 @@ export default function UserModal({
                      </div>
 
                      <div>
-                        <label className="block text-sm font-medium text-gray-700">
+                        <label className="block text-sm font-medium text-gray-800">
                            Country
                         </label>
                         <input
@@ -547,7 +548,7 @@ export default function UserModal({
                         }
                         className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
                      />
-                     <span className="ml-2 text-sm text-gray-900">
+                     <span className="ml-2 text-sm text-gray-800">
                         User is verified
                      </span>
                   </label>
@@ -557,7 +558,7 @@ export default function UserModal({
                {hasPermission('users.assign_role') && (
                   <div className="space-y-4">
                      <div className="flex items-center justify-between">
-                        <h4 className="text-sm font-medium text-gray-900">
+                        <h4 className="text-sm font-medium text-gray-800">
                            Entity Assignments
                         </h4>
                         {assignments.length > 1 && (
@@ -576,7 +577,7 @@ export default function UserModal({
                                  className="flex items-center justify-between p-3 border border-gray-200 rounded-lg bg-gray-50"
                               >
                                  <div className="flex-1">
-                                    <div className="text-sm font-medium text-gray-900">
+                                    <div className="text-sm font-medium text-gray-800">
                                        {getEntityName(assignment.entity)}
                                     </div>
                                     <div className="text-sm text-gray-600">
@@ -605,7 +606,7 @@ export default function UserModal({
                      <div className="border border-dashed border-gray-300 rounded-lg p-4">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                              <label className="block text-sm font-medium text-gray-800 mb-1">
                                  Entity
                               </label>
                               <select
@@ -629,7 +630,7 @@ export default function UserModal({
                            </div>
 
                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                              <label className="block text-sm font-medium text-gray-800 mb-1">
                                  Role
                               </label>
                               <select
@@ -673,7 +674,7 @@ export default function UserModal({
                                  !newAssignment.roleId ||
                                  isEntityAssigned(newAssignment.entityId)
                               }
-                              className="inline-flex items-center px-3 py-1 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed rounded-md transition-colors"
+                              className="inline-flex items-center px-3 py-1 text-sm font-medium text-white bg-[#F25F29] hover:bg-[#F23E16] disabled:bg-gray-300 disabled:cursor-not-allowed rounded-md transition-colors"
                            >
                               <Plus className="h-4 w-4 mr-1" />
                               Add Assignment
@@ -702,7 +703,7 @@ export default function UserModal({
                <button
                   type="button"
                   onClick={onClose}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-500"
+                  className="px-4 py-2 text-sm font-medium text-gray-800 hover:text-gray-500"
                >
                   Cancel
                </button>
@@ -714,7 +715,7 @@ export default function UserModal({
                      !formData.email ||
                      (hasPermission('users.assign_role') && assignments.length === 0)
                   }
-                  className="px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-[#F5821F] hover:bg-[#e0741c] disabled:bg-gray-300 disabled:cursor-not-allowed"
+                  className="px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-[#F25F29] hover:bg-[#F23E16] disabled:bg-gray-300 disabled:cursor-not-allowed"
                >
                   {user ? 'Update' : 'Create'} User
                </button>

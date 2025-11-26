@@ -73,15 +73,15 @@ const ServiceTypeModal: React.FC<ServiceTypeModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 backdrop-blur-sm bg-black/20 overflow-y-auto h-full w-full z-50">
-      <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-medium text-gray-900">
+    <div className="fixed inset-0 backdrop-blur-md flex items-center justify-center p-4 z-50">
+      <div className="bg-gradient-to-b from-[#F25F29] to-[#F23E16] rounded-lg max-w-md w-full max-h-[90vh] overflow-hidden shadow-xl">
+        <div className="px-6 py-4 flex justify-between items-center">
+          <h3 className="text-lg font-medium text-white">
             {serviceType ? 'Edit Service Type' : 'Create Service Type'}
           </h3>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-500"
+            className="text-white hover:text-orange-200"
             disabled={isLoading}
           >
             <span className="sr-only">Close</span>
@@ -91,9 +91,11 @@ const ServiceTypeModal: React.FC<ServiceTypeModalProps> = ({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit}>
+        <div className="overflow-y-auto max-h-[calc(90vh-80px)]">
+        <form id="service-type-form" onSubmit={handleSubmit}>
+          <div className="p-6 bg-gradient-to-b from-[#F25F29] to-[#F23E16]">
           <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-orange-100 mb-2">
               Name <span className="text-red-500">*</span>
             </label>
             <input
@@ -108,7 +110,7 @@ const ServiceTypeModal: React.FC<ServiceTypeModalProps> = ({
           </div>
 
           <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-orange-100 mb-2">
               Value
             </label>
             <input
@@ -121,12 +123,12 @@ const ServiceTypeModal: React.FC<ServiceTypeModalProps> = ({
             />
             {errors.value && <p className="mt-1 text-sm text-red-600">{errors.value}</p>}
             {serviceType && (
-              <p className="mt-1 text-sm text-gray-500">Value cannot be changed for existing types</p>
+              <p className="mt-1 text-sm text-orange-100">Value cannot be changed for existing types</p>
             )}
           </div>
 
           <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-orange-100 mb-2">
               Description
             </label>
             <textarea
@@ -148,31 +150,35 @@ const ServiceTypeModal: React.FC<ServiceTypeModalProps> = ({
                 className="mr-2 rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
                 disabled={isLoading}
               />
-              <span className="text-sm font-medium text-gray-700">Active</span>
+              <span className="text-sm font-medium text-white">Active</span>
             </label>
-            <p className="mt-1 text-sm text-gray-500">
+            <p className="mt-1 text-sm text-orange-100">
               Inactive service types won&apos;t appear in the dropdown when creating services
             </p>
           </div>
 
-          <div className="flex justify-end space-x-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
-              disabled={isLoading}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 text-sm font-medium text-white bg-orange-600 border border-transparent rounded-md hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={isLoading}
-            >
-              {isLoading ? 'Saving...' : serviceType ? 'Update' : 'Create'}
-            </button>
           </div>
         </form>
+        </div>
+        
+        <div className="px-6 py-4 bg-gradient-to-b from-[#F25F29] to-[#F23E16] flex justify-end space-x-3">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 text-sm font-medium text-white hover:text-orange-200"
+            disabled={isLoading}
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            form="service-type-form"
+            className="px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-[#F25F29] hover:bg-[#F23E16]"
+            disabled={isLoading}
+          >
+            {isLoading ? 'Saving...' : serviceType ? 'Update' : 'Create'}
+          </button>
+        </div>
       </div>
     </div>
   );

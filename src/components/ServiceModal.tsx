@@ -1,18 +1,25 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import Image from 'next/image';
 import Modal, { ModalBody, ModalFooter } from './Modal';
+import MediaLibraryModal from './MediaLibraryModal';
+import DayTimeScheduler from './DayTimeScheduler';
+import EventScheduler from './EventScheduler';
 import { useToast } from '@/contexts/ToastContext';
 import { serviceManagement, Service } from '@/lib/serviceManagement';
 import { serviceTypeAPI } from '@/lib/serviceTypes';
-import { XMarkIcon } from '@heroicons/react/24/outline';
+import { teamService, Team } from '@/lib/teams';
+import { MediaFile } from '@/lib/mediaService';
+import { ServiceScheduling, DEFAULT_WEEKLY_SCHEDULE } from '@/types/scheduling';
+import { XMarkIcon, CloudArrowUpIcon, PhotoIcon } from '@heroicons/react/24/outline';
 
 interface ServiceModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (service: Service, isEdit: boolean) => void;
   service?: Service;
-  organizationId?: string;
+  teamId?: string;
 }
 
 
@@ -21,15 +28,16 @@ export default function ServiceModal({
   onClose, 
   onSave, 
   service,
-  organizationId 
+  teamId 
 }: ServiceModalProps) {
   const [formData, setFormData] = useState({
     name: '',
     type: '',
-    organization: organizationId || '',
+    teamId: teamId || '',
     descriptionShort: '',
     descriptionLong: '',
     status: 'active' as 'active' | 'paused' | 'archived',
+    availability: null as 'always_open' | 'set_times' | 'set_events' | null,
     tags: [] as string[],
     locations: [{
       label: 'Main Location',
@@ -50,65 +58,174 @@ export default function ServiceModal({
   });
   
   const [loading, setLoading] = useState(false);
-  const [organizations, setOrganizations] = useState<Array<{_id: string; name: string; type: string}>>([]);
+  const [loadingDetails, setLoadingDetails] = useState(false);
+  const [teams, setTeams] = useState<Team[]>([]);
   const [serviceTypes, setServiceTypes] = useState<Array<{value: string; label: string; description?: string}>>([]);
   const [tagInput, setTagInput] = useState('');
+  const [bannerFile, setBannerFile] = useState<File | null>(null);
+  const [bannerPreview, setBannerPreview] = useState<string>('');
+  const [bannerAlt, setBannerAlt] = useState('');
+  const [selectedMediaFile, setSelectedMediaFile] = useState<MediaFile | null>(null);
+  const [isMediaLibraryOpen, setIsMediaLibraryOpen] = useState(false);
+  const [scheduling, setScheduling] = useState<ServiceScheduling>({
+    availability: null,
+    weeklySchedule: DEFAULT_WEEKLY_SCHEDULE,
+    events: []
+  });
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { error: showError } = useToast();
 
   useEffect(() => {
     if (service) {
-      setFormData({
-        name: service.name || '',
-        type: service.type || '',
-        organization: typeof service.organization === 'object' ? service.organization._id : service.organization || '',
-        descriptionShort: service.descriptionShort || '',
-        descriptionLong: service.descriptionLong || '',
-        status: service.status || 'active',
-        tags: service.tags || [],
-        locations: service.locations?.map(location => ({
-          ...location,
-          address: {
-            street: location.address?.street || '',
-            suburb: location.address?.suburb || '',
-            state: location.address?.state || '',
-            postcode: location.address?.postcode || ''
-          },
-          isMobile: false,
-          openingHours: []
-        })) || [{
-          label: 'Main Location',
-          address: {
-            street: '',
-            suburb: '',
-            state: '',
-            postcode: ''
-          },
-          isMobile: false,
-          openingHours: []
-        }],
-        contactInfo: {
-          email: service.contactInfo?.email || '',
-          phone: service.contactInfo?.phone || '',
-          website: service.contactInfo?.website || ''
+      // Fetch full service details when editing to ensure we have the latest data including banner image
+      const fetchFullServiceDetails = async () => {
+        try {
+          setLoadingDetails(true);
+          const fullService = await serviceManagement.getServiceDetails(service._id) as { service?: Service; data?: Service } | Service;
+          const serviceData = ('service' in fullService && fullService.service) || ('data' in fullService && fullService.data) || fullService as Service;
+          
+          setFormData({
+            name: serviceData.name || '',
+            type: serviceData.type || '',
+            teamId: typeof serviceData.teamId === 'string' ? serviceData.teamId : serviceData.teamId?._id || '',
+            descriptionShort: serviceData.descriptionShort || '',
+            descriptionLong: serviceData.descriptionLong || '',
+            status: serviceData.status || 'active',
+            availability: serviceData.availability || null,
+            tags: serviceData.tags || [],
+            locations: serviceData.locations?.map(location => ({
+              ...location,
+              address: {
+                street: location.address?.street || '',
+                suburb: location.address?.suburb || '',
+                state: location.address?.state || '',
+                postcode: location.address?.postcode || ''
+              },
+              isMobile: false,
+              openingHours: []
+            })) || [{
+              label: 'Main Location',
+              address: {
+                street: '',
+                suburb: '',
+                state: '',
+                postcode: ''
+              },
+              isMobile: false,
+              openingHours: []
+            }],
+            contactInfo: {
+              email: serviceData.contactInfo?.email || '',
+              phone: serviceData.contactInfo?.phone || '',
+              website: serviceData.contactInfo?.website || ''
+            }
+          });
+          // Reset file selections when editing a different service
+          setBannerFile(null);
+          setSelectedMediaFile(null);
+          setBannerPreview(serviceData?.primaryImage?.url || '');
+          setBannerAlt(serviceData?.primaryImage?.alt || '');
+          // Initialize scheduling data
+          setScheduling({
+            availability: serviceData.availability || null,
+            weeklySchedule: serviceData.scheduling?.weeklySchedule || DEFAULT_WEEKLY_SCHEDULE,
+            events: serviceData.scheduling?.events || []
+          });
+        } catch (error) {
+          console.error('Failed to fetch service details:', error);
+          // Fallback to using the provided service data
+          setFormData({
+            name: service.name || '',
+            type: service.type || '',
+            teamId: typeof service.teamId === 'string' ? service.teamId : service.teamId?._id || '',
+            descriptionShort: service.descriptionShort || '',
+            descriptionLong: service.descriptionLong || '',
+            status: service.status || 'active',
+            availability: service.availability || null,
+            tags: service.tags || [],
+            locations: service.locations?.map(location => ({
+              ...location,
+              address: {
+                street: location.address?.street || '',
+                suburb: location.address?.suburb || '',
+                state: location.address?.state || '',
+                postcode: location.address?.postcode || ''
+              },
+              isMobile: false,
+              openingHours: []
+            })) || [{
+              label: 'Main Location',
+              address: {
+                street: '',
+                suburb: '',
+                state: '',
+                postcode: ''
+              },
+              isMobile: false,
+              openingHours: []
+            }],
+            contactInfo: {
+              email: service.contactInfo?.email || '',
+              phone: service.contactInfo?.phone || '',
+              website: service.contactInfo?.website || ''
+            }
+          });
+          setBannerFile(null);
+          setSelectedMediaFile(null);
+          setBannerPreview(service?.primaryImage?.url || '');
+          setBannerAlt(service?.primaryImage?.alt || '');
+          setScheduling({
+            availability: service.availability || null,
+            weeklySchedule: service.scheduling?.weeklySchedule || DEFAULT_WEEKLY_SCHEDULE,
+            events: service.scheduling?.events || []
+          });
+        } finally {
+          setLoadingDetails(false);
         }
+      };
+      
+      fetchFullServiceDetails();
+    } else if (teamId) {
+      setFormData(prev => ({ ...prev, teamId: teamId }));
+      // Reset file selections for new service
+      setBannerFile(null);
+      setSelectedMediaFile(null);
+      setBannerPreview('');
+      setBannerAlt('');
+      // Reset scheduling for new service
+      setScheduling({
+        availability: null,
+        weeklySchedule: DEFAULT_WEEKLY_SCHEDULE,
+        events: []
       });
-    } else if (organizationId) {
-      setFormData(prev => ({ ...prev, organization: organizationId }));
     }
-  }, [service, organizationId]);
+  }, [service, teamId]);
 
-  const fetchOrganizations = useCallback(async () => {
+  const fetchTeams = useCallback(async () => {
     try {
-      console.log('Fetching organizations...');
-      const data = await serviceManagement.getServiceOrganizations();
-      console.log('Organizations API response:', data);
-      setOrganizations(data.organizations || []);
-      console.log('Organizations set to state:', data.organizations || []);
+      let data;
+      
+      // First try to get all teams (for service creation, user should see all available teams)
+      try {
+        data = await teamService.getAllTeams();
+      } catch {
+        try {
+          data = await teamService.getMyTeams();
+        } catch (myTeamsError) {
+          throw myTeamsError;
+        }
+      }
+      
+      // Handle different response structures
+      const teamsArray = data.data || data.teams || data || [];
+      setTeams(teamsArray);
     } catch (error) {
-      console.error('Error fetching organizations:', error);
-      console.error('Failed to fetch organizations - 500 error');
+      console.error('Error fetching teams:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      showError(`Failed to fetch teams: ${errorMessage}`);
+      setTeams([]);
     }
-  }, []);
+  }, [showError]);
 
   const fetchServiceTypes = useCallback(async () => {
     try {
@@ -136,15 +253,15 @@ export default function ServiceModal({
 
   useEffect(() => {
     if (isOpen) {
-      fetchOrganizations();
+      fetchTeams();
       fetchServiceTypes();
     }
-  }, [isOpen, fetchOrganizations, fetchServiceTypes]);
+  }, [isOpen, fetchTeams, fetchServiceTypes]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.name || !formData.type || !formData.organization) {
+    if (!formData.name || !formData.type || !formData.teamId) {
       showError('Please fill in all required fields');
       return;
     }
@@ -153,23 +270,55 @@ export default function ServiceModal({
     try {
       let savedService;
       
-      console.log('Submitting form data:', formData);
-      console.log('Organization ID:', formData.organization);
+      // Combine form data with scheduling data
+      const serviceData = {
+        ...formData,
+        scheduling: {
+          ...scheduling,
+          lastUpdated: new Date().toISOString()
+        }
+      };
       
       if (service) {
         // Update existing service
-        const response = await serviceManagement.updateService(service._id, formData);
-        savedService = response.service;
+        const response = await serviceManagement.updateService(service._id, serviceData) as { data?: Service; service?: Service };
+        savedService = response.data || response.service;
       } else {
         // Create new service
-        const response = await serviceManagement.createService(formData);
-        savedService = response.service;
+        const response = await serviceManagement.createService(serviceData) as { data?: Service; service?: Service };
+        savedService = response.data || response.service;
+      }
+
+      // Handle file uploads after service creation/update
+      if (savedService) {
+        // Upload primary image if selected
+        if (bannerFile) {
+          try {
+            await serviceManagement.updateServicePrimaryImage(savedService._id, bannerFile);
+          } catch (error) {
+            console.error('Error uploading primary image:', error);
+            showError('Service saved but primary image upload failed');
+          }
+        } else if (selectedMediaFile) {
+          try {
+            await serviceManagement.updateServicePrimaryImageWithMediaFile(savedService._id, selectedMediaFile._id, bannerAlt);
+          } catch (error) {
+            console.error('Error setting primary image from media file:', error);
+            showError('Service saved but primary image update failed');
+          }
+        }
+
+      }
+
+      if (!savedService) {
+        throw new Error('Failed to save service - no service data returned');
       }
 
       onSave(savedService, !!service);
       onClose();
     } catch (error: unknown) {
-      showError((error as Error)?.message || `Failed to ${service ? 'update' : 'create'} service`);
+      const errorMessage = error instanceof Error ? error.message : `Failed to ${service ? 'update' : 'create'} service`;
+      showError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -192,18 +341,75 @@ export default function ServiceModal({
     }));
   };
 
+  const handleBannerFileChange = (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      showError('Please select an image file');
+      return;
+    }
+
+    if (file.size > 2 * 1024 * 1024) {
+      showError('Image size must be less than 2MB');
+      return;
+    }
+
+    setBannerFile(file);
+    
+    // Generate preview
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setBannerPreview(e.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+
+  const removeBannerFile = () => {
+    setBannerFile(null);
+    setSelectedMediaFile(null);
+    setBannerPreview('');
+    setBannerAlt('');
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      handleBannerFileChange(file);
+    }
+  };
+
+  const handleMediaSelect = (mediaFile: MediaFile) => {
+    setSelectedMediaFile(mediaFile);
+    setBannerPreview(mediaFile.url);
+    setBannerAlt(mediaFile.alt);
+    setBannerFile(null); // Clear any previously selected file
+    setIsMediaLibraryOpen(false);
+  };
+
+  const openMediaLibrary = () => {
+    setIsMediaLibraryOpen(true);
+  };
+
+
   return (
+    <>
     <Modal
       isOpen={isOpen}
       onClose={onClose}
       title={service ? 'Edit Service' : 'Create Service'}
       maxWidth="2xl"
+      theme="orange"
     >
       <form onSubmit={handleSubmit}>
         <ModalBody className="space-y-6">
+          {loadingDetails ? (
+            <div className="flex justify-center items-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600"></div>
+            </div>
+          ) : (
+            <>
           {/* Basic Info */}
           <div>
-            <label className="block text-sm font-medium text-gray-700">
+            <label className="block text-sm font-medium text-gray-800">
               Service Name
             </label>
             <input
@@ -218,7 +424,7 @@ export default function ServiceModal({
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700">
+              <label className="block text-sm font-medium text-gray-800">
                 Service Type
               </label>
               <select
@@ -237,20 +443,20 @@ export default function ServiceModal({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Organization
+              <label className="block text-sm font-medium text-gray-800">
+                Team
               </label>
               <select
-                value={formData.organization}
-                onChange={(e) => setFormData({ ...formData, organization: e.target.value })}
+                value={formData.teamId}
+                onChange={(e) => setFormData({ ...formData, teamId: e.target.value })}
                 className="mt-1 block w-full px-4 py-3 text-base rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-gray-100"
                 required
                 disabled={!!service}
               >
-                <option value="">Choose Organization</option>
-                {organizations.map(org => (
-                  <option key={org._id} value={org._id}>
-                    {org.name} ({org.type})
+                <option value="">Choose Team</option>
+                {teams.map(team => (
+                  <option key={team._id} value={team._id}>
+                    {team.name} {team.category && `(${team.category})`}
                   </option>
                 ))}
               </select>
@@ -259,10 +465,10 @@ export default function ServiceModal({
 
           {/* Descriptions */}
           <div className="space-y-4">
-            <h4 className="text-sm font-medium text-gray-900">Description</h4>
+            <h4 className="text-sm font-medium text-gray-800">Description</h4>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700">
+              <label className="block text-sm font-medium text-gray-800">
                 Short Description
               </label>
               <input
@@ -280,7 +486,7 @@ export default function ServiceModal({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">
+              <label className="block text-sm font-medium text-gray-800">
                 Detailed Description
               </label>
               <textarea
@@ -296,11 +502,11 @@ export default function ServiceModal({
 
           {/* Location */}
           <div className="space-y-4">
-            <h4 className="text-sm font-medium text-gray-900">Location</h4>
+            <h4 className="text-sm font-medium text-gray-800">Location</h4>
             
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-sm font-medium text-gray-800">
                   Street Address
                 </label>
                 <input
@@ -319,7 +525,7 @@ export default function ServiceModal({
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-sm font-medium text-gray-800">
                   Suburb
                 </label>
                 <input
@@ -338,7 +544,7 @@ export default function ServiceModal({
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-sm font-medium text-gray-800">
                   State
                 </label>
                 <input
@@ -357,7 +563,7 @@ export default function ServiceModal({
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-sm font-medium text-gray-800">
                   Postcode
                 </label>
                 <input
@@ -379,10 +585,10 @@ export default function ServiceModal({
 
           {/* Contact Information */}
           <div className="space-y-4">
-            <h4 className="text-sm font-medium text-gray-900">Contact Information</h4>
+            <h4 className="text-sm font-medium text-gray-800">Contact Information</h4>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700">
+              <label className="block text-sm font-medium text-gray-800">
                 Email
               </label>
               <input
@@ -398,7 +604,7 @@ export default function ServiceModal({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">
+              <label className="block text-sm font-medium text-gray-800">
                 Phone
               </label>
               <input
@@ -414,7 +620,7 @@ export default function ServiceModal({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">
+              <label className="block text-sm font-medium text-gray-800">
                 Website
               </label>
               <input
@@ -432,10 +638,10 @@ export default function ServiceModal({
 
           {/* Tags */}
           <div className="space-y-4">
-            <h4 className="text-sm font-medium text-gray-900">Tags</h4>
+            <h4 className="text-sm font-medium text-gray-800">Tags</h4>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700">
+              <label className="block text-sm font-medium text-gray-800">
                 Add Tags
               </label>
               <div className="mt-1 flex">
@@ -450,7 +656,7 @@ export default function ServiceModal({
                 <button
                   type="button"
                   onClick={addTag}
-                  className="px-4 py-3 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-r-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                  className="px-4 py-3 text-sm font-medium text-white bg-[#F25F29] border border-transparent rounded-r-md hover:bg-[#F23E16] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                 >
                   Add
                 </button>
@@ -476,10 +682,118 @@ export default function ServiceModal({
             </div>
           </div>
 
+          {/* Banner Photo */}
+          <div>
+            <h4 className="text-sm font-medium text-gray-800 mb-4">Banner Image</h4>
+            
+            {bannerPreview ? (
+              <div className="relative">
+                <div className="w-full h-32 bg-gray-100 rounded-lg overflow-hidden">
+                  <Image
+                    src={bannerPreview}
+                    alt="Banner preview"
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 768px) 100vw, 50vw"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={removeBannerFile}
+                  className="absolute top-2 right-2 p-1 bg-red-600 text-white rounded-full hover:bg-red-700"
+                >
+                  <XMarkIcon className="h-4 w-4" />
+                </button>
+                <div className="mt-2">
+                  <label className="block text-sm font-medium text-gray-800">
+                    Alt Text
+                  </label>
+                  <input
+                    type="text"
+                    value={bannerAlt}
+                    onChange={(e) => setBannerAlt(e.target.value)}
+                    placeholder="Describe the image for accessibility"
+                    className="mt-1 block w-full px-3 py-2 text-sm rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
+                <PhotoIcon className="mx-auto h-12 w-12 text-gray-400" />
+                <div className="mt-4">
+                  <button
+                    type="button"
+                    onClick={openMediaLibrary}
+                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-[#F25F29] hover:bg-[#F23E16] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
+                  >
+                    <CloudArrowUpIcon className="h-4 w-4 mr-2" />
+                    Select Banner Image
+                  </button>
+                </div>
+                <p className="text-xs text-gray-500 mt-2">
+                  Browse existing images or upload new ones. Recommended size: 1200x400px
+                </p>
+              </div>
+            )}
+            
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleImageUpload}
+              className="hidden"
+            />
+          </div>
+
+
+          {/* Availability */}
+          <div>
+            <label className="block text-sm font-medium text-gray-800">
+              Service Availability
+            </label>
+            <select
+              value={formData.availability || ''}
+              onChange={(e) => {
+                const newAvailability = e.target.value as 'always_open' | 'set_times' | 'set_events' | null || null;
+                setFormData({ ...formData, availability: newAvailability });
+                setScheduling(prev => ({ ...prev, availability: newAvailability }));
+              }}
+              className="mt-1 block w-full px-4 py-3 text-base rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+            >
+              <option value="">Select Availability</option>
+              <option value="always_open">Always Open</option>
+              <option value="set_times">Set Times</option>
+              <option value="set_events">Set Events</option>
+            </select>
+            <p className="mt-1 text-sm text-gray-500">
+              Choose how this service operates: always available, specific times, or event-based
+            </p>
+          </div>
+
+          {/* Scheduling Details */}
+          {scheduling.availability === 'set_times' && (
+            <div>
+              <DayTimeScheduler
+                schedule={scheduling.weeklySchedule || DEFAULT_WEEKLY_SCHEDULE}
+                onChange={(weeklySchedule) => setScheduling(prev => ({ ...prev, weeklySchedule }))}
+              />
+            </div>
+          )}
+
+          {scheduling.availability === 'set_events' && (
+            <div>
+              <EventScheduler
+                events={scheduling.events || []}
+                onChange={(events) => setScheduling(prev => ({ ...prev, events }))}
+                timezone={scheduling.weeklySchedule?.timezone || 'Australia/Sydney'}
+              />
+            </div>
+          )}
+
           {/* Status (only for editing) */}
           {service && (
             <div>
-              <label className="block text-sm font-medium text-gray-700">
+              <label className="block text-sm font-medium text-gray-800">
                 Status
               </label>
               <select
@@ -493,20 +807,22 @@ export default function ServiceModal({
               </select>
             </div>
           )}
+          </>
+          )}
         </ModalBody>
 
         <ModalFooter>
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            className="px-4 py-2 text-sm font-medium text-gray-800 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
             disabled={loading}
           >
             Cancel
           </button>
           <button
             type="submit"
-            className="ml-3 px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            className="ml-3 px-4 py-2 text-sm font-medium text-white bg-[#F25F29] border border-transparent rounded-md shadow-sm hover:bg-[#F23E16] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
             disabled={loading}
           >
             {loading ? 'Saving...' : service ? 'Update' : 'Create'}
@@ -514,5 +830,16 @@ export default function ServiceModal({
         </ModalFooter>
       </form>
     </Modal>
+
+    <MediaLibraryModal
+      isOpen={isMediaLibraryOpen}
+      onClose={() => setIsMediaLibraryOpen(false)}
+      onSelect={handleMediaSelect}
+      title="Select Banner Image"
+      allowedTypes={['banner', 'gallery']}
+      category="service"
+      type="banner"
+    />
+  </>
   );
 }
