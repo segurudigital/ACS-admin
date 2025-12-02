@@ -12,6 +12,7 @@ interface ModalProps {
   showCloseButton?: boolean;
   theme?: ModalThemeName;
   backgroundClass?: string; // For backward compatibility
+  removeBorder?: boolean; // Remove header border
 }
 
 // Context for sharing theme with child components
@@ -25,7 +26,8 @@ export default function Modal({
   maxWidth = 'lg',
   showCloseButton = true,
   theme = 'default',
-  backgroundClass
+  backgroundClass,
+  removeBorder = false
 }: ModalProps) {
   if (!isOpen) return null;
 
@@ -47,15 +49,21 @@ export default function Modal({
     }
   };
 
+  // Merge theme with removeBorder prop
+  const effectiveTheme = {
+    ...modalTheme,
+    removeBorder: modalTheme.removeBorder || removeBorder
+  };
+
   return (
-    <ModalThemeContext.Provider value={modalTheme}>
+    <ModalThemeContext.Provider value={effectiveTheme}>
       <div 
         className="fixed inset-0 backdrop-blur-md flex items-center justify-center p-4 z-50"
         onClick={handleBackdropClick}
       >
       <div className={`${finalBackgroundClass} rounded-lg ${maxWidthClasses[maxWidth]} w-full max-h-[90vh] overflow-hidden shadow-xl`}>
         {/* Header */}
-        <div className={`px-6 py-4 ${modalTheme.removeBorder ? '' : 'border-b'} flex items-center justify-between`}>
+        <div className={`px-6 py-4 ${effectiveTheme.removeBorder ? '' : 'border-b'} flex items-center justify-between`}>
           <h3 className={`text-lg font-medium ${modalTheme.textColor}`}>
             {title}
           </h3>

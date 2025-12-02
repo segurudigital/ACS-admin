@@ -336,11 +336,11 @@ export default function VolunteerOpportunityModal({ isOpen, onClose, onOpportuni
   ];
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={opportunity ? "Edit Volunteer Opportunity" : "Create Volunteer Opportunity"} maxWidth="2xl" theme="orange">
+    <Modal isOpen={isOpen} onClose={onClose} title={opportunity ? "Edit Volunteer Opportunity" : "Create Volunteer Opportunity"} maxWidth="2xl" removeBorder={true}>
       <ModalBody>
         {loading ? (
           <div className="flex justify-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#F5821F]"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
           </div>
         ) : (
           <div className="space-y-8">
@@ -356,7 +356,7 @@ export default function VolunteerOpportunityModal({ isOpen, onClose, onOpportuni
                     type="text"
                     value={formData.title}
                     onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#F5821F] focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                     placeholder="Enter volunteer opportunity title"
                     required
                   />
@@ -369,7 +369,7 @@ export default function VolunteerOpportunityModal({ isOpen, onClose, onOpportuni
                   <select
                     value={formData.serviceId}
                     onChange={(e) => setFormData({ ...formData, serviceId: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#F5821F] focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                     required
                     disabled={!!opportunity} // Disable when editing
                   >
@@ -395,7 +395,7 @@ export default function VolunteerOpportunityModal({ isOpen, onClose, onOpportuni
                     type="text"
                     value={formData.category}
                     onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#F5821F] focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                     placeholder="e.g., Administration, Direct Service, Technology"
                   />
                 </div>
@@ -408,7 +408,7 @@ export default function VolunteerOpportunityModal({ isOpen, onClose, onOpportuni
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     rows={4}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#F5821F] focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                     placeholder="Describe the volunteer role, responsibilities, and expectations"
                     required
                   />
@@ -428,7 +428,7 @@ export default function VolunteerOpportunityModal({ isOpen, onClose, onOpportuni
                     type="text"
                     value={formData.skillsInput}
                     onChange={(e) => setFormData({ ...formData, skillsInput: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#F5821F] focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                     placeholder="e.g., Communication, Leadership, Computer Skills"
                   />
                 </div>
@@ -444,7 +444,7 @@ export default function VolunteerOpportunityModal({ isOpen, onClose, onOpportuni
                       ...formData, 
                       requirements: { ...formData.requirements, minimumAge: e.target.value }
                     })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#F5821F] focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                     placeholder="16"
                     min="0"
                     max="100"
@@ -462,7 +462,7 @@ export default function VolunteerOpportunityModal({ isOpen, onClose, onOpportuni
                       ...formData, 
                       requirements: { ...formData.requirements, experience: e.target.value }
                     })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#F5821F] focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                     placeholder="No experience required"
                   />
                 </div>
@@ -477,7 +477,7 @@ export default function VolunteerOpportunityModal({ isOpen, onClose, onOpportuni
                           ...formData, 
                           requirements: { ...formData.requirements, backgroundCheck: e.target.checked }
                         })}
-                        className="rounded border-gray-300 text-[#F5821F] focus:ring-[#F5821F]"
+                        className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                       />
                       <span className="ml-2 text-sm text-gray-800">Background Check Required</span>
                     </label>
@@ -489,7 +489,7 @@ export default function VolunteerOpportunityModal({ isOpen, onClose, onOpportuni
                           ...formData, 
                           requirements: { ...formData.requirements, workingWithChildrenCheck: e.target.checked }
                         })}
-                        className="rounded border-gray-300 text-[#F5821F] focus:ring-[#F5821F]"
+                        className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                       />
                       <span className="ml-2 text-sm text-gray-800">Working with Children Check</span>
                     </label>
@@ -512,7 +512,7 @@ export default function VolunteerOpportunityModal({ isOpen, onClose, onOpportuni
                       ...formData, 
                       timeCommitment: { ...formData.timeCommitment, type: e.target.value as 'one_time' | 'occasional' | 'regular' | 'flexible' }
                     })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#F5821F] focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                   >
                     {timeCommitmentTypes.map((type) => (
                       <option key={type.value} value={type.value}>
@@ -532,7 +532,7 @@ export default function VolunteerOpportunityModal({ isOpen, onClose, onOpportuni
                       ...formData, 
                       location: { ...formData.location, type: e.target.value as 'on_site' | 'remote' | 'hybrid' }
                     })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#F5821F] focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                   >
                     {locationTypes.map((type) => (
                       <option key={type.value} value={type.value}>
@@ -553,7 +553,7 @@ export default function VolunteerOpportunityModal({ isOpen, onClose, onOpportuni
                       ...formData, 
                       timeCommitment: { ...formData.timeCommitment, hoursPerWeekMin: e.target.value }
                     })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#F5821F] focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                     placeholder="1"
                     min="0"
                   />
@@ -570,7 +570,7 @@ export default function VolunteerOpportunityModal({ isOpen, onClose, onOpportuni
                       ...formData, 
                       timeCommitment: { ...formData.timeCommitment, hoursPerWeekMax: e.target.value }
                     })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#F5821F] focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                     placeholder="10"
                     min="0"
                   />
@@ -584,7 +584,7 @@ export default function VolunteerOpportunityModal({ isOpen, onClose, onOpportuni
                     type="number"
                     value={formData.numberOfPositions}
                     onChange={(e) => setFormData({ ...formData, numberOfPositions: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#F5821F] focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                     placeholder="1"
                     min="1"
                     required
@@ -598,7 +598,7 @@ export default function VolunteerOpportunityModal({ isOpen, onClose, onOpportuni
                   <select
                     value={formData.status}
                     onChange={(e) => setFormData({ ...formData, status: e.target.value as 'draft' | 'open' | 'closed' | 'filled' | 'paused' })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#F5821F] focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                   >
                     {statusOptions.map((status) => (
                       <option key={status.value} value={status.value}>
@@ -624,7 +624,7 @@ export default function VolunteerOpportunityModal({ isOpen, onClose, onOpportuni
                       ...formData, 
                       applicationProcess: { ...formData.applicationProcess, method: e.target.value as 'email' | 'phone' | 'online_form' | 'in_person' }
                     })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#F5821F] focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                   >
                     {applicationMethods.map((method) => (
                       <option key={method.value} value={method.value}>
@@ -641,7 +641,7 @@ export default function VolunteerOpportunityModal({ isOpen, onClose, onOpportuni
                   <select
                     value={formData.visibility}
                     onChange={(e) => setFormData({ ...formData, visibility: e.target.value as 'public' | 'members_only' | 'private' })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#F5821F] focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                   >
                     {visibilityOptions.map((visibility) => (
                       <option key={visibility.value} value={visibility.value}>
@@ -662,7 +662,7 @@ export default function VolunteerOpportunityModal({ isOpen, onClose, onOpportuni
                       ...formData, 
                       applicationProcess: { ...formData.applicationProcess, contactEmail: e.target.value }
                     })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#F5821F] focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                     placeholder="volunteer@example.com"
                   />
                 </div>
@@ -678,7 +678,7 @@ export default function VolunteerOpportunityModal({ isOpen, onClose, onOpportuni
                       ...formData, 
                       applicationProcess: { ...formData.applicationProcess, contactPhone: e.target.value }
                     })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#F5821F] focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                     placeholder="(555) 123-4567"
                   />
                 </div>
@@ -691,7 +691,7 @@ export default function VolunteerOpportunityModal({ isOpen, onClose, onOpportuni
                     type="text"
                     value={formData.benefitsInput}
                     onChange={(e) => setFormData({ ...formData, benefitsInput: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#F5821F] focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                     placeholder="e.g., Training provided, Community service hours, Networking opportunities"
                   />
                 </div>
@@ -704,7 +704,7 @@ export default function VolunteerOpportunityModal({ isOpen, onClose, onOpportuni
                     type="date"
                     value={formData.startDate}
                     onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#F5821F] focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                   />
                 </div>
 
@@ -716,7 +716,7 @@ export default function VolunteerOpportunityModal({ isOpen, onClose, onOpportuni
                     type="date"
                     value={formData.endDate}
                     onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#F5821F] focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                   />
                 </div>
               </div>

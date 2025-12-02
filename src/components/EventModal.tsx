@@ -148,11 +148,11 @@ export default function EventModal({ isOpen, onClose, onEventSaved, event }: Eve
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={event ? "Edit Event" : "Create Event"} maxWidth="2xl" theme="orange">
+    <Modal isOpen={isOpen} onClose={onClose} title={event ? "Edit Event" : "Create Event"} maxWidth="2xl" removeBorder={true}>
       <ModalBody>
         {loading ? (
           <div className="flex justify-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#F5821F]"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
           </div>
         ) : (
           <div className="space-y-6">
@@ -166,7 +166,7 @@ export default function EventModal({ isOpen, onClose, onEventSaved, event }: Eve
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#F5821F] focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                   placeholder="Enter event title"
                   required
                 />
@@ -180,7 +180,7 @@ export default function EventModal({ isOpen, onClose, onEventSaved, event }: Eve
                 <select
                   value={formData.serviceId}
                   onChange={(e) => setFormData({ ...formData, serviceId: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#F5821F] focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                   required
                   disabled={!!event} // Disable when editing
                 >
@@ -207,7 +207,7 @@ export default function EventModal({ isOpen, onClose, onEventSaved, event }: Eve
                   type="date"
                   value={formData.date}
                   onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#F5821F] focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                   required
                 />
               </div>
@@ -220,7 +220,7 @@ export default function EventModal({ isOpen, onClose, onEventSaved, event }: Eve
                 <select
                   value={formData.time}
                   onChange={(e) => setFormData({ ...formData, time: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#F5821F] focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 >
                   <option value="">Select start time (optional)</option>
                   <option value="06:00">6:00 AM</option>
@@ -265,7 +265,7 @@ export default function EventModal({ isOpen, onClose, onEventSaved, event }: Eve
                 <select
                   value={formData.endTime}
                   onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#F5821F] focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 >
                   <option value="">Select end time (optional)</option>
                   <option value="06:30">6:30 AM</option>
@@ -312,7 +312,7 @@ export default function EventModal({ isOpen, onClose, onEventSaved, event }: Eve
                   type="text"
                   value={formData.location}
                   onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#F5821F] focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                   placeholder="Enter event location"
                 />
               </div>
@@ -326,7 +326,7 @@ export default function EventModal({ isOpen, onClose, onEventSaved, event }: Eve
                   type="number"
                   value={formData.capacity}
                   onChange={(e) => setFormData({ ...formData, capacity: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#F5821F] focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                   placeholder="Maximum attendees"
                   min="1"
                 />
@@ -341,7 +341,7 @@ export default function EventModal({ isOpen, onClose, onEventSaved, event }: Eve
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#F5821F] focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                   placeholder="Enter event description"
                 />
               </div>

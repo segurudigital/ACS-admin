@@ -278,7 +278,7 @@ export default function ConferenceModal({
       onClose={onClose}
       title={conference ? 'Edit Conference' : 'Create Conference'}
       maxWidth="2xl"
-      theme="orange"
+      removeBorder={true}
     >
       <form onSubmit={handleSubmit}>
         <ModalBody className="space-y-6">
@@ -307,7 +307,7 @@ export default function ConferenceModal({
               value={formData.unionId}
               onChange={(e) => setFormData(prev => ({ ...prev, unionId: e.target.value }))}
               required
-              className="mt-1 block w-full px-4 py-3 text-base rounded-md border-gray-300 shadow-sm focus:ring-orange-500 focus:border-orange-500"
+              className="mt-1 block w-full px-4 py-3 text-base rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
             >
               <option value="">Select a union</option>
               {unions.map(union => (
@@ -521,7 +521,7 @@ export default function ConferenceModal({
                   <button
                     type="button"
                     onClick={openMediaLibrary}
-                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-[#F25F29] hover:bg-[#F23E16] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
+                    className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                   >
                     <CloudArrowUpIcon className="h-4 w-4 mr-2" />
                     Select Banner Image
@@ -555,7 +555,7 @@ export default function ConferenceModal({
           <button
             type="submit"
             disabled={loading || !formData.name || !formData.unionId}
-            className="px-4 py-2 border border-transparent text-sm font-medium rounded-md text-gray-800 bg-[#F25F29] hover:bg-[#F23E16] disabled:bg-gray-300 disabled:cursor-not-allowed"
+            className="px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
           >
             {loading ? 'Saving...' : (conference ? 'Update' : 'Create')} Conference
           </button>
