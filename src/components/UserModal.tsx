@@ -7,7 +7,7 @@ import { usePermissions } from '@/contexts/HierarchicalPermissionContext';
 import { User, Role, HierarchicalEntity, HierarchicalAssignment } from '@/types/rbac';
 import { rbacService } from '@/lib/rbac';
 import { HierarchicalService } from '@/lib/hierarchicalService';
-import { X, Plus } from 'lucide-react';
+import { X, Plus, Loader2 } from 'lucide-react';
 
 interface UserModalProps {
    isOpen: boolean;
@@ -44,13 +44,26 @@ export default function UserModal({
       if (!isOpen) return; // Fetch for both new and existing users
 
       try {
-         console.log('Fetching roles...');
+         console.log('UserModal: Fetching roles...');
          const systemRoles = await rbacService.getSystemRoles();
-         console.log('Received roles from API:', systemRoles);
+         console.log('UserModal: Received roles from API:', systemRoles);
+         
+         // Validate role data structure
+         if (Array.isArray(systemRoles)) {
+            systemRoles.forEach((role, index) => {
+               if (!role.level) {
+                  console.warn(`UserModal: Role at index ${index} missing level:`, role);
+               }
+               if (!role.displayName && !role.name) {
+                  console.warn(`UserModal: Role at index ${index} missing displayName and name:`, role);
+               }
+            });
+         }
+         
          setRoles(Array.isArray(systemRoles) ? systemRoles : []);
-         console.log('Roles set in state:', Array.isArray(systemRoles) ? systemRoles : []);
+         console.log('UserModal: Roles set in state:', Array.isArray(systemRoles) ? systemRoles : []);
       } catch (error) {
-         console.error('Error fetching roles:', error);
+         console.error('UserModal: Error fetching roles:', error);
          setRoles([]);
       }
    }, [isOpen]);
@@ -59,14 +72,32 @@ export default function UserModal({
       if (!isOpen) return; // Fetch for both new and existing users
 
       try {
-         console.log('Fetching hierarchical entities...');
+         console.log('UserModal: Fetching hierarchical entities...');
          const entityData = await HierarchicalService.getAllUserEntities();
-         const allEntities = [...entityData.unions, ...entityData.conferences, ...entityData.churches];
-         console.log('Received entities from API:', allEntities);
+         
+         // Add type field to each entity based on which collection it comes from
+         const allEntities = [
+            ...entityData.unions.map(union => ({ ...union, type: 'union' as const })),
+            ...entityData.conferences.map(conference => ({ ...conference, type: 'conference' as const })),
+            ...entityData.churches.map(church => ({ ...church, type: 'church' as const }))
+         ];
+         
+         console.log('UserModal: Received entities from API with types added:', allEntities);
+         
+         // Validate entity data structure
+         allEntities.forEach((entity, index) => {
+            if (!entity.type) {
+               console.warn(`UserModal: Entity at index ${index} missing type:`, entity);
+            }
+            if (!entity.name) {
+               console.warn(`UserModal: Entity at index ${index} missing name:`, entity);
+            }
+         });
+         
          setEntities(Array.isArray(allEntities) ? allEntities : []);
-         console.log('Entities set in state:', Array.isArray(allEntities) ? allEntities : []);
+         console.log('UserModal: Entities set in state:', Array.isArray(allEntities) ? allEntities : []);
       } catch (error) {
-         console.error('Error fetching entities:', error);
+         console.error('UserModal: Error fetching entities:', error);
          setEntities([]);
       }
    }, [isOpen]);
@@ -83,9 +114,30 @@ export default function UserModal({
       e.preventDefault();
 
       // Validate assignments
-      if (hasPermission('users.assign_role') && assignments.length === 0) {
-         toast.error('Validation Error', 'At least one hierarchical entity assignment is required');
-         return;
+      if (hasPermission('users.assign_role')) {
+         if (assignments.length === 0) {
+            toast.error('Validation Error', 'At least one hierarchical entity assignment is required');
+            return;
+         }
+         
+         // Validate each assignment has valid entity and role
+         for (const assignment of assignments) {
+            const entityId = typeof assignment.entity === 'string' 
+               ? assignment.entity 
+               : assignment.entity?._id;
+            const roleName = typeof assignment.role === 'string' 
+               ? assignment.role 
+               : assignment.role?.name;
+            
+            if (!entityId) {
+               toast.error('Validation Error', 'All assignments must have a valid entity selected');
+               return;
+            }
+            if (!roleName) {
+               toast.error('Validation Error', 'All assignments must have a valid role selected');
+               return;
+            }
+         }
       }
 
       try {
@@ -100,12 +152,27 @@ export default function UserModal({
             state?: string;
             country?: string;
             verified: boolean;
-            hierarchicalAssignments?: Array<{
-               entityId: string;
-               roleName: string;
+            conferenceAssignments?: Array<{
+               conference: string;
+               role: string; // Role ObjectId
+               assignedAt: string;
+            }>;
+            unionAssignments?: Array<{
+               union: string;
+               role: string; // Role ObjectId
+               assignedAt: string;
+            }>;
+            churchAssignments?: Array<{
+               church: string;
+               role: string; // Role ObjectId
+               assignedAt: string;
             }>;
             entityId?: string;
             role?: string;
+            entityType?: string;
+            conferenceId?: string;
+            unionId?: string;
+            churchId?: string;
          } = {
             name: formData.name,
             email: formData.email,
@@ -117,25 +184,80 @@ export default function UserModal({
             verified: formData.verified,
          };
 
-         // Add assignments data
+         // Add assignments data - try legacy format that backend might expect
          if (assignments.length > 0) {
-            userData.hierarchicalAssignments = assignments.map(assignment => ({
-               entityId: typeof assignment.entity === 'string' 
-                  ? assignment.entity 
-                  : assignment.entity._id,
-               roleName: typeof assignment.role === 'string' 
-                  ? assignment.role 
-                  : (assignment.role.name || '')
-            }));
+            console.log('UserModal: Processing assignments for user creation (LEGACY FORMAT):', assignments);
             
-            // For backward compatibility with single assignment
             const firstAssignment = assignments[0];
-            userData.entityId = typeof firstAssignment.entity === 'string' 
+            const entityId = typeof firstAssignment.entity === 'string' 
                ? firstAssignment.entity 
-               : firstAssignment.entity._id;
-            userData.role = typeof firstAssignment.role === 'string' 
+               : firstAssignment.entity?._id;
+            const roleId = typeof firstAssignment.role === 'string' 
                ? firstAssignment.role 
-               : firstAssignment.role.name;
+               : firstAssignment.role?._id;  // Use role ID, not name!
+            const roleName = typeof firstAssignment.role === 'string' 
+               ? firstAssignment.role 
+               : (firstAssignment.role?.name || '');
+            const entityType = typeof firstAssignment.entity === 'string' 
+               ? entities.find(e => e._id === firstAssignment.entity)?.type
+               : firstAssignment.entity?.type;
+            
+            console.log('UserModal: Assignment data extracted:', {
+               entityId, roleId, roleName, entityType
+            });
+            
+            // Backend expects role ID in assignments, not role name!
+            if (entityType === 'conference') {
+               userData.conferenceAssignments = [{
+                  conference: entityId,
+                  role: roleId,  // Use role ObjectId, not name!
+                  assignedAt: new Date().toISOString()
+               }];
+               userData.conferenceId = entityId; // Primary assignment
+            } else if (entityType === 'union') {
+               userData.unionAssignments = [{
+                  union: entityId,
+                  role: roleId,  // Use role ObjectId, not name!
+                  assignedAt: new Date().toISOString()
+               }];
+               userData.unionId = entityId;
+            } else if (entityType === 'church') {
+               userData.churchAssignments = [{
+                  church: entityId,
+                  role: roleId,  // Use role ObjectId, not name!
+                  assignedAt: new Date().toISOString()
+               }];
+               userData.churchId = entityId;
+            }
+            
+            // Keep backward compatibility fields
+            userData.entityId = entityId;
+            userData.role = roleName;
+            userData.entityType = entityType;
+               
+            console.log('UserModal: Final userData with LEGACY assignments (FIXED ROLE ID):', {
+               entityId: userData.entityId,
+               role: userData.role,
+               roleId: roleId,
+               roleName: roleName,
+               entityType: userData.entityType,
+               conferenceAssignments: userData.conferenceAssignments,
+               unionAssignments: userData.unionAssignments,
+               churchAssignments: userData.churchAssignments,
+               conferenceId: userData.conferenceId,
+               unionId: userData.unionId,
+               churchId: userData.churchId
+            });
+            
+            // Validate that we have the required data
+            if (!userData.entityId) {
+               console.error('UserModal: No entityId in final userData');
+               throw new Error('Cannot create user: missing entity ID');
+            }
+            if (!userData.role) {
+               console.error('UserModal: No role in final userData');
+               throw new Error('Cannot create user: missing role');
+            }
          }
 
          let response;
@@ -146,7 +268,7 @@ export default function UserModal({
             const basicUserData = { ...userData };
             delete basicUserData.entityId;
             delete basicUserData.role;
-            delete basicUserData.hierarchicalAssignments;
+            // Remove assignment-specific fields for basic user data
             
             response = await fetch(
                `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/users/${user._id}`,
@@ -235,6 +357,21 @@ export default function UserModal({
             }
          } else {
             // Create new user with all assignments
+            console.log('UserModal: Creating new user with userData:', JSON.stringify(userData, null, 2));
+            console.log('UserModal: Raw assignments array:', assignments);
+            
+            // Debug each assignment in detail
+            assignments.forEach((assignment, index) => {
+               console.log(`Assignment ${index}:`, {
+                  entity: assignment.entity,
+                  entityType: typeof assignment.entity,
+                  entityId: typeof assignment.entity === 'string' ? assignment.entity : assignment.entity?._id,
+                  role: assignment.role,
+                  roleType: typeof assignment.role,
+                  roleName: typeof assignment.role === 'string' ? assignment.role : assignment.role?.name
+               });
+            });
+            
             response = await fetch(
                `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/users`,
                {
@@ -349,7 +486,7 @@ export default function UserModal({
       if (isEntityAssigned(newAssignment.entityId)) return;
 
       const entity = entities.find(ent => ent._id === newAssignment.entityId);
-      const role = roles.find(r => r._id === newAssignment.roleId || r.name === newAssignment.roleId);
+      const role = roles.find(r => r.name === newAssignment.roleId || r._id === newAssignment.roleId);
       
       if (!entity || !role) return;
 
@@ -643,18 +780,39 @@ export default function UserModal({
                                  className="block w-full px-3 py-2 text-sm rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                               >
                                  <option value="">Select role...</option>
-                                 {newAssignment.entityId && roles.filter(role => {
+                                 {newAssignment.entityId && (() => {
                                     const selectedEntity = entities.find(entity => entity._id === newAssignment.entityId);
-                                    if (!selectedEntity) return false;
+                                    console.log('Selected entity for role filtering:', selectedEntity);
+                                    console.log('Available roles for filtering:', roles);
                                     
-                                    // Apply same filtering logic as getFilteredRoles but for specific entity
-                                    if (role.name === 'super_admin' && !hasPermission('*')) return false;
-                                    if (selectedEntity.type === 'church') return role.level === 'church';
-                                    if (selectedEntity.type === 'conference') return role.level ? ['conference', 'union'].includes(role.level) : false;
-                                    if (selectedEntity.type === 'union') return role.level === 'union';
-                                    return false;
-                                 }).map((role) => (
-                                    <option key={role._id || role.name} value={role._id || role.name}>
+                                    const filteredRoles = roles.filter(role => {
+                                       if (!selectedEntity) return false;
+                                       
+                                       // Ensure role has required properties
+                                       if (!role.level) {
+                                          console.warn('Role missing level property:', role);
+                                          return false;
+                                       }
+                                       
+                                       // Apply same filtering logic as getFilteredRoles but for specific entity
+                                       if (role.name === 'super_admin' && !hasPermission('*')) return false;
+                                       
+                                       // Match role level to entity type
+                                       if (selectedEntity.type === 'church') {
+                                          return role.level === 'church';
+                                       } else if (selectedEntity.type === 'conference') {
+                                          return role.level === 'conference' || role.level === 'union';
+                                       } else if (selectedEntity.type === 'union') {
+                                          return role.level === 'union';
+                                       }
+                                       
+                                       return false;
+                                    });
+                                    
+                                    console.log('Filtered roles for entity type', selectedEntity?.type, ':', filteredRoles);
+                                    return filteredRoles;
+                                 })().map((role) => (
+                                    <option key={role._id || role.name} value={role.name || role._id}>
                                        {role.displayName}
                                     </option>
                                  ))}
@@ -715,9 +873,16 @@ export default function UserModal({
                      !formData.email ||
                      (hasPermission('users.assign_role') && assignments.length === 0)
                   }
-                  className="px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-[#F25F29] hover:bg-[#F23E16] disabled:bg-gray-300 disabled:cursor-not-allowed"
+                  className="px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-[#F25F29] hover:bg-[#F23E16] disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center"
                >
-                  {user ? 'Update' : 'Create'} User
+                  {loading ? (
+                     <>
+                        <Loader2 className="animate-spin -ml-1 mr-2 h-4 w-4" />
+                        {user ? 'Updating...' : 'Creating...'}
+                     </>
+                  ) : (
+                     <>{user ? 'Update' : 'Create'} User</>
+                  )}
                </button>
             </ModalFooter>
          </form>
