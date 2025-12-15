@@ -17,7 +17,9 @@
       "Bash(git remote set-url:*)",
       "Bash(git fetch:*)",
       "Bash(git merge:*)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(git remote remove:*)",
+      "Bash(git remote add:*)"
     ],
     "deny": []
   }
