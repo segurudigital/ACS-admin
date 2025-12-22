@@ -19,15 +19,15 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
-    "@types/react": "^19",
+    "@types/node": "^20.19.27",
+    "@types/react": "^19.2.7",
     "@types/react-dom": "^19",
     "@vitest/ui": "^1.6.0",
     "eslint": "^9",
     "eslint-config-next": "16.0.1",
     "jsdom": "^27.2.0",
     "tailwindcss": "^4",
-    "typescript": "5.9.3",
+    "typescript": "^5.9.3",
     "vitest": "^1.6.0"
   }
 }
