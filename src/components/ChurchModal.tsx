@@ -38,10 +38,10 @@ export default function ChurchModal({
         postalCode: church?.location?.address?.postalCode || ''
       }
     },
-    contact: {
-      email: church?.contact?.email || '',
-      phone: church?.contact?.phone || '',
-      website: church?.contact?.website || ''
+    pastor: {
+      name: church?.leadership?.associatePastors?.[0]?.name || '',
+      email: church?.leadership?.associatePastors?.[0]?.email || '',
+      phone: church?.leadership?.associatePastors?.[0]?.phone || ''
     },
   });
   const [conferences, setConferences] = useState<Conference[]>([]);
@@ -162,7 +162,14 @@ export default function ChurchModal({
         code: formData.code || undefined,
         conferenceId: formData.conferenceId,
         location: formData.location,
-        contact: formData.contact
+        leadership: {
+          associatePastors: formData.pastor.name ? [{
+            name: formData.pastor.name,
+            email: formData.pastor.email || undefined,
+            phone: formData.pastor.phone || undefined,
+            title: 'Pastor'
+          }] : []
+        }
       };
 
       let response;
@@ -347,7 +354,7 @@ export default function ChurchModal({
         name: church?.name || '',
         code: church?.code || '',
         conferenceId: typeof church?.conferenceId === 'object' && church?.conferenceId ? (church.conferenceId as Conference)._id : church?.conferenceId || '',
-            location: {
+        location: {
           address: {
             address: church?.location?.address?.address || '',
             city: church?.location?.address?.city || '',
@@ -356,10 +363,10 @@ export default function ChurchModal({
             postalCode: church?.location?.address?.postalCode || ''
           }
         },
-        contact: {
-          email: church?.contact?.email || '',
-          phone: church?.contact?.phone || '',
-          website: church?.contact?.website || ''
+        pastor: {
+          name: church?.leadership?.associatePastors?.[0]?.name || '',
+          email: church?.leadership?.associatePastors?.[0]?.email || '',
+          phone: church?.leadership?.associatePastors?.[0]?.phone || ''
         }
       });
       
@@ -565,55 +572,55 @@ export default function ChurchModal({
             </div>
           </div>
 
-          {/* Contact Information */}
+          {/* Pastor Information */}
           <div>
-            <h4 className="text-sm font-medium text-gray-800 mb-4">Contact Information</h4>
-            
+            <h4 className="text-sm font-medium text-gray-800 mb-4">Pastor Information</h4>
+
             <div className="grid grid-cols-2 gap-4">
+              <div className="col-span-2">
+                <label className="block text-sm font-medium text-gray-800">
+                  Pastor Name
+                </label>
+                <input
+                  type="text"
+                  value={formData.pastor.name}
+                  onChange={(e) => setFormData(prev => ({
+                    ...prev,
+                    pastor: { ...prev.pastor, name: e.target.value }
+                  }))}
+                  placeholder="Enter pastor's name"
+                  className="mt-1 block w-full px-4 py-3 text-base rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                />
+              </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-800">
-                  Email
+                  Pastor Email
                 </label>
                 <input
                   type="email"
-                  value={formData.contact.email}
-                  onChange={(e) => setFormData(prev => ({ 
-                    ...prev, 
-                    contact: { ...prev.contact, email: e.target.value }
+                  value={formData.pastor.email}
+                  onChange={(e) => setFormData(prev => ({
+                    ...prev,
+                    pastor: { ...prev.pastor, email: e.target.value }
                   }))}
-                  placeholder="contact@church.org"
+                  placeholder="pastor@adventist.org.au"
                   className="mt-1 block w-full px-4 py-3 text-base rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-800">
-                  Phone
+                  Pastor Phone
                 </label>
                 <input
                   type="tel"
-                  value={formData.contact.phone}
-                  onChange={(e) => setFormData(prev => ({ 
-                    ...prev, 
-                    contact: { ...prev.contact, phone: e.target.value }
+                  value={formData.pastor.phone}
+                  onChange={(e) => setFormData(prev => ({
+                    ...prev,
+                    pastor: { ...prev.pastor, phone: e.target.value }
                   }))}
-                  placeholder="(123) 456-7890"
-                  className="mt-1 block w-full px-4 py-3 text-base rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
-                />
-              </div>
-
-              <div className="col-span-2">
-                <label className="block text-sm font-medium text-gray-800">
-                  Website
-                </label>
-                <input
-                  type="url"
-                  value={formData.contact.website}
-                  onChange={(e) => setFormData(prev => ({ 
-                    ...prev, 
-                    contact: { ...prev.contact, website: e.target.value }
-                  }))}
-                  placeholder="https://www.church.org"
+                  placeholder="0400 000 000"
                   className="mt-1 block w-full px-4 py-3 text-base rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
                 />
               </div>

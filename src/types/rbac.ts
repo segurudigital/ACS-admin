@@ -305,7 +305,19 @@ export interface Church extends BaseHierarchyLevel {
   };
   
   leadership?: {
-    pastor?: {
+    associatePastors?: Array<{
+      name?: string;
+      title?: string;
+      email?: string;
+      phone?: string;
+      responsibilities?: string[];
+    }>;
+    acsCoordinator?: {
+      name?: string;
+      email?: string;
+      phone?: string;
+    };
+    firstElder?: {
       name?: string;
       email?: string;
       phone?: string;

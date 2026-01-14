@@ -234,15 +234,15 @@ export default function ChurchDetailPage() {
                      </h2>
                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {/* Pastor */}
-                        {church.leadership.pastor?.name && (
+                        {church.leadership.associatePastors?.[0]?.name && (
                            <div className="bg-gray-50 p-4 rounded-lg">
                               <h3 className="font-semibold text-gray-900 mb-2">Pastor</h3>
-                              <p className="text-gray-700 font-medium">{church.leadership.pastor.name}</p>
-                              {church.leadership.pastor.email && (
-                                 <p className="text-gray-600 text-sm">{church.leadership.pastor.email}</p>
+                              <p className="text-gray-700 font-medium">{church.leadership.associatePastors[0].name}</p>
+                              {church.leadership.associatePastors[0].email && (
+                                 <p className="text-gray-600 text-sm">{church.leadership.associatePastors[0].email}</p>
                               )}
-                              {church.leadership.pastor.phone && (
-                                 <p className="text-gray-600 text-sm">{church.leadership.pastor.phone}</p>
+                              {church.leadership.associatePastors[0].phone && (
+                                 <p className="text-gray-600 text-sm">{church.leadership.associatePastors[0].phone}</p>
                               )}
                            </div>
                         )}

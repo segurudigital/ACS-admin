@@ -88,21 +88,13 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
           <div className="text-center mb-8">
-            <div className="w-20 h-20 bg-[#F5821F] rounded-full mx-auto mb-4 flex items-start justify-center pt-0.5">
-              <Image 
-                src="/logo-white.png" 
-                alt="Adventist Community Services Logo" 
-                width={68}
-                height={68}
-                className="object-contain mx-auto"
-              />
-            </div>
-            <h1 className="text-2xl font-semibold text-navy-deep mb-2">
-              Admin Area
-            </h1>
-            <p className="text-neutral-gray text-sm">
-              Adventist Community Services
-            </p>
+            <Image
+              src="/logo.png"
+              alt="Adventist Community Services Logo"
+              width={180}
+              height={180}
+              className="object-contain mx-auto rounded-xl"
+            />
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">

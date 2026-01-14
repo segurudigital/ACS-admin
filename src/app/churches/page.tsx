@@ -26,6 +26,7 @@ import {
    PhoneIcon,
    EnvelopeIcon,
    UserGroupIcon,
+   UserIcon,
 } from '@heroicons/react/24/outline';
 
 export default function Churches() {
@@ -218,7 +219,9 @@ export default function Churches() {
          }
       } catch (error) {
          console.error('Error deleting church:', error);
-         toast.error('Failed to delete church', 'An unexpected error occurred');
+         const errorMessage =
+            error instanceof Error ? error.message : 'An unexpected error occurred';
+         toast.error('Failed to delete church', errorMessage);
       } finally {
          setShowDeleteConfirm(false);
          setChurchToDelete(undefined);
@@ -453,24 +456,49 @@ export default function Churches() {
          className: 'max-w-xs',
       },
       {
+         key: 'pastor',
+         header: 'Pastor',
+         accessor: (church) => {
+            const pastor = church.leadership?.associatePastors?.[0];
+            return (
+               <div className="text-sm text-gray-900">
+                  {pastor?.name ? (
+                     <div className="flex items-center">
+                        <UserIcon className="h-4 w-4 text-gray-400 mr-2" />
+                        <span>{pastor.name}</span>
+                     </div>
+                  ) : (
+                     <span className="text-gray-400">-</span>
+                  )}
+               </div>
+            );
+         },
+      },
+      {
          key: 'contact',
          header: 'Contact',
-         accessor: (church) => (
-            <div className="text-sm text-gray-900">
-               {church.contact?.email && (
-                  <div className="flex items-center mb-1">
-                     <EnvelopeIcon className="h-4 w-4 text-gray-400 mr-2" />
-                     {church.contact.email}
-                  </div>
-               )}
-               {church.contact?.phone && (
-                  <div className="flex items-center">
-                     <PhoneIcon className="h-4 w-4 text-gray-400 mr-2" />
-                     {church.contact.phone}
-                  </div>
-               )}
-            </div>
-         ),
+         accessor: (church) => {
+            const pastor = church.leadership?.associatePastors?.[0];
+            return (
+               <div className="text-sm text-gray-900">
+                  {pastor?.email && (
+                     <div className="flex items-center mb-1">
+                        <EnvelopeIcon className="h-4 w-4 text-gray-400 mr-2" />
+                        {pastor.email}
+                     </div>
+                  )}
+                  {pastor?.phone && (
+                     <div className="flex items-center">
+                        <PhoneIcon className="h-4 w-4 text-gray-400 mr-2" />
+                        {pastor.phone}
+                     </div>
+                  )}
+                  {!pastor?.email && !pastor?.phone && (
+                     <span className="text-gray-400">-</span>
+                  )}
+               </div>
+            );
+         },
       },
       {
          key: 'status',
