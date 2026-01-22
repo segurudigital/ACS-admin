@@ -36,6 +36,7 @@ export type MenuSection =
   | 'hierarchy'
   | 'services_events'
   | 'user_management'
+  | 'content'
   | 'media'
   | 'my_team'
   | 'system';

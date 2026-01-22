@@ -134,6 +134,7 @@ export function useMenuAccess(): FilteredMenuResult {
       hierarchy: [],
       services_events: [],
       user_management: [],
+      content: [],
       media: [],
       my_team: [],
       system: [],

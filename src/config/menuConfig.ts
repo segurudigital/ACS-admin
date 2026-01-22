@@ -30,9 +30,10 @@ export const MENU_SECTIONS: MenuSectionConfig[] = [
   { id: 'hierarchy', title: 'Hierarchy', order: 1 },
   { id: 'services_events', title: 'Services & Events', order: 2 },
   { id: 'user_management', title: 'User Management', order: 3 },
-  { id: 'media', title: '', order: 4 },
-  { id: 'my_team', title: 'My Team', order: 5 },
-  { id: 'system', title: 'System', order: 6 },
+  { id: 'content', title: 'Content', order: 4 },
+  { id: 'media', title: '', order: 5 },
+  { id: 'my_team', title: 'My Team', order: 6 },
+  { id: 'system', title: 'System', order: 7 },
 ];
 
 // Complete menu configuration
@@ -229,6 +230,7 @@ export function getMenuItemsBySection(): Record<MenuSection, MenuItem[]> {
     hierarchy: [],
     services_events: [],
     user_management: [],
+    content: [],
     media: [],
     my_team: [],
     system: [],
