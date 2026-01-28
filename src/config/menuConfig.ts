@@ -162,6 +162,19 @@ export const MENU_ITEMS: MenuItem[] = [
   },
 
   // ======================
+  // CONTENT SECTION
+  // ======================
+  {
+    id: 'testimonies',
+    label: 'Testimonies',
+    href: '/testimonies',
+    icon: 'testimonies',
+    section: 'content',
+    allowedRoles: ROLE_ACCESS_TIERS.ADMIN_TIERS,
+    requiredPermission: 'testimonies.manage',
+  },
+
+  // ======================
   // MEDIA SECTION
   // ======================
   {

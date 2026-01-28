@@ -9,7 +9,7 @@ interface ConfirmationModalProps {
   onClose: () => void;
   onConfirm: () => void;
   title: string;
-  message: string;
+  message: ReactNode;
   confirmLabel?: string;
   cancelLabel?: string;
   confirmButtonColor?: 'red' | 'blue' | 'green' | 'orange';
@@ -87,7 +87,7 @@ function ConfirmationContent({
   icon?: ReactNode;
   iconColorClass: string;
   title: string;
-  message: string;
+  message: ReactNode;
   onClose: () => void;
   onConfirm: () => void;
   cancelLabel: string;

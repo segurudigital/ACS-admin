@@ -18,7 +18,8 @@ export type MenuIconId =
   | 'my-team'
   | 'communications'
   | 'updates'
-  | 'settings';
+  | 'settings'
+  | 'testimonies';
 
 // Role categories from backend Role model
 export type RoleCategory =
