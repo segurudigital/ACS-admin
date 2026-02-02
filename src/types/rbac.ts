@@ -167,12 +167,7 @@ export interface UserAssignments {
 interface BaseHierarchyLevel {
   _id: string;
   name: string;
-  metadata: {
-    address?: string;
-    phone?: string;
-    territory?: string[];
-    email?: string;
-  };
+  metadata?: Record<string, unknown>;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;

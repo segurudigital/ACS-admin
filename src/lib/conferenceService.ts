@@ -8,8 +8,6 @@ import {
   CreateConferenceData, 
   UpdateConferenceData,
   ConferenceListParams,
-  ConferenceQuickSetupData,
-  Union
 } from '../types/hierarchy';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
@@ -21,6 +19,14 @@ export class ConferenceService {
       'Content-Type': 'application/json',
       Authorization: token ? `Bearer ${token}` : '',
     };
+  }
+
+  /**
+   * Ensure conference data has type: 'conference' (backend doesn't return it)
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private static addConferenceType(conference: any): Conference {
+    return { ...conference, type: 'conference' as const };
   }
 
   /**
@@ -57,7 +63,9 @@ export class ConferenceService {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
-      return await response.json();
+      const result: ConferenceListResponse = await response.json();
+      result.data = result.data.map(c => this.addConferenceType(c));
+      return result;
     } catch (error) {
       console.error('Error fetching conferences:', error);
       throw new Error(
@@ -80,7 +88,9 @@ export class ConferenceService {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
-      return await response.json();
+      const result: ConferenceResponse = await response.json();
+      result.data = this.addConferenceType(result.data);
+      return result;
     } catch (error) {
       console.error('Error fetching conference:', error);
       throw new Error(
@@ -105,7 +115,9 @@ export class ConferenceService {
         throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
       }
 
-      return await response.json();
+      const result: ConferenceResponse = await response.json();
+      result.data = this.addConferenceType(result.data);
+      return result;
     } catch (error) {
       console.error('Error creating conference:', error);
       throw new Error(
@@ -130,7 +142,9 @@ export class ConferenceService {
         throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
       }
 
-      return await response.json();
+      const result: ConferenceResponse = await response.json();
+      result.data = this.addConferenceType(result.data);
+      return result;
     } catch (error) {
       console.error('Error updating conference:', error);
       throw new Error(
@@ -164,31 +178,6 @@ export class ConferenceService {
   }
 
   /**
-   * Quick setup conference with admin user
-   */
-  static async quickSetupConference(data: ConferenceQuickSetupData): Promise<ConferenceResponse> {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/conferences/quick-setup`, {
-        method: 'POST',
-        headers: this.getAuthHeaders(),
-        body: JSON.stringify(data),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      return await response.json();
-    } catch (error) {
-      console.error('Error in conference quick setup:', error);
-      throw new Error(
-        error instanceof Error ? error.message : 'Failed to setup conference'
-      );
-    }
-  }
-
-  /**
    * Get conference hierarchy (with churches)
    */
   static async getConferenceHierarchy(id: string): Promise<{
@@ -213,58 +202,6 @@ export class ConferenceService {
       console.error('Error fetching conference hierarchy:', error);
       throw new Error(
         error instanceof Error ? error.message : 'Failed to fetch conference hierarchy'
-      );
-    }
-  }
-
-  /**
-   * Get churches in conference
-   */
-  static async getConferenceChurches(id: string): Promise<{
-    success: boolean;
-    data: Church[];
-  }> {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/conferences/${id}/churches`, {
-        method: 'GET',
-        headers: this.getAuthHeaders(),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      return await response.json();
-    } catch (error) {
-      console.error('Error fetching conference churches:', error);
-      throw new Error(
-        error instanceof Error ? error.message : 'Failed to fetch conference churches'
-      );
-    }
-  }
-
-  /**
-   * Get suggested parent unions for new conferences
-   */
-  static async getSuggestedParentUnions(): Promise<{
-    success: boolean;
-    data: Union[];
-  }> {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/conferences/suggested-parents`, {
-        method: 'GET',
-        headers: this.getAuthHeaders(),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      return await response.json();
-    } catch (error) {
-      console.error('Error fetching suggested parent unions:', error);
-      throw new Error(
-        error instanceof Error ? error.message : 'Failed to fetch suggested parent unions'
       );
     }
   }

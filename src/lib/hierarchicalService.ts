@@ -333,7 +333,7 @@ export class HierarchicalService {
     name: string;
     type: 'union' | 'conference' | 'church';
     parentEntity?: { _id: string; name: string; type: string };
-    metadata: Record<string, unknown>;
+    metadata?: Record<string, unknown>;
     isActive: boolean;
     createdAt: string;
     updatedAt: string;
@@ -345,7 +345,7 @@ export class HierarchicalService {
         name: string;
         type: 'union' | 'conference' | 'church';
         parentEntity?: { _id: string; name: string; type: string };
-        metadata: Record<string, unknown>;
+        metadata?: Record<string, unknown>;
         isActive: boolean;
         createdAt: string;
         updatedAt: string;

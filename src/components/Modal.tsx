@@ -70,7 +70,7 @@ export default function Modal({
           {showCloseButton && (
             <button
               onClick={onClose}
-              className={modalTheme.textColor === 'text-white' ? 'text-white hover:text-orange-200' : 'text-gray-400 hover:text-gray-600'}
+              className="text-gray-400 hover:text-gray-600"
               aria-label="Close modal"
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">

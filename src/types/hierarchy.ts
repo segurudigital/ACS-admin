@@ -32,12 +32,7 @@ export interface Union {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
-  metadata: {
-    address?: string;
-    phone?: string;
-    territory?: string[];
-    email?: string;
-    membershipCount?: number;
+  metadata?: {
     churchCount?: number;
     lastUpdated?: string;
   };
