@@ -167,12 +167,7 @@ export interface UserAssignments {
 interface BaseHierarchyLevel {
   _id: string;
   name: string;
-  metadata: {
-    address?: string;
-    phone?: string;
-    territory?: string[];
-    email?: string;
-  };
+  metadata?: Record<string, unknown>;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -305,7 +300,19 @@ export interface Church extends BaseHierarchyLevel {
   };
   
   leadership?: {
-    pastor?: {
+    associatePastors?: Array<{
+      name?: string;
+      title?: string;
+      email?: string;
+      phone?: string;
+      responsibilities?: string[];
+    }>;
+    acsCoordinator?: {
+      name?: string;
+      email?: string;
+      phone?: string;
+    };
+    firstElder?: {
       name?: string;
       email?: string;
       phone?: string;

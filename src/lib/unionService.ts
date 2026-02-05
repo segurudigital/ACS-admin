@@ -24,6 +24,14 @@ export class UnionService {
   }
 
   /**
+   * Ensure union data has type: 'union' (backend doesn't return it)
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private static addUnionType(union: any): Union {
+    return { ...union, type: 'union' as const };
+  }
+
+  /**
    * Get all unions
    */
   static async getAllUnions(params?: UnionListParams): Promise<UnionListResponse> {
@@ -59,7 +67,10 @@ export class UnionService {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
-      return await response.json();
+      const result: UnionListResponse = await response.json();
+      // Inject type: 'union' since backend doesn't return it
+      result.data = result.data.map(u => this.addUnionType(u));
+      return result;
     } catch (error) {
       console.error('Error fetching unions:', error);
       throw new Error(
@@ -82,7 +93,9 @@ export class UnionService {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
-      return await response.json();
+      const result: UnionResponse = await response.json();
+      result.data = this.addUnionType(result.data);
+      return result;
     } catch (error) {
       console.error('Error fetching union:', error);
       throw new Error(
@@ -107,7 +120,9 @@ export class UnionService {
         throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
       }
 
-      return await response.json();
+      const result: UnionResponse = await response.json();
+      result.data = this.addUnionType(result.data);
+      return result;
     } catch (error) {
       console.error('Error creating union:', error);
       throw new Error(
@@ -132,7 +147,9 @@ export class UnionService {
         throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
       }
 
-      return await response.json();
+      const result: UnionResponse = await response.json();
+      result.data = this.addUnionType(result.data);
+      return result;
     } catch (error) {
       console.error('Error updating union:', error);
       throw new Error(
@@ -218,37 +235,13 @@ export class UnionService {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
-      return await response.json();
+      const result = await response.json();
+      result.data.union = this.addUnionType(result.data.union);
+      return result;
     } catch (error) {
       console.error('Error fetching union hierarchy:', error);
       throw new Error(
         error instanceof Error ? error.message : 'Failed to fetch union hierarchy'
-      );
-    }
-  }
-
-  /**
-   * Get conferences in union
-   */
-  static async getUnionConferences(id: string): Promise<{
-    success: boolean;
-    data: Conference[];
-  }> {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/unions/${id}/conferences`, {
-        method: 'GET',
-        headers: this.getAuthHeaders(),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      return await response.json();
-    } catch (error) {
-      console.error('Error fetching union conferences:', error);
-      throw new Error(
-        error instanceof Error ? error.message : 'Failed to fetch union conferences'
       );
     }
   }
@@ -311,43 +304,6 @@ export class UnionService {
       console.error('Error updating union banner with media file:', error);
       throw new Error(
         error instanceof Error ? error.message : 'Failed to update union banner'
-      );
-    }
-  }
-
-  /**
-   * Quick setup union with admin user
-   */
-  static async quickSetupUnion(data: {
-    union: {
-      name: string;
-      metadata?: Record<string, unknown>;
-    };
-    adminUser: {
-      firstName: string;
-      lastName: string;
-      email: string;
-      role?: string;
-    };
-    sendInvitation?: boolean;
-  }): Promise<UnionResponse> {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/unions/quick-setup`, {
-        method: 'POST',
-        headers: this.getAuthHeaders(),
-        body: JSON.stringify(data),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      return await response.json();
-    } catch (error) {
-      console.error('Error in union quick setup:', error);
-      throw new Error(
-        error instanceof Error ? error.message : 'Failed to create union and admin user'
       );
     }
   }

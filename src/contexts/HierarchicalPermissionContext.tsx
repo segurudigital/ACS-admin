@@ -1,9 +1,10 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef, useMemo } from 'react';
 import { AuthService } from '@/lib/auth';
 import { permissionResolver, PermissionResolver, EntityAction, Entity } from '@/lib/permissionResolver';
 import { isInSubtree } from '@/lib/hierarchyUtils';
+import { RoleCategory } from '@/types/menu';
 
 // Hierarchical User Interface
 interface HierarchicalUser {
@@ -139,6 +140,9 @@ interface HierarchicalPermissionContextType {
   currentChurch: string | null;
   role: string | null;
   type: string | null;
+
+  // Role Category for menu access
+  roleCategory: RoleCategory;
   
   
   // Team Context
@@ -203,16 +207,64 @@ interface HierarchicalPermissionProviderProps {
   children: ReactNode;
 }
 
+// Helper function to determine role category
+function determineRoleCategory(
+  permissions: string[],
+  hierarchyLevel: number,
+  roleName: string | null,
+  teamRole: 'leader' | 'member' | 'communications' | null
+): RoleCategory {
+  // Super admin check - wildcard permissions
+  if (permissions.includes('*') || permissions.includes('all')) {
+    return 'super_admin';
+  }
+
+  // Check role name for explicit category
+  if (roleName) {
+    const lowerRole = roleName.toLowerCase();
+    if (lowerRole.includes('super_admin') || lowerRole === 'super_admin') {
+      return 'super_admin';
+    }
+    if (lowerRole.includes('union_admin') || lowerRole === 'union_admin') {
+      return 'union_admin';
+    }
+    if (lowerRole.includes('conference_admin') || lowerRole === 'conference_admin') {
+      return 'conference_admin';
+    }
+    if (lowerRole.includes('viewer') || lowerRole === 'viewer') {
+      return 'viewer';
+    }
+  }
+
+  // Map hierarchy level to role category
+  switch (hierarchyLevel) {
+    case 0:
+      if (roleName?.includes('union')) return 'union_admin';
+      return 'super_admin';
+    case 1:
+      return 'conference_admin';
+    case 2:
+      return 'team_leader';
+    case 3:
+    case 4:
+      if (teamRole === 'leader') return 'team_leader';
+      if (teamRole === 'communications') return 'communications';
+      return 'team_member';
+    default:
+      return 'viewer';
+  }
+}
+
 export const HierarchicalPermissionProvider: React.FC<HierarchicalPermissionProviderProps> = ({ children }) => {
   const [user, setUser] = useState<HierarchicalUser | null>(null);
   const [permissions, setPermissions] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
-  
+
   // Team state
   const [teams, setTeams] = useState<TeamAssignment[]>([]);
   const [currentTeam, setCurrentTeam] = useState<TeamAssignment['team'] | null>(null);
   const [teamRole, setTeamRole] = useState<TeamAssignment['role'] | null>(null);
-  
+
   // Logout timeout ref
   const logoutTimeout = useRef<NodeJS.Timeout | null>(null);
 
@@ -593,6 +645,12 @@ export const HierarchicalPermissionProvider: React.FC<HierarchicalPermissionProv
 
   // Current entity context based on primary assignments
 
+  // Calculate role category for menu access
+  const role = user?.unionAssignments?.[0]?.role?.name || user?.conferenceAssignments?.[0]?.role?.name || user?.churchAssignments?.[0]?.role?.name || null;
+  const roleCategory = useMemo((): RoleCategory => {
+    return determineRoleCategory(permissions, user?.hierarchyLevel ?? -1, role, teamRole);
+  }, [permissions, user?.hierarchyLevel, role, teamRole]);
+
   const contextValue: HierarchicalPermissionContextType = {
     user,
     permissions,
@@ -611,8 +669,10 @@ export const HierarchicalPermissionProvider: React.FC<HierarchicalPermissionProv
     currentUnion: user?.primaryUnion || null,
     currentConference: user?.primaryConference || null,
     currentChurch: user?.primaryChurch || null,
-    role: user?.unionAssignments?.[0]?.role?.name || user?.conferenceAssignments?.[0]?.role?.name || user?.churchAssignments?.[0]?.role?.name || null,
+    role,
     type: null,
+    // Role Category for menu access
+    roleCategory,
     currentTeam,
     teams,
     teamRole,

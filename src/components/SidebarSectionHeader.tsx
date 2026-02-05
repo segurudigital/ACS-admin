@@ -9,9 +9,9 @@ export default function SidebarSectionHeader({ title, collapsed }: SidebarSectio
   }
 
   return (
-    <div className="px-4 py-1 mt-3 first:mt-0">
+    <div className="px-4 py-1 mt-6 first:mt-0">
       <div className="h-px bg-white/10 mb-1" />
-      <h3 className="text-xs font-medium text-white uppercase tracking-wider">
+      <h3 className="text-sm font-medium text-white uppercase tracking-wider">
         {title}
       </h3>
     </div>

@@ -7,6 +7,7 @@ import AdminLayout from '@/components/AdminLayout';
 import Button from '@/components/Button';
 import { StatusBadge } from '@/components/DataTable';
 import { useToast } from '@/contexts/ToastContext';
+import { usePermissions } from '@/contexts/HierarchicalPermissionContext';
 import { serviceManagement } from '@/lib/serviceManagement';
 import {
    MapPinIcon,
@@ -131,6 +132,7 @@ export default function ServiceDetailPage() {
    const params = useParams();
    const router = useRouter();
    const serviceId = params?.id as string;
+   const { user, loading: authLoading } = usePermissions();
 
    const [serviceData, setServiceData] = useState<ServiceDetails | null>(null);
    const [loading, setLoading] = useState(true);
@@ -173,12 +175,15 @@ export default function ServiceDetailPage() {
    }, [serviceId, router, showErrorToast]);
 
    useEffect(() => {
-      fetchServiceDetails();
-   }, [fetchServiceDetails]);
+      // Only fetch service details after authentication is ready
+      if (!authLoading && user) {
+         fetchServiceDetails();
+      }
+   }, [fetchServiceDetails, authLoading, user]);
 
 
 
-   if (loading) {
+   if (authLoading || loading) {
       return (
          <AdminLayout title="Loading..." description="Please wait">
             <div className="flex items-center justify-center h-64">

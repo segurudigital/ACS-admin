@@ -327,19 +327,13 @@ export default function UnionDetailPage() {
                         Additional Information
                      </h2>
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {union.metadata.membershipCount !== undefined && (
-                           <div className="flex justify-between">
-                              <span className="text-gray-600">Membership Count:</span>
-                              <span className="font-medium">{union.metadata.membershipCount}</span>
-                           </div>
-                        )}
-                        {union.metadata.churchCount !== undefined && (
+                        {union.metadata?.churchCount !== undefined && (
                            <div className="flex justify-between">
                               <span className="text-gray-600">Church Count:</span>
                               <span className="font-medium">{union.metadata.churchCount}</span>
                            </div>
                         )}
-                        {union.metadata.lastUpdated && (
+                        {union.metadata?.lastUpdated && (
                            <div className="md:col-span-2 flex justify-between text-sm text-gray-500">
                               <span>Last Updated:</span>
                               <span>{new Date(union.metadata.lastUpdated).toLocaleDateString()}</span>

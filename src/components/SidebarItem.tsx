@@ -23,7 +23,7 @@ export default function SidebarItem({ href, icon, label, badge, onClick, collaps
     }
   };
 
-  const baseClasses = "flex items-center px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-200 group";
+  const baseClasses = "flex items-center px-4 py-1.5 text-sm font-medium rounded-lg transition-colors duration-200 group";
   const activeClasses = isActive 
     ? "bg-white/20 text-white" 
     : "text-white hover:bg-white/10 hover:text-white";

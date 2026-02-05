@@ -8,7 +8,7 @@ import EventModal from '@/components/EventModal';
 import ConfirmationModal from '@/components/ConfirmationModal';
 import { useToast } from '@/contexts/ToastContext';
 import { eventsAPI, EventListItem } from '@/lib/eventsAPI';
-import { 
+import {
   CalendarIcon,
   MapPinIcon,
   PencilIcon,
@@ -151,7 +151,7 @@ export default function Events() {
         const startTime = formatDateTime(event.start);
         const endTime = formatDateTime(event.end);
         const isSameDay = event.start.split('T')[0] === event.end.split('T')[0];
-        
+
         return (
           <div>
             <p className="font-medium text-gray-900">{startTime.date}</p>
@@ -182,7 +182,7 @@ export default function Events() {
         const eventStatus = getEventStatus(event);
         const colors = {
           green: 'bg-green-100 text-green-800',
-          blue: 'bg-blue-100 text-blue-800', 
+          blue: 'bg-blue-100 text-blue-800',
           gray: 'bg-gray-100 text-gray-800'
         };
         const colorClass = colors[eventStatus.color as keyof typeof colors];
@@ -237,8 +237,8 @@ export default function Events() {
   );
 
   return (
-    <AdminLayout 
-      title="Events" 
+    <AdminLayout
+      title="Events"
       description="Manage events for all community services"
     >
       <div className="space-y-6">
@@ -278,7 +278,7 @@ export default function Events() {
               </PermissionGate>
             </div>
           </div>
-          
+
           {/* Table content */}
           <div className="overflow-x-auto">
             {loading ? (
